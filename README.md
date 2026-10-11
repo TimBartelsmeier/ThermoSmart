@@ -1,3 +1,12 @@
+Fork of [Mikasmarthome/ThermoSmart](https://github.com/Mikasmarthome/ThermoSmart) for some things I want to change and, after testing, pull request back to upstream. Planned changes:
+- Ability to have setpoint temperature follow changes on the physical TRV (and, if multiple thermostats in the room, propagate to the other thermostats)
+- More flexible scheduling (allow user to define multiple (time of day, target temperature) tuples instead of fixed night/day temperatures, ideally with pre-heating for all)
+  - For example, this would allow (22 °C in the morning, 20 °C during the day, 22 °C in the evening, 18 °C at night)
+- Potentially, other small changes and improvements I think of during use
+Because changes have to be tested "live", i.e. in a home and over multiple days (for scheduling, or to check if pre-heating works successfully, and also just to be sure that nothing else "broke"), I don't think it is feasible to test changes individually. I want to implement all changes in one repo, test inside my own home over days or weeks, and then separate these changes back into individual pull requests.
+
+---
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/Mikasmarthome/ThermoSmart/main/custom_components/thermosmart/brand/logo.png" alt="ThermoSmart" width="256"/>
 </p>
