@@ -1,4 +1,6 @@
 Fork of [Mikasmarthome/ThermoSmart](https://github.com/Mikasmarthome/ThermoSmart) for some things I want to change and, after testing, pull request back to upstream. Planned changes:
+- ~~Fix: card not loading reliably~~ [done]
+- Fix: after restart, loads as "Window Open"
 - Ability to have setpoint temperature follow changes on the physical TRV (and, if multiple thermostats in the room, propagate to the other thermostats)
 - More flexible scheduling (allow user to define multiple (time of day, target temperature) tuples instead of fixed night/day temperatures, ideally with pre-heating for all)
   - For example, this would allow (22 °C in the morning, 20 °C during the day, 22 °C in the evening, 18 °C at night)
