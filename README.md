@@ -1,12 +1,17 @@
-Fork of [Mikasmarthome/ThermoSmart](https://github.com/Mikasmarthome/ThermoSmart) for some things I want to change and, after testing, pull request back to upstream. Planned changes:
-- ~~Fix: card not loading reliably~~ [done]
-- Fix: after restart, loads as "Window Open" (investigate first, might have been a glitch with my sensors)
+Fork of [Mikasmarthome/ThermoSmart](https://github.com/Mikasmarthome/ThermoSmart) for some things I want to change and, after testing, pull request back to upstream.
+
+Planned changes:
 - Ability to have setpoint temperature follow changes on the physical TRV (and, if multiple thermostats in the room, propagate to the other thermostats)
-- If schedule is disabled, comfort temperature should not be applied at times which are set in the schedule input fields, but current temperature should be set (_probably_ unintended?)
 - More flexible scheduling (allow user to define multiple (time of day, target temperature) tuples instead of fixed night/day temperatures, ideally with pre-heating for all)
   - For example, this would allow (22 °C in the morning, 20 °C during the day, 22 °C in the evening, 18 °C at night)
-- Potentially, other small changes and improvements I think of during use
-- "minimal" card without dial or graph
+- "Minimal" card without dial or graph
+
+Maybe planned:
+- Fix: after HA restart, loads as "Window Open" (investigate first, might have been a glitch with my sensors)
+- SONOFF TRVZB: use TRVZB's "smart" PID mode (<https://www.zigbee2mqtt.io/devices/TRVZB.html#smart-temperature-control-binary>)
+
+Done:
+- Fix: card not loading reliably
 
 ---
 
