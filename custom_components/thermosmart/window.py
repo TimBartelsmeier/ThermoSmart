@@ -37,6 +37,9 @@ class WindowMixin:
                 continue
             ws = self.hass.states.get(ws_id)
             if ws is None:
+                self._window_open_at.pop(ws_id, None)
+                self._window_close_at.pop(ws_id, None)
+                self._window_skip_close_recovery.add(ws_id)
                 continue
 
             # HA's own last-changed timestamp for this entity, when it is a
@@ -51,13 +54,16 @@ class WindowMixin:
                 last_changed = None
 
             if ws.state == "on":
+                self._window_skip_close_recovery.discard(ws_id)
                 if ws_id not in self._window_open_at:
                     self._window_open_at[ws_id] = last_changed if last_changed is not None else (now - open_delay)
                 if now - self._window_open_at[ws_id] >= open_delay:
                     sensor_detected = True
-            else:
+            elif ws.state == "off":
+                skip_close_recovery = ws_id in self._window_skip_close_recovery
                 if (
-                    ws_id not in self._window_close_at
+                    not skip_close_recovery
+                    and ws_id not in self._window_close_at
                     and last_changed is not None
                     and now - last_changed < close_delay
                 ):
@@ -68,6 +74,15 @@ class WindowMixin:
                     else:
                         self._window_close_at.pop(ws_id, None)
                 self._window_open_at.pop(ws_id, None)
+            else:
+                # Startup transitions through unavailable/unknown must not be
+                # interpreted as a real close. In particular, HA may restore
+                # an unavailable sensor with a recent last_changed timestamp;
+                # starting close_delay here would falsely keep the window open
+                # after the sensor becomes available again.
+                self._window_open_at.pop(ws_id, None)
+                self._window_close_at.pop(ws_id, None)
+                self._window_skip_close_recovery.add(ws_id)
 
         # Slope-basierte Erkennung nur wenn kein Sensor konfiguriert
         if not has_sensors:
