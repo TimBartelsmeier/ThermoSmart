@@ -41,6 +41,7 @@ from .const import (
     HEATING_MODE_ECO,
     HEATING_MODE_AWAY,
     HEATING_MODE_VACATION,
+    HEATING_MODES,
     HEATING_FAILURE_DELAY_MIN,
     HEATING_FAILURE_SLOPE_THRESH,
     HEATING_FAILURE_CMD_DELTA,
@@ -149,6 +150,7 @@ class ThermoSmartCoordinator(
         # Steuerungszustand
         self._active_control: bool = False
         self._mode: str = HEATING_MODE_COMFORT
+        self._preset_mode: str | None = HEATING_MODE_COMFORT
         self._override: float | None = None
         self._override_schedule_period: str | None = None
         self._scheduling_enabled: bool = True
@@ -367,6 +369,7 @@ class ThermoSmartCoordinator(
             self._override = None
             self._override_schedule_period = None
         self._mode = mode
+        self._preset_mode = mode
         # Immediately patch adjusted_target with the preset base temperature so
         # that async_write_ha_state() in climate.py can expose the new target at
         # once – before async_request_refresh() runs the full weather/learning
@@ -400,11 +403,13 @@ class ThermoSmartCoordinator(
                 self._pre_vacation_mode = self._mode
                 self._pre_vacation_target = self._schedule_target
             self._mode = HEATING_MODE_VACATION
+            self._preset_mode = HEATING_MODE_VACATION
             self._schedule_target = self.zone_cfg.get(
                 CONF_VACATION_TEMP, TEMP_FROST_PROTECTION
             )
         else:
             self._mode = self._pre_vacation_mode or HEATING_MODE_COMFORT
+            self._preset_mode = self._mode
             self._schedule_target = (
                 self._pre_vacation_target
                 if self._pre_vacation_target is not None
@@ -455,6 +460,8 @@ class ThermoSmartCoordinator(
     def set_override(self, value: float) -> None:
         self._override = value if value >= 5.0 else None
         self._override_schedule_period = self._current_schedule_period() if self._override else None
+        if self._override is not None:
+            self._preset_mode = None
 
     def get_override(self) -> float | None:
         return self._override
@@ -1508,6 +1515,9 @@ class ThermoSmartCoordinator(
         self._schedule_target = resolve_target(event.target, cfg)
         if isinstance(event.target, str) and event.target in HEATING_MODES:
             self._mode = event.target
+            self._preset_mode = event.target
+        else:
+            self._preset_mode = None
         _LOGGER.debug(
             "ThermoSmart '%s': applied schedule event %s with target %.1f°C",
             self.zone_name,

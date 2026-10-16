@@ -1227,6 +1227,9 @@ class ThermosmartCard extends HTMLElement {
   // Keep displayed target temp optimistically after a set call until HA confirms
   _setOptimistic(temp) {
     this._optimisticTemp = temp;
+    this._optimisticPreset = null;
+    clearTimeout(this._optimisticPresetTimer);
+    this._optimisticPresetTimer = null;
     clearTimeout(this._optimisticTimer);
     this._optimisticTimer = setTimeout(() => {
       this._optimisticTemp  = null;
@@ -1327,8 +1330,8 @@ class ThermosmartCard extends HTMLElement {
       ? (this._hass.states[this._learnSwitch]?.state === 'on')
       : !isObs;
 
-    const preset = this._optimisticPreset ?? a.preset_mode ?? 'comfort';
-    const presetCol = stateKey !== 'off' ? (PRESET_COLORS[preset] ?? null) : null;
+    const preset = this._optimisticPreset ?? a.preset_mode ?? null;
+    const presetCol = stateKey !== 'off' && preset ? (PRESET_COLORS[preset] ?? null) : null;
     const col = presetCol ?? STATE_COLORS[stateKey];
 
     const rawTarget  = a.temperature ?? null;
