@@ -29,6 +29,7 @@
           "calibration_invert": "Invert calibration offset (for TRVs like ME167 that reverse the sign)"
         },
         "data_description": {
+          "name": "The YAML schedule key will be: {zone_key}",
           "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active.",
           "manage_temp_source": "ThermoSmart continues to use external temperature sensors for its own control logic. When enabled, ThermoSmart also switches supported TRVs to their external temperature source and falls back to the internal TRV sensor if external sensors become unavailable.",
           "calibration_invert": "Inverts the calibration offset sign for specific TRV models whose offset direction differs from the standard behavior. Only enable this if required by your device."
@@ -128,6 +129,7 @@
           "calibration_invert": "Invert calibration offset (ME167 and similar)"
         },
         "data_description": {
+          "name": "The YAML schedule key will be: {zone_key}",
           "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active.",
           "manage_temp_source": "ThermoSmart continues to use external temperature sensors for its own control logic. When enabled, ThermoSmart also switches supported TRVs to their external temperature source and falls back to the internal TRV sensor if external sensors become unavailable.",
           "calibration_invert": "Inverts the calibration offset sign for specific TRV models whose offset direction differs from the standard behavior. Only enable this if required by your device."
@@ -212,11 +214,19 @@
       "learning": {
         "name": "Learning mode"
       },
+      "scheduling_enabled": {
+        "name": "Scheduling enabled"
+      },
       "vacation_mode": {
         "name": "Vacation Mode"
       },
       "debug_log": {
         "name": "Debug Log"
+      }
+    },
+    "datetime": {
+      "scheduling_disabled_until": {
+        "name": "Schedule disabled until"
       }
     },
     "select": {
