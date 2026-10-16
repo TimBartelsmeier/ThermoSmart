@@ -164,6 +164,13 @@ class TestSetMode:
         coord = make_coordinator()
         coord.set_mode(HEATING_MODE_ECO)
         assert coord._mode == HEATING_MODE_ECO
+        assert coord._preset_mode == HEATING_MODE_ECO
+
+    def test_manual_temperature_clears_preset(self):
+        coord = make_coordinator()
+        coord.set_mode(HEATING_MODE_ECO)
+        coord.set_override(21.5)
+        assert coord._preset_mode is None
 
 
 # ── TestSetVacationOverride ───────────────────────────────────────────────────
@@ -233,6 +240,36 @@ class TestScheduleSetpoints:
         coord._apply_schedule_event({"schedule_events": events}, now=now)
 
         assert coord._schedule_target == 18.0
+
+    def test_named_event_highlights_its_preset(self):
+        coord = make_coordinator()
+        events = parse_events([{
+            "days": ["mon"],
+            "time": "06:00",
+            "target": "night",
+        }])
+
+        coord._apply_schedule_event(
+            {"schedule_events": events},
+            now=datetime(2026, 10, 19, 7, 0),
+        )
+
+        assert coord._preset_mode == HEATING_MODE_NIGHT
+
+    def test_numeric_event_has_no_preset_highlight(self):
+        coord = make_coordinator()
+        events = parse_events([{
+            "days": ["mon"],
+            "time": "06:00",
+            "target": 20,
+        }])
+
+        coord._apply_schedule_event(
+            {"schedule_events": events},
+            now=datetime(2026, 10, 19, 7, 0),
+        )
+
+        assert coord._preset_mode is None
 
     def test_disabled_schedule_does_not_apply_event(self):
         coord = make_coordinator()

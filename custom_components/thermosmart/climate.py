@@ -155,8 +155,9 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
         return HVACAction.IDLE
 
     @property
-    def preset_mode(self) -> str:
-        return MODE_TO_PRESET.get(self.coordinator._mode, PRESET_COMFORT)
+    def preset_mode(self) -> str | None:
+        mode = self.coordinator._preset_mode
+        return MODE_TO_PRESET.get(mode) if mode is not None else None
 
     def _get_device_batteries(self) -> dict[str, int]:
         """Liest Batteriestände aller Geräte in der Zone (TRVs + Temp-/Feuchtigkeitssensoren).
