@@ -9,7 +9,9 @@ No HA fixtures needed (uses MagicMock hass).
 from __future__ import annotations
 
 from datetime import datetime
+from unittest.mock import MagicMock
 
+from custom_components.thermosmart.climate import ThermoSmartClimate
 from custom_components.thermosmart.const import (
     HEATING_MODE_AUTO,
     HEATING_MODE_AWAY,
@@ -117,6 +119,10 @@ class TestControlReason:
 
 
 class TestSetOverride:
+    def test_coordinator_starts_without_active_preset(self):
+        coord = make_coordinator()
+        assert coord._preset_mode is None
+
     def test_value_above_threshold_sets_override(self):
         coord = make_coordinator()
         coord.set_override(22.0)
@@ -138,6 +144,23 @@ class TestSetOverride:
         coord._override = 20.0
         coord.set_override(0.0)
         assert coord._override is None
+
+
+# ── TestClimatePresetState ────────────────────────────────────────────────────
+
+
+class TestClimatePresetState:
+    def test_climate_reports_no_preset_for_manual_target(self):
+        coord = make_coordinator()
+        entry = MagicMock()
+        entry.entry_id = "test_zone_001"
+        entry.data = {"name": "Test Zone"}
+        climate = ThermoSmartClimate(coord, entry)
+
+        coord.set_mode(HEATING_MODE_COMFORT)
+        coord.set_override(20.0)
+
+        assert climate.preset_mode is None
 
 
 # ── TestSetMode ───────────────────────────────────────────────────────────────
@@ -170,6 +193,22 @@ class TestSetMode:
         coord = make_coordinator()
         coord.set_mode(HEATING_MODE_ECO)
         coord.set_override(21.5)
+        assert coord._preset_mode is None
+
+    def test_numeric_schedule_target_clears_preset(self):
+        coord = make_coordinator()
+        coord.set_mode(HEATING_MODE_COMFORT)
+        events = parse_events([{
+            "days": ["mon"],
+            "time": "06:00",
+            "target": 20,
+        }])
+
+        coord._apply_schedule_event(
+            {"schedule_events": events},
+            now=datetime(2026, 10, 19, 7, 0),
+        )
+
         assert coord._preset_mode is None
 
 

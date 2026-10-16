@@ -162,20 +162,6 @@ There is no `auto` preset: scheduling is controlled only by the schedule events,
 the **Scheduling Enabled** switch, and the **Scheduling Disabled Until**
 date/time entity.
 
-The following legacy behaviours previously coupled to the `auto` mode are
-intentionally deferred while this model is introduced:
-
-- presence-based automatic switching to the Away temperature;
-- weather offsets and forecast suppression;
-- automatic pre-heating before a schedule event;
-- learning-based early-cutoff/coasting holds;
-- automatic expiry of manual overrides at a schedule-period boundary.
-
-These behaviours currently check for `auto` in the coordinator and therefore do
-not yet participate in the new preset/event mechanism. They will be
-reimplemented as independent features in a later change; the current
-implementation must not silently reintroduce them through a preset.
-
 ---
 
 ## Entities
