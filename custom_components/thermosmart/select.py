@@ -11,7 +11,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import (
     DOMAIN, VERSION,
-    HEATING_MODE_AUTO, HEATING_MODE_COMFORT, HEATING_MODE_NIGHT,
+    HEATING_MODE_COMFORT, HEATING_MODE_NIGHT,
     HEATING_MODE_AWAY, HEATING_MODE_VACATION, HEATING_MODE_ECO,
     HEATING_MODES,
     DOMAIN_GLOBAL_SUMMER,
@@ -81,7 +81,7 @@ class ThermoSmartModeSelect(SelectEntity, RestoreEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "mode"
     _attr_icon = "mdi:home-thermometer-outline"
-    _attr_options = HEATING_MODES  # ["auto", "comfort", "eco", "night", "away", "vacation"]
+    _attr_options = HEATING_MODES  # ["comfort", "eco", "night", "away", "vacation"]
 
     def __init__(self, coordinator: ThermoSmartCoordinator, entry: ConfigEntry):
         self._coordinator = coordinator
@@ -102,7 +102,7 @@ class ThermoSmartModeSelect(SelectEntity, RestoreEntity):
         if last and last.state in HEATING_MODES:
             # Nur zum Coordinator syncen wenn der noch im Default-Modus ist –
             # Globaler Urlaubsschalter (läuft vor select) hat sonst Vorrang.
-            if self._coordinator._mode == HEATING_MODE_AUTO:
+            if self._coordinator._mode != HEATING_MODE_VACATION:
                 self._coordinator.set_mode(last.state)
 
         # Als Coordinator-Listener registrieren → Entity aktualisiert sich

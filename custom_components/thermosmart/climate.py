@@ -25,7 +25,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     DOMAIN, VERSION,
-    HEATING_MODE_AUTO, HEATING_MODE_COMFORT, HEATING_MODE_NIGHT,
+    HEATING_MODE_COMFORT, HEATING_MODE_NIGHT,
     HEATING_MODE_AWAY, HEATING_MODE_VACATION, HEATING_MODE_ECO,
     TEMP_FROST_PROTECTION,
 )
@@ -33,12 +33,11 @@ from .coordinator import ThermoSmartCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# Heizmodus → HA-Standard-Preset-Namen
+# Preset temperature → HA preset names
 # PRESET_COMFORT/ECO/SLEEP/AWAY sind offizielle HA-Konstanten → Cards, Sprachassistenten,
 # Automationen funktionieren ohne zusätzliche Konfiguration.
-# "auto" und "vacation" haben keine HA-Entsprechung → bleiben als Custom-Strings.
+# "vacation" has no HA equivalent and remains a custom string.
 MODE_TO_PRESET = {
-    HEATING_MODE_AUTO:     "auto",
     HEATING_MODE_COMFORT:  PRESET_COMFORT,   # "comfort"
     HEATING_MODE_ECO:      PRESET_ECO,       # "eco"
     HEATING_MODE_NIGHT:    PRESET_SLEEP,     # "sleep"
@@ -98,7 +97,9 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
         await super().async_added_to_hass()
         last = await self.async_get_last_state()
         if last and (preset := last.attributes.get("preset_mode")):
-            mode = PRESET_TO_MODE.get(preset, HEATING_MODE_AUTO)
+            mode = PRESET_TO_MODE.get(preset)
+            if mode is None:
+                return
             self.coordinator.set_mode(mode)
         # Restore manual temperature override (persisted via extra_state_attributes)
         if last:
@@ -155,7 +156,7 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
 
     @property
     def preset_mode(self) -> str:
-        return MODE_TO_PRESET.get(self.coordinator._mode, "auto")
+        return MODE_TO_PRESET.get(self.coordinator._mode, PRESET_COMFORT)
 
     def _get_device_batteries(self) -> dict[str, int]:
         """Liest Batteriestände aller Geräte in der Zone (TRVs + Temp-/Feuchtigkeitssensoren).
@@ -262,9 +263,10 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
         await self.async_set_hvac_mode(HVACMode.OFF)
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
-        """Heizmodus wechseln (Auto, Komfort, Nacht, Abwesend, Urlaub)."""
-        mode = PRESET_TO_MODE.get(preset_mode, HEATING_MODE_AUTO)
+        """Select a preset temperature."""
+        mode = PRESET_TO_MODE.get(preset_mode)
+        if mode is None:
+            return
         self.coordinator.set_mode(mode)
         self.async_write_ha_state()
         await self.coordinator.async_request_refresh()
-

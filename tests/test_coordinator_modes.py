@@ -8,6 +8,8 @@ No HA fixtures needed (uses MagicMock hass).
 """
 from __future__ import annotations
 
+from datetime import datetime
+
 from custom_components.thermosmart.const import (
     HEATING_MODE_AUTO,
     HEATING_MODE_AWAY,
@@ -15,7 +17,9 @@ from custom_components.thermosmart.const import (
     HEATING_MODE_ECO,
     HEATING_MODE_NIGHT,
     HEATING_MODE_VACATION,
+    HEATING_MODES,
 )
+from custom_components.thermosmart.schedule import parse_events
 
 from tests.helpers import make_coordinator, make_state
 
@@ -58,11 +62,11 @@ class TestEffectiveMode:
         result = coord._effective_mode(self._presence(all_away=True))
         assert result == HEATING_MODE_COMFORT
 
-    def test_auto_all_away_returns_away(self):
+    def test_legacy_auto_does_not_trigger_presence_away(self):
         coord = make_coordinator()
         coord._mode = HEATING_MODE_AUTO
         result = coord._effective_mode(self._presence(all_away=True))
-        assert result == HEATING_MODE_AWAY
+        assert result == HEATING_MODE_AUTO
 
     def test_auto_no_presence_returns_auto(self):
         coord = make_coordinator()
@@ -176,20 +180,76 @@ class TestSetVacationOverride:
         coord._mode = HEATING_MODE_COMFORT
         coord.set_vacation_override(True)
         assert coord._pre_vacation_mode == HEATING_MODE_COMFORT
+        assert coord._schedule_target == 12.0
 
     def test_deactivate_restores_pre_vacation_mode(self):
         coord = make_coordinator()
         coord._mode = HEATING_MODE_NIGHT
+        coord._schedule_target = 18.0
         coord.set_vacation_override(True)
         coord.set_vacation_override(False)
         assert coord._mode == HEATING_MODE_NIGHT
+        assert coord._schedule_target == 18.0
 
-    def test_deactivate_without_pre_vacation_mode_restores_auto(self):
+    def test_deactivate_without_pre_vacation_mode_restores_comfort_preset(self):
         coord = make_coordinator()
         coord._pre_vacation_mode = None
         coord._mode = HEATING_MODE_VACATION
         coord.set_vacation_override(False)
-        assert coord._mode == HEATING_MODE_AUTO
+        assert coord._mode == HEATING_MODE_COMFORT
+
+    def test_auto_is_not_a_preset_temperature(self):
+        assert HEATING_MODE_AUTO not in HEATING_MODES
+
+
+class TestScheduleSetpoints:
+    def test_event_applies_numeric_target_once(self):
+        coord = make_coordinator()
+        events = parse_events([{
+            "days": ["mon"],
+            "time": "06:00",
+            "target": 20,
+        }])
+
+        coord._apply_schedule_event(
+            {"schedule_events": events},
+            now=datetime(2026, 10, 19, 7, 0),
+        )
+
+        assert coord._schedule_target == 20.0
+        assert coord._schedule_event_key == events[0].key
+
+    def test_manual_preset_remains_until_next_event(self):
+        coord = make_coordinator()
+        events = parse_events([{
+            "days": ["mon"],
+            "time": "06:00",
+            "target": 20,
+        }])
+        now = datetime(2026, 10, 19, 7, 0)
+        coord._apply_schedule_event({"schedule_events": events}, now=now)
+        coord.set_mode(HEATING_MODE_NIGHT)
+
+        coord._apply_schedule_event({"schedule_events": events}, now=now)
+
+        assert coord._schedule_target == 18.0
+
+    def test_disabled_schedule_does_not_apply_event(self):
+        coord = make_coordinator()
+        coord._scheduling_enabled = False
+        events = parse_events([{
+            "days": ["mon"],
+            "time": "06:00",
+            "target": "night",
+        }])
+
+        coord._apply_schedule_event(
+            {"schedule_events": events},
+            now=datetime(2026, 10, 19, 7, 0),
+        )
+
+        assert coord._schedule_target is None
+        assert coord._schedule_event_key is None
 
     def test_activate_clears_manual_override(self):
         coord = make_coordinator()

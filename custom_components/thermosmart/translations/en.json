@@ -199,7 +199,6 @@
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "auto": "Auto",
               "vacation": "Vacation",
               "sleep": "Night"
             }
@@ -231,9 +230,8 @@
     },
     "select": {
       "mode": {
-        "name": "Heating mode",
+        "name": "Preset temperature",
         "state": {
-          "auto": "Auto",
           "comfort": "Comfort",
           "eco": "Eco",
           "night": "Night",
