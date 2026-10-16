@@ -49,7 +49,7 @@ The card updates together with the integration — there is no separate version 
 
 ## Screenshots
 
-![Three ThermoSmart heating zones displayed in a Lovelace dashboard — each zone shows a temperature ring with current and target temperature, active mode indicator, outdoor temperature, humidity, and mode buttons for Auto, Eco, Night, Comfort, Away and Vacation](brand/screenshots/dashboard-zones.jpeg)
+![Three ThermoSmart heating zones displayed in a Lovelace dashboard — each zone shows a temperature ring with current and target temperature, active preset, outdoor temperature, humidity, and preset buttons for Eco, Night, Comfort, Away and Vacation](brand/screenshots/dashboard-zones.jpeg)
 
 *Three heating zones managed by ThermoSmart. The temperature ring shows current and target temperature at a glance. Mode buttons, outdoor conditions, and a history graph (Actual / Target / Outdoor) are visible per zone. Screenshot uses the bundled ThermoSmart Card, described above.*
 
@@ -83,7 +83,7 @@ Add **ThermoSmart System** first (Summer mode select + Vacation switch), then ad
 |---|---|
 | **1 – Devices** | Zone name · TRVs · Temperature sensors *(optional)* · Humidity sensors · Window / door sensors · Window delays · Valve maintenance · Calibration invert |
 | **2 – Temperatures** | Comfort · Night · Away · Vacation · Eco · Tolerance |
-| **3 – Presence** | Person entities · Home zone · Learning on/off |
+| **3 – Presence** | Person entities · Home zone |
 | **4 – Weather** | Weather entity · Outdoor temp/humidity · Wind speed · Solar radiation · Precipitation |
 
 > **External temperature sensors are optional.** Since v1.0.3, ThermoSmart automatically uses the TRV's built-in temperature sensor as fallback when no external sensor is configured. Adding a dedicated room sensor improves accuracy, but is not required to get started.
@@ -137,6 +137,28 @@ toggle. The Comfort and Night temperature settings remain because they also
 define those presets. If migration cannot write the file, the old config is
 left intact and an actionable error is logged.
 
+Presets and schedule events have separate responsibilities. Selecting a preset
+temperature changes the target immediately; it does not enable or disable the
+schedule. A schedule event changes the target when that event becomes active,
+using either a numeric temperature or one of the named temperature presets.
+There is no `auto` preset: scheduling is controlled only by the schedule events,
+the **Scheduling Enabled** switch, and the **Scheduling Disabled Until**
+date/time entity.
+
+The following legacy behaviours previously coupled to the `auto` mode are
+intentionally deferred while this model is introduced:
+
+- presence-based automatic switching to the Away temperature;
+- weather offsets and forecast suppression;
+- automatic pre-heating before a schedule event;
+- learning-based early-cutoff/coasting holds;
+- automatic expiry of manual overrides at a schedule-period boundary.
+
+These behaviours currently check for `auto` in the coordinator and therefore do
+not yet participate in the new preset/event mechanism. They will be
+reimplemented as independent features in a later change; the current
+implementation must not silently reintroduce them through a preset.
+
 ---
 
 ## Entities
@@ -145,11 +167,11 @@ left intact and an actionable error is logged.
 | Entity | Description |
 |---|---|
 | `climate.thermosmart_*` | Virtual thermostat — target/current temp, HVAC mode, presets |
-| `select.*_mode` | Heating mode: Auto / Comfort / Eco / Night / Away / Vacation |
+| `select.*_mode` | Preset temperature: Comfort / Eco / Night / Away / Vacation |
 | `switch.*_active_control` | Active Control on/off |
 | `switch.*_learning` | Learning algorithm on/off |
 | `switch.*_scheduling_enabled` | Execute scheduled setpoint changes |
-| `datetime.*_scheduling_disabled_until` | Temporarily pause scheduled changes until a selected date and time |
+| `datetime.*_schedule_disabled_until` | Temporarily pause scheduled changes until a selected date and time |
 | `sensor.*_status` | Zone status |
 | `sensor.*_confidence` | Learning progress 0–100 % |
 | `sensor.*_adjusted_target` | Configured target temperature (schedule or mode) |

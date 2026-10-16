@@ -36,6 +36,13 @@ class TestCardFileStructure:
         assert "customElements.define('thermosmart-card'" in content
         assert "customElements.define('thermosmart-card-editor'" in content
 
+    def test_card_exposes_only_temperature_presets(self):
+        content = open(_CARD_PATH, encoding="utf-8").read()
+        assert "mode_auto" not in content
+        assert "preset: 'auto'" not in content
+        assert "auto:     {" not in content
+        assert "preset_mode ?? 'auto'" not in content
+
     def test_card_registers_a_duplicate_define_guard(self):
         """Card ships its own idempotency guard — matters once the same file
         could theoretically be loaded twice (bundled + a leftover manual

@@ -148,13 +148,16 @@ class ThermoSmartCoordinator(
 
         # Steuerungszustand
         self._active_control: bool = False
-        self._mode: str = HEATING_MODE_AUTO
+        self._mode: str = HEATING_MODE_COMFORT
         self._override: float | None = None
         self._override_schedule_period: str | None = None
         self._scheduling_enabled: bool = True
         self._scheduling_disabled_until: datetime | None = None
         self._schedule_hold_target: float | None = None
+        self._schedule_target: float | None = None
+        self._schedule_event_key: str | None = None
         self._pre_vacation_mode: str | None = None
+        self._pre_vacation_target: float | None = None
         self._summer_override: bool | None = None
 
         # Event-Listener
@@ -369,16 +372,17 @@ class ThermoSmartCoordinator(
         # once – before async_request_refresh() runs the full weather/learning
         # recalculation.  The refresh will overwrite this value with the properly
         # adjusted figure shortly after.
+        cfg = self.zone_cfg
+        quick_target = {
+            HEATING_MODE_COMFORT:  cfg.get("comfort_temp", TEMP_COMFORT),
+            HEATING_MODE_NIGHT:    cfg.get("night_temp", TEMP_NIGHT),
+            HEATING_MODE_ECO:      cfg.get(CONF_ECO_TEMP, TEMP_ECO),
+            HEATING_MODE_AWAY:     cfg.get("away_temp", TEMP_AWAY),
+            HEATING_MODE_VACATION: cfg.get(CONF_VACATION_TEMP, TEMP_FROST_PROTECTION),
+        }.get(mode)
+        if quick_target is not None:
+            self._schedule_target = quick_target
         if self.data is not None and isinstance(self.data.get("zone"), dict):
-            cfg = self.zone_cfg
-            quick_target = {
-                HEATING_MODE_COMFORT:  cfg.get("comfort_temp", TEMP_COMFORT),
-                HEATING_MODE_NIGHT:    cfg.get("night_temp", TEMP_NIGHT),
-                HEATING_MODE_ECO:      cfg.get(CONF_ECO_TEMP, TEMP_ECO),
-                HEATING_MODE_AWAY:     cfg.get("away_temp", TEMP_AWAY),
-                HEATING_MODE_VACATION: cfg.get(CONF_VACATION_TEMP, TEMP_FROST_PROTECTION),
-                HEATING_MODE_AUTO:     cfg.get("comfort_temp", TEMP_COMFORT),
-            }.get(mode)
             if quick_target is not None:
                 self.data["zone"]["adjusted_target"] = quick_target
 
@@ -394,10 +398,28 @@ class ThermoSmartCoordinator(
                 self._override_schedule_period = None
             if self._mode != HEATING_MODE_VACATION:
                 self._pre_vacation_mode = self._mode
+                self._pre_vacation_target = self._schedule_target
             self._mode = HEATING_MODE_VACATION
+            self._schedule_target = self.zone_cfg.get(
+                CONF_VACATION_TEMP, TEMP_FROST_PROTECTION
+            )
         else:
-            self._mode = self._pre_vacation_mode or HEATING_MODE_AUTO
+            self._mode = self._pre_vacation_mode or HEATING_MODE_COMFORT
+            self._schedule_target = (
+                self._pre_vacation_target
+                if self._pre_vacation_target is not None
+                else self.zone_cfg.get(
+                    {
+                        HEATING_MODE_COMFORT: "comfort_temp",
+                        HEATING_MODE_NIGHT: "night_temp",
+                        HEATING_MODE_ECO: CONF_ECO_TEMP,
+                        HEATING_MODE_AWAY: "away_temp",
+                    }.get(self._mode, "comfort_temp"),
+                    TEMP_COMFORT,
+                )
+            )
             self._pre_vacation_mode = None
+            self._pre_vacation_target = None
         _LOGGER.info(
             "ThermoSmart '%s': Urlaubs-Override %s (Modus: %s)",
             self.zone_name, "AN" if active else "AUS", self._mode,
@@ -818,16 +840,13 @@ class ThermoSmartCoordinator(
             self._update_summer_mode(weather_data)
 
             presence = self._get_presence_state()
+            self._apply_schedule_event(cfg, now=self._now_local())
             mode = self._effective_mode(presence)
             if self._last_effective_mode is not None and mode != self._last_effective_mode:
                 if presence.get("vacation"):
                     _reason = "vacation"
-                elif self._mode != HEATING_MODE_AUTO:
-                    _reason = "manual"
-                elif presence.get("all_away"):
-                    _reason = "presence"
                 else:
-                    _reason = "schedule"
+                    _reason = "preset_or_schedule"
                 _LOGGER.debug(
                     "ThermoSmart '%s': effective mode changed %s → %s reason=%s",
                     self.zone_name, self._last_effective_mode, mode, _reason,
@@ -1470,11 +1489,31 @@ class ThermoSmartCoordinator(
     def _effective_mode(self, presence: dict) -> str:
         if presence["vacation"]:
             return HEATING_MODE_VACATION
-        if self._mode != HEATING_MODE_AUTO:
-            return self._mode
-        if presence["all_away"]:
-            return HEATING_MODE_AWAY
-        return HEATING_MODE_AUTO
+        return self._mode
+
+    def _apply_schedule_event(self, cfg: dict, *, now: datetime) -> None:
+        """Apply a schedule setpoint once when its recurring event becomes active."""
+        if not self._scheduling_enabled or (
+            self._scheduling_disabled_until is not None
+            and now < self._scheduling_disabled_until
+        ):
+            return
+        events = cfg.get("schedule_events")
+        if not events:
+            return
+        event = resolve_event(events, now)
+        if event is None or event.key == self._schedule_event_key:
+            return
+        self._schedule_event_key = event.key
+        self._schedule_target = resolve_target(event.target, cfg)
+        if isinstance(event.target, str) and event.target in HEATING_MODES:
+            self._mode = event.target
+        _LOGGER.debug(
+            "ThermoSmart '%s': applied schedule event %s with target %.1f°C",
+            self.zone_name,
+            event.key,
+            self._schedule_target,
+        )
 
     def _control_reason(self, recommendation: dict) -> str:
         """Determine the primary reason that governs the current heating target.
@@ -1979,8 +2018,10 @@ class ThermoSmartCoordinator(
             resolve_event(cfg["schedule_events"], now)
             if "schedule_events" in cfg else None
         )
-        if mode == HEATING_MODE_AUTO and not self._scheduling_active(now):
-            base_target = self._schedule_hold_target or comfort_temp
+        if mode == HEATING_MODE_VACATION:
+            base_target = cfg.get(CONF_VACATION_TEMP, TEMP_FROST_PROTECTION)
+        elif self._schedule_target is not None:
+            base_target = self._schedule_target
         else:
             base_target = await self.learning_engine.async_get_base_target(
                 self.zone_id, mode,
@@ -1991,8 +2032,6 @@ class ThermoSmartCoordinator(
                 eco_temp=cfg.get(CONF_ECO_TEMP, TEMP_ECO),
                 schedule_cfg=cfg,
             )
-            if mode == HEATING_MODE_AUTO:
-                self._schedule_hold_target = base_target
 
         weather_offset = 0.0
         if mode == HEATING_MODE_AUTO:
