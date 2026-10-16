@@ -150,7 +150,10 @@ class ThermoSmartCoordinator(
         # Steuerungszustand
         self._active_control: bool = False
         self._mode: str = HEATING_MODE_COMFORT
-        self._preset_mode: str | None = HEATING_MODE_COMFORT
+        # Presets are explicit one-time target selections.  The legacy control
+        # mode still defaults to comfort, but that must not imply a highlighted
+        # preset before the user or a schedule selects one.
+        self._preset_mode: str | None = None
         self._override: float | None = None
         self._override_schedule_period: str | None = None
         self._scheduling_enabled: bool = True
