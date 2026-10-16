@@ -37,6 +37,10 @@ class WindowMixin:
                 continue
             ws = self.hass.states.get(ws_id)
             if ws is None:
+                self._window_open_at.pop(ws_id, None)
+                self._window_close_at.pop(ws_id, None)
+                self._window_open_temp.pop(ws_id, None)
+                self._window_seen.add(ws_id)
                 continue
 
             # HA's own last-changed timestamp for this entity, when it is a
@@ -55,14 +59,16 @@ class WindowMixin:
                     self._window_open_at[ws_id] = last_changed if last_changed is not None else (now - open_delay)
                 if now - self._window_open_at[ws_id] >= open_delay:
                     sensor_detected = True
-            else:
+            elif ws.state == "off":
                 # Reconstruct an in-progress close delay from HA's last_changed
                 # only for a sensor this coordinator has not observed closing
                 # itself. For observed sensors the event listener is
                 # authoritative: it deliberately starts no close delay when the
                 # window closes before the open delay elapsed (the window was
                 # never confirmed open), and reconstructing one here would
-                # activate the window override after a short airing.
+                # activate the window override after a short airing. Missing
+                # or unavailable startup states also suppress reconstruction:
+                # becoming available as off is not a confirmed close.
                 if (
                     ws_id not in self._window_close_at
                     and ws_id not in self._window_seen
@@ -76,6 +82,16 @@ class WindowMixin:
                     else:
                         self._window_close_at.pop(ws_id, None)
                 self._window_open_at.pop(ws_id, None)
+            else:
+                # Startup transitions through unavailable/unknown must not be
+                # interpreted as a real close. In particular, HA may restore
+                # an unavailable sensor with a recent last_changed timestamp;
+                # starting close_delay here would falsely keep the window open
+                # after the sensor becomes available again.
+                self._window_open_at.pop(ws_id, None)
+                self._window_close_at.pop(ws_id, None)
+                self._window_open_temp.pop(ws_id, None)
+                self._window_seen.add(ws_id)
 
         # Slope-basierte Erkennung nur wenn kein Sensor konfiguriert
         if not has_sensors:

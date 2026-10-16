@@ -101,13 +101,17 @@ class _Rig:
             return _trv_state(self.setpoint)
         return None
 
-    def open_window(self):
+    def set_window(self, value, *, notify=True):
         old = self.contact[0]
-        self.contact = ("on", self.clock.now_utc())
+        self.contact = (value, self.clock.now_utc())
         ev = MagicMock()
         ev.data = {"entity_id": _CONTACT, "old_state": MagicMock(state=old),
-                   "new_state": MagicMock(state="on")}
-        self.listener(ev)
+                   "new_state": MagicMock(state=value)}
+        if notify:
+            self.listener(ev)
+
+    def open_window(self):
+        self.set_window("on")
 
     def wait(self, *, minutes=0, seconds=0):
         self.clock.advance(minutes * 60 + seconds)
@@ -117,6 +121,20 @@ class _Rig:
 
 
 class TestContactDelayEndToEnd:
+    @pytest.mark.parametrize("bad_state", ["unknown", "unavailable"])
+    @pytest.mark.parametrize("notify", [False, True])
+    async def test_startup_states_do_not_write_window_temperature(self, bad_state, notify):
+        rig = _Rig(open_delay=5)
+        await rig.refresh()
+        rig.calls.clear()
+
+        for value in (bad_state, "off"):
+            rig.set_window(value, notify=notify)
+            assert (await rig.refresh())["zone"]["window_open"] is False
+        rig.wait(seconds=30)
+        assert (await rig.refresh())["zone"]["window_open"] is False
+        assert 5.0 not in rig.calls
+
     async def test_target_stays_until_open_delay_elapsed_then_drops_to_window_temp(self):
         rig = _Rig(open_delay=5)
         await rig.refresh()

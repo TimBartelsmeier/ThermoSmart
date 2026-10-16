@@ -154,10 +154,9 @@ class ThermoSmartCoordinator(
         # Fenster-Tracking (genutzt von WindowMixin)
         self._window_open_at: dict[str, datetime] = {}
         self._window_close_at: dict[str, datetime] = {}
-        # Sensors whose open/close transitions this coordinator has observed live
-        # (event listener). For those, _window_open_at/_window_close_at are
-        # authoritative; HA's last_changed is only used to reconstruct an
-        # in-progress delay for sensors not yet observed (reload / HA restart).
+        # Sensors observed live or found missing/unavailable during polling.
+        # For those, tracked transitions are authoritative; last_changed only
+        # reconstructs delays for sensors not yet observed after reload/restart.
         self._window_seen: set[str] = set()
         self._window_open_temp: dict[str, float] = {}
         # Cancel functions for scheduled delay-expiry refreshes (one slot per sensor)
@@ -541,7 +540,7 @@ class ThermoSmartCoordinator(
                         self._window_delay_cancel[entity_id] = async_call_later(
                             self.hass, open_delay_secs, _open_delay_expired
                         )
-                    else:
+                    elif new.state == "off":
                         # Cancel any pending open-delay timer (sensor closed before delay elapsed)
                         _cancel = self._window_delay_cancel.pop(entity_id, None)
                         if _cancel is not None:
@@ -573,6 +572,15 @@ class ThermoSmartCoordinator(
                             # serves the schedule lookup via async_get_base_target().
                             self._window_open_temp.pop(entity_id, None)
                         self._window_open_at.pop(entity_id, None)
+                    else:
+                        # unavailable/unknown during HA startup is not a valid
+                        # close transition and must not start or retain close_delay.
+                        _cancel = self._window_delay_cancel.pop(entity_id, None)
+                        if _cancel is not None:
+                            _cancel()
+                        self._window_open_at.pop(entity_id, None)
+                        self._window_close_at.pop(entity_id, None)
+                        self._window_open_temp.pop(entity_id, None)
 
                 _LOGGER.info(
                     "ThermoSmart '%s': %s geändert (%s → %s) – Sofort-Update",
