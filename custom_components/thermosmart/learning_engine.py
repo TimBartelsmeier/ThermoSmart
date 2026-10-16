@@ -40,7 +40,6 @@ from .const import (
     CONF_VACATION_TEMP,
     CONF_ECO_TEMP,
     TEMP_ECO,
-    CONF_SCHEDULE_ENABLED,
     CONF_SCHED_WD_MORNING, CONF_SCHED_WD_NIGHT,
     CONF_SCHED_WE_MORNING, CONF_SCHED_WE_NIGHT,
     FORECAST_EVAL_HOURS,
@@ -48,6 +47,7 @@ from .const import (
     FORECAST_BIAS_MAX,
     FORECAST_BIAS_LEARNING_RATE,
 )
+from .schedule import resolve_event, resolve_target
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -975,7 +975,7 @@ class LearningEngine:
         if mode != HEATING_MODE_AUTO:
             return mode_temps.get(mode, night_temp)
 
-        if (schedule_cfg or {}).get(CONF_SCHEDULE_ENABLED, True):
+        if schedule_cfg is not None:
             schedule_temp = self._schedule_target(
                 zone_id, comfort_temp, night_temp, away_temp, schedule_cfg
             )
@@ -1208,6 +1208,13 @@ class LearningEngine:
         schedule_cfg: dict | None = None,
     ) -> float:
         """Konfigurierbarer Zeitplan: Werktag 4 Blöcke, Wochenende 2 Blöcke."""
+        if schedule_cfg and "schedule_events" in schedule_cfg:
+            event = resolve_event(
+                schedule_cfg.get("schedule_events", []), self._now_local()
+            )
+            if event is not None:
+                return resolve_target(event.target, schedule_cfg)
+            return comfort_temp
         now = self._now_local()
         is_weekend = now.weekday() >= 5
         cur = now.hour * 60 + now.minute

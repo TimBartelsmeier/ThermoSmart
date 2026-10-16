@@ -18,6 +18,8 @@ CONF_OUTDOOR_WIND_SENSOR = "outdoor_wind_sensor"
 CONF_OUTDOOR_SOLAR_SENSOR = "outdoor_solar_sensor"
 CONF_OUTDOOR_RAIN_SENSOR = "outdoor_rain_sensor"
 CONF_LEARNING_ENABLED = "learning_enabled"
+# Legacy config-entry key retained for migration and compatibility; scheduling
+# control is now exposed as per-zone entities.
 CONF_SCHEDULE_ENABLED = "schedule_enabled"
 CONF_PRESENCE_PERSONS = "presence_persons"
 CONF_HOME_ZONE = "home_zone"           # Welche Zone gilt als "zuhause"?
@@ -195,7 +197,7 @@ STORAGE_VERSION = 1
 STORAGE_KEY = f"{DOMAIN}_learning_data"
 
 # Platforms
-PLATFORMS = ["climate", "sensor", "switch", "select"]
+PLATFORMS = ["climate", "sensor", "switch", "select", "datetime"]
 
 # Icons
 ICON_ZONE = "mdi:home-thermometer"

@@ -34,6 +34,7 @@ async def async_setup_entry(
     entities = [
         ThermoSmartActiveSwitch(coordinator, entry),
         ThermoSmartLearningSwitch(coordinator, entry),
+        ThermoSmartSchedulingSwitch(coordinator, entry),
     ]
 
     # Backward-Compat: globaler Urlaubsschalter an die erste Zone anhängen wenn kein System-Entry
@@ -145,6 +146,41 @@ class ThermoSmartLearningSwitch(SwitchEntity, RestoreEntity):
 
     def _get_engine(self):
         return self.hass.data.get(DOMAIN, {}).get("learning_engine")
+
+
+class ThermoSmartSchedulingSwitch(SwitchEntity, RestoreEntity):
+    """Enable or pause automatic schedule changes for one zone."""
+    _attr_has_entity_name = True
+    _attr_translation_key = "scheduling_enabled"
+    _attr_icon = "mdi:calendar-clock"
+
+    def __init__(self, coordinator: ThermoSmartCoordinator, entry: ConfigEntry):
+        self._coordinator = coordinator
+        self._attr_unique_id = f"{entry.entry_id}_scheduling_enabled"
+        self._attr_device_info = _device_info(entry)
+        self._is_on = True
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        self._is_on = last is None or last.state == "on"
+        self._coordinator.set_scheduling_enabled(self._is_on)
+
+    @property
+    def is_on(self) -> bool:
+        return self._is_on
+
+    async def async_turn_on(self, **kwargs) -> None:
+        self._is_on = True
+        self._coordinator.set_scheduling_enabled(True)
+        self.async_write_ha_state()
+        await self._coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs) -> None:
+        self._is_on = False
+        self._coordinator.set_scheduling_enabled(False)
+        self.async_write_ha_state()
+        await self._coordinator.async_request_refresh()
 
 
 # ── Globale Schalter (domain-weit, steuern alle Zonen) ───────────────────────

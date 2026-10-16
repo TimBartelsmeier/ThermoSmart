@@ -29,6 +29,7 @@
           "calibration_invert": "Invert calibration offset (for TRVs like ME167 that reverse the sign)"
         },
         "data_description": {
+          "name": "The YAML schedule key will be: {zone_key}",
           "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active.",
           "manage_temp_source": "ThermoSmart continues to use external temperature sensors for its own control logic. When enabled, ThermoSmart also switches supported TRVs to their external temperature source and falls back to the internal TRV sensor if external sensors become unavailable.",
           "calibration_invert": "Inverts the calibration offset sign for specific TRV models whose offset direction differs from the standard behavior. Only enable this if required by your device."
@@ -45,14 +46,12 @@
           "eco_temp": "Eco temperature (energy saving, between night and comfort)",
           "window_open_temp": "Window open temperature",
           "temp_tolerance": "Temperature tolerance – setpoint write threshold",
-          "schedule_enabled": "Enable time schedule",
           "sched_wd_morning": "Weekday: Comfort from",
           "sched_wd_night": "Weekday: Night from",
           "sched_we_morning": "Weekend: Comfort from",
           "sched_we_night": "Weekend: Night from"
         },
         "data_description": {
-          "schedule_enabled": "When disabled, comfort temperature is active around the clock – no automatic day/night switching.",
           "sched_wd_morning": "Comfort temperature should be reached by this time – ThermoSmart preheats automatically in advance",
           "sched_wd_night": "Night temperature applies from this time",
           "sched_we_morning": "Comfort temperature should be reached by this time – ThermoSmart preheats automatically in advance",
@@ -128,6 +127,7 @@
           "calibration_invert": "Invert calibration offset (ME167 and similar)"
         },
         "data_description": {
+          "name": "The YAML schedule key will be: {zone_key}",
           "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active.",
           "manage_temp_source": "ThermoSmart continues to use external temperature sensors for its own control logic. When enabled, ThermoSmart also switches supported TRVs to their external temperature source and falls back to the internal TRV sensor if external sensors become unavailable.",
           "calibration_invert": "Inverts the calibration offset sign for specific TRV models whose offset direction differs from the standard behavior. Only enable this if required by your device."
@@ -144,14 +144,12 @@
           "eco_temp": "Eco temperature",
           "window_open_temp": "Window open temperature",
           "temp_tolerance": "Temperature tolerance",
-          "schedule_enabled": "Enable time schedule",
           "sched_wd_morning": "Weekday: Comfort from",
           "sched_wd_night": "Weekday: Night from",
           "sched_we_morning": "Weekend: Comfort from",
           "sched_we_night": "Weekend: Night from"
         },
         "data_description": {
-          "schedule_enabled": "When disabled, comfort temperature is active around the clock – no automatic day/night switching.",
           "sched_wd_morning": "Comfort temperature should be reached by this time – ThermoSmart preheats automatically in advance",
           "sched_wd_night": "Night temperature applies from this time",
           "sched_we_morning": "Comfort temperature should be reached by this time – ThermoSmart preheats automatically in advance",
@@ -212,6 +210,9 @@
       "learning": {
         "name": "Learning mode"
       },
+      "scheduling_enabled": {
+        "name": "Scheduling Enabled"
+      },
       "vacation_mode": {
         "name": "Vacation Mode"
       },
@@ -240,6 +241,11 @@
         }
       }
     },
+    "datetime": {
+        "scheduling_disabled_until": {
+          "name": "Scheduling Disabled Until"
+        }
+      },
     "sensor": {
       "adjusted_target": {
         "name": "Target temperature"

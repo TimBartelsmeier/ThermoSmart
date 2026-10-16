@@ -14,12 +14,14 @@ Modulstruktur:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant, Event
+from homeassistant.exceptions import ConfigEntryNotReady
 
 from .const import (
     DOMAIN,
@@ -39,6 +41,12 @@ from .const import (
 from .coordinator import ThermoSmartCoordinator
 from .weather_engine import WeatherEngine
 from .learning_engine import LearningEngine
+from .schedule import (
+    SCHEDULE_FILENAME,
+    ScheduleError,
+    async_load_schedule,
+    async_migrate_legacy,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -160,6 +168,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN]["card_registered"] = True
         await _async_register_card(hass)
 
+    if not hass.data[DOMAIN].get("schedule_migration_done"):
+        migration_lock = hass.data[DOMAIN].setdefault(
+            "schedule_migration_lock", asyncio.Lock()
+        )
+        async with migration_lock:
+            if not hass.data[DOMAIN].get("schedule_migration_done"):
+                try:
+                    await async_migrate_legacy(
+                        hass, hass.config_entries.async_entries(DOMAIN)
+                    )
+                except ScheduleError as err:
+                    _LOGGER.error("ThermoSmart schedule migration failed: %s", err)
+                    raise ConfigEntryNotReady(str(err)) from err
+                hass.data[DOMAIN]["schedule_migration_done"] = True
+
     # ── System-Entry: nur globale Schalter, kein Coordinator ────────
     if cfg.get("entry_type") == "system":
         hass.data[DOMAIN][entry.entry_id] = {"type": "system"}
@@ -169,6 +192,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return True
 
     # ── Zone-Entry: vollständiger Coordinator ───────────────────────
+    try:
+        schedule_events = await async_load_schedule(hass, entry)
+    except ScheduleError as err:
+        _LOGGER.error(
+            "ThermoSmart '%s': invalid schedule configuration: %s",
+            cfg.get("name", entry.entry_id), err,
+        )
+        raise ConfigEntryNotReady(str(err)) from err
+    hass.data[DOMAIN].setdefault("schedules", {})[entry.entry_id] = schedule_events
+    _LOGGER.info(
+        "ThermoSmart '%s': loaded %d schedule events from %s (zone key: %s)",
+        cfg.get("name", entry.entry_id), len(schedule_events),
+        hass.config.path(SCHEDULE_FILENAME), entry.entry_id,
+    )
     def _sensor(key: str) -> str | None:
         return cfg.get(key) or None
 

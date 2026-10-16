@@ -82,11 +82,60 @@ Add **ThermoSmart System** first (Summer mode select + Vacation switch), then ad
 | Step | Fields |
 |---|---|
 | **1 – Devices** | Zone name · TRVs · Temperature sensors *(optional)* · Humidity sensors · Window / door sensors · Window delays · Valve maintenance · Calibration invert |
-| **2 – Temperatures** | Comfort · Night · Away · Vacation · Eco · Tolerance · Weekday/weekend schedule times |
+| **2 – Temperatures** | Comfort · Night · Away · Vacation · Eco · Tolerance |
 | **3 – Presence** | Person entities · Home zone · Learning on/off |
 | **4 – Weather** | Weather entity · Outdoor temp/humidity · Wind speed · Solar radiation · Precipitation |
 
 > **External temperature sensors are optional.** Since v1.0.3, ThermoSmart automatically uses the TRV's built-in temperature sensor as fallback when no external sensor is configured. Adding a dedicated room sensor improves accuracy, but is not required to get started.
+
+### Flexible schedules
+
+Schedules are configured in `/config/thermosmart_schedules.yaml`. The key under
+`zones` uses a normalized slug of the zone name entered during setup. For
+example, `Living Room` becomes `living_room`; the setup form shows the exact
+expected key below the zone-name field. ThermoSmart also stores the display
+name and an internal config-entry association in each zone block, so renaming a
+zone can be migrated without losing its schedule. A schedule entry is a
+setpoint change, not a time slot:
+the most recent event in the repeating week remains active until the next event.
+
+```yaml
+zones:
+  living_room:
+    name: "Living Room"
+    events:
+      - days: [mon, tue, wed, thu, fri]
+        time: "06:00"
+        target: comfort
+        preheat: false
+      - days: [mon, tue, wed, thu, fri]
+        time: "12:00"
+        target: 20
+        preheat: false
+      - days: [mon, tue, wed, thu, fri, sat, sun]
+        time: "22:00"
+        target: night
+        preheat: false
+```
+
+`days` accepts `mon` through `sun`, `time` is local `HH:MM`, and `target` is a
+number from 4 to 35°C or one of `comfort`, `night`/`sleep`, `eco`, `away`, or
+`vacation`. Duplicate day/time entries are allowed; the last configured entry
+wins. The `preheat` flag is stored per event for forward compatibility. General
+per-event pre-heating is not enabled yet.
+
+Scheduling can be paused temporarily with the zone's **Scheduling Disabled
+Until** date/time entity, which provides Home Assistant's native date/time
+picker. When the selected time has passed, scheduling resumes automatically.
+The **Scheduling Enabled** switch is the persistent on/off control; turning it
+off takes precedence over the date/time entity.
+
+When upgrading an existing installation, ThermoSmart migrates old
+weekday/weekend schedule times into this file and removes the obsolete schedule
+fields from the zone config entry, including the former `schedule_enabled`
+toggle. The Comfort and Night temperature settings remain because they also
+define those presets. If migration cannot write the file, the old config is
+left intact and an actionable error is logged.
 
 ---
 
@@ -99,6 +148,8 @@ Add **ThermoSmart System** first (Summer mode select + Vacation switch), then ad
 | `select.*_mode` | Heating mode: Auto / Comfort / Eco / Night / Away / Vacation |
 | `switch.*_active_control` | Active Control on/off |
 | `switch.*_learning` | Learning algorithm on/off |
+| `switch.*_scheduling_enabled` | Execute scheduled setpoint changes |
+| `datetime.*_scheduling_disabled_until` | Temporarily pause scheduled changes until a selected date and time |
 | `sensor.*_status` | Zone status |
 | `sensor.*_confidence` | Learning progress 0–100 % |
 | `sensor.*_adjusted_target` | Configured target temperature (schedule or mode) |
