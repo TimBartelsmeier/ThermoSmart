@@ -17,18 +17,16 @@ from .const import (
     CONF_OUTDOOR_WIND_SENSOR,
     CONF_OUTDOOR_SOLAR_SENSOR,
     CONF_OUTDOOR_RAIN_SENSOR,
-    CONF_SCHEDULE_ENABLED,
     CONF_PRESENCE_PERSONS,
     CONF_HOME_ZONE,
     CONF_VACATION_TEMP,
     CONF_WINDOW_OPEN_TEMP,
     CONF_ECO_TEMP,
     CONF_VALVE_MAINTENANCE,
-    CONF_SCHED_WD_MORNING, CONF_SCHED_WD_NIGHT,
-    CONF_SCHED_WE_MORNING, CONF_SCHED_WE_NIGHT,
     TEMP_ECO,
     WINDOW_OPEN_SETPOINT,
 )
+from .schedule import zone_key
 
 
 # ── Hilfklasse: EntitySelector der None und "" als "nicht gesetzt" akzeptiert ─
@@ -119,6 +117,10 @@ def _schema_devices(d: dict) -> vol.Schema:
     })
 
 
+def _zone_key_placeholder(data: dict) -> dict[str, str]:
+    return {"zone_key": zone_key(str(data.get("name", "")).strip())}
+
+
 def _schema_schedule(d: dict) -> vol.Schema:
     return vol.Schema({
         vol.Required("comfort_temp", default=d.get("comfort_temp", 21.0)):
@@ -149,16 +151,6 @@ def _schema_schedule(d: dict) -> vol.Schema:
             selector.NumberSelector(selector.NumberSelectorConfig(
                 min=0.1, max=2.0, step=0.1, unit_of_measurement="°C", mode=selector.NumberSelectorMode.BOX,
             )),
-        vol.Required(CONF_SCHEDULE_ENABLED, default=d.get(CONF_SCHEDULE_ENABLED, True)):
-            selector.BooleanSelector(),
-        vol.Optional(CONF_SCHED_WD_MORNING, default=d.get(CONF_SCHED_WD_MORNING, "06:00")):
-            selector.TimeSelector(),
-        vol.Optional(CONF_SCHED_WD_NIGHT, default=d.get(CONF_SCHED_WD_NIGHT, "22:00")):
-            selector.TimeSelector(),
-        vol.Optional(CONF_SCHED_WE_MORNING, default=d.get(CONF_SCHED_WE_MORNING, "08:00")):
-            selector.TimeSelector(),
-        vol.Optional(CONF_SCHED_WE_NIGHT, default=d.get(CONF_SCHED_WE_NIGHT, "23:00")):
-            selector.TimeSelector(),
     })
 
 
@@ -256,6 +248,7 @@ class ThermoSmartConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="add_zone",
             data_schema=_schema_devices(self._data),
             errors=errors,
+            description_placeholders=_zone_key_placeholder(self._data),
         )
 
     async def async_step_schedule(self, user_input: dict | None = None):
@@ -364,6 +357,7 @@ class ThermoSmartOptionsFlow(config_entries.OptionsFlow):
             step_id="devices",
             data_schema=_schema_devices(current),
             errors=errors,
+            description_placeholders=_zone_key_placeholder(current),
         )
 
     async def async_step_schedule(self, user_input: dict | None = None):

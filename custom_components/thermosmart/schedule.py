@@ -1,0 +1,296 @@
+"""Flexible weekly setpoint-change schedules."""
+from __future__ import annotations
+
+import os
+import re
+import unicodedata
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
+
+import yaml
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+
+from .const import (
+    CONF_SCHED_WD_MORNING,
+    CONF_SCHED_WD_NIGHT,
+    CONF_SCHED_WE_MORNING,
+    CONF_SCHED_WE_NIGHT,
+)
+
+SCHEDULE_FILENAME = "thermosmart_schedules.yaml"
+_DAY_NAMES = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+_PRESETS = {"comfort", "night", "sleep", "eco", "away", "vacation"}
+_LEGACY_KEYS = (
+    "schedule_enabled",
+    CONF_SCHED_WD_MORNING,
+    CONF_SCHED_WD_NIGHT,
+    CONF_SCHED_WE_MORNING,
+    CONF_SCHED_WE_NIGHT,
+)
+_LEGACY_TIME_KEYS = _LEGACY_KEYS[1:]
+
+
+@dataclass(frozen=True, slots=True)
+class ScheduleEvent:
+    days: tuple[int, ...]
+    minute: int
+    target: float | str
+    preheat: bool
+    order: int
+
+    @property
+    def key(self) -> str:
+        return f"{','.join(_DAY_NAMES[d] for d in self.days)}@{self.minute:04d}#{self.order}"
+
+
+class ScheduleError(ValueError):
+    """Invalid schedule configuration."""
+
+
+def _parse_time(value: Any) -> int:
+    try:
+        parts = str(value).split(":")
+        hour, minute = int(parts[0]), int(parts[1])
+    except (TypeError, ValueError, IndexError) as err:
+        raise ScheduleError(f"invalid time {value!r}; expected HH:MM") from err
+    if not 0 <= hour <= 23 or not 0 <= minute <= 59:
+        raise ScheduleError(f"invalid time {value!r}; expected HH:MM")
+    return hour * 60 + minute
+
+
+def _parse_days(value: Any) -> tuple[int, ...]:
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, list) or not value:
+        raise ScheduleError("days must be a non-empty list")
+    result: list[int] = []
+    for day in value:
+        if isinstance(day, int) and 0 <= day <= 6:
+            index = day
+        elif isinstance(day, str) and day.strip().lower() in _DAY_NAMES:
+            index = _DAY_NAMES.index(day.strip().lower())
+        else:
+            raise ScheduleError(f"invalid weekday {day!r}")
+        if index not in result:
+            result.append(index)
+    return tuple(sorted(result))
+
+
+def _parse_target(value: Any) -> float | str:
+    if isinstance(value, bool):
+        raise ScheduleError("target must be a temperature or preset")
+    if isinstance(value, (int, float)):
+        target = float(value)
+        if not 4.0 <= target <= 35.0:
+            raise ScheduleError("numeric target must be between 4 and 35°C")
+        return target
+    if isinstance(value, str) and value.lower() in _PRESETS:
+        return value.lower()
+    raise ScheduleError(f"invalid target {value!r}")
+
+
+def zone_key(name: str) -> str:
+    """Return the human-readable, YAML-safe key for a zone name."""
+    normalized = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    slug = re.sub(r"[^a-z0-9]+", "_", normalized.lower()).strip("_")
+    return slug or "zone"
+
+
+def parse_events(raw: Any) -> list[ScheduleEvent]:
+    """Validate and normalize the ``events`` YAML list."""
+    if not isinstance(raw, list):
+        raise ScheduleError("events must be a list")
+    events: list[ScheduleEvent] = []
+    for order, item in enumerate(raw):
+        if not isinstance(item, dict):
+            raise ScheduleError(f"event {order + 1} must be a mapping")
+        events.append(ScheduleEvent(
+            days=_parse_days(item.get("days")),
+            minute=_parse_time(item.get("time")),
+            target=_parse_target(item.get("target")),
+            preheat=bool(item.get("preheat", False)),
+            order=order,
+        ))
+    return events
+
+
+def legacy_events(cfg: dict) -> list[ScheduleEvent]:
+    """Convert the old four time fields to equivalent preset events."""
+    values = (
+        (range(5), cfg.get(CONF_SCHED_WD_MORNING, "06:00"), "comfort"),
+        (range(5), cfg.get(CONF_SCHED_WD_NIGHT, "22:00"), "night"),
+        (range(5, 7), cfg.get(CONF_SCHED_WE_MORNING, "08:00"), "comfort"),
+        (range(5, 7), cfg.get(CONF_SCHED_WE_NIGHT, "23:00"), "night"),
+    )
+    return [
+        ScheduleEvent(tuple(days), _parse_time(time), target, False, order)
+        for order, (days, time, target) in enumerate(values)
+    ]
+
+
+def resolve_event(events: list[ScheduleEvent], now: datetime) -> ScheduleEvent | None:
+    """Return the latest event in the repeating weekly timeline."""
+    if not events:
+        return None
+    current = now.weekday() * 1440 + now.hour * 60 + now.minute
+    candidates = [
+        (day * 1440 + event.minute, event)
+        for event in events
+        for day in event.days
+    ]
+    prior = [item for item in candidates if item[0] <= current]
+    if not prior:
+        return max(candidates, key=lambda item: (item[0], item[1].order))[1]
+    return max(prior, key=lambda item: (item[0], item[1].order))[1]
+
+
+def resolve_target(target: float | str, cfg: dict) -> float:
+    if isinstance(target, float):
+        return target
+    values = {
+        "comfort": cfg.get("comfort_temp", 21.0),
+        "night": cfg.get("night_temp", 18.0),
+        "sleep": cfg.get("night_temp", 18.0),
+        "eco": cfg.get("eco_temp", 19.0),
+        "away": cfg.get("away_temp", 17.0),
+        "vacation": cfg.get("vacation_temp", 12.0),
+    }
+    return float(values[target])
+
+
+def _path(hass: HomeAssistant) -> str:
+    return hass.config.path(SCHEDULE_FILENAME)
+
+
+async def _read_yaml(hass: HomeAssistant) -> dict:
+    path = _path(hass)
+    if not os.path.exists(path):
+        return {}
+    text = await hass.async_add_executor_job(_read_text, path)
+    try:
+        data = yaml.safe_load(text) or {}
+    except yaml.YAMLError as err:
+        raise ScheduleError(f"cannot parse {path}: {err}") from err
+    if not isinstance(data, dict):
+        raise ScheduleError(f"{path} must contain a mapping")
+    return data
+
+
+def _read_text(path: str) -> str:
+    with open(path, encoding="utf-8") as file:
+        return file.read()
+
+
+async def _write_yaml(hass: HomeAssistant, data: dict) -> None:
+    path = _path(hass)
+    temp_path = f"{path}.tmp"
+    text = yaml.safe_dump(data, sort_keys=False, allow_unicode=False)
+    await hass.async_add_executor_job(_atomic_write, path, temp_path, text)
+
+
+def _atomic_write(path: str, temp_path: str, text: str) -> None:
+    with open(temp_path, "w", encoding="utf-8") as file:
+        file.write(text)
+        file.flush()
+        os.fsync(file.fileno())
+    os.replace(temp_path, path)
+
+
+async def async_load_schedule(hass: HomeAssistant, entry: ConfigEntry) -> list[ScheduleEvent]:
+    data = await _read_yaml(hass)
+    zones = data.get("zones", {})
+    if not isinstance(zones, dict):
+        raise ScheduleError("zones in schedule YAML must be a mapping")
+    key = zone_key(entry.data.get("name", "Zone"))
+    zone = zones.get(key, zones.get(entry.entry_id, {}))
+    if zone == {}:
+        for candidate in zones.values():
+            if isinstance(candidate, dict) and candidate.get("config_entry_id") == entry.entry_id:
+                zone = candidate
+                break
+    if zone == {}:
+        return []
+    if not isinstance(zone, dict):
+        raise ScheduleError(f"zone {key} must be a mapping")
+    return parse_events(zone.get("events", []))
+
+
+async def async_migrate_legacy(hass: HomeAssistant, entries: list[ConfigEntry]) -> None:
+    """Migrate ID keys and legacy schedule fields to human-readable zone keys."""
+    affected = [
+        entry for entry in entries
+        if entry.data.get("entry_type") != "system"
+        and any(key in {**entry.data, **entry.options} for key in _LEGACY_KEYS)
+    ]
+    candidates = [
+        entry for entry in affected
+        if any(key in {**entry.data, **entry.options} for key in _LEGACY_TIME_KEYS)
+    ]
+    data = await _read_yaml(hass)
+    zones = data.setdefault("zones", {})
+    if not isinstance(zones, dict):
+        raise ScheduleError("zones in schedule YAML must be a mapping")
+    zone_keys: dict[str, ConfigEntry] = {}
+    for entry in entries:
+        if entry.data.get("entry_type") == "system":
+            continue
+        key = zone_key(entry.data.get("name", "Zone"))
+        previous = zone_keys.get(key)
+        if previous is not None and previous.entry_id != entry.entry_id:
+            raise ScheduleError(
+                f"zone names produce duplicate YAML key {key!r}: "
+                f"{previous.data.get('name')} and {entry.data.get('name')}"
+            )
+        zone_keys[key] = entry
+
+    changed = False
+    for entry in zone_keys.values():
+        key = zone_key(entry.data.get("name", "Zone"))
+        if key not in zones:
+            renamed_from = next(
+                (
+                    old_key for old_key, old_zone in zones.items()
+                    if isinstance(old_zone, dict)
+                    and old_zone.get("config_entry_id") == entry.entry_id
+                ),
+                None,
+            )
+            if renamed_from is not None:
+                zones[key] = zones.pop(renamed_from)
+                changed = True
+        if entry.entry_id in zones:
+            if key in zones and key != entry.entry_id and zones[key] != zones[entry.entry_id]:
+                raise ScheduleError(
+                    f"both legacy zone key {entry.entry_id!r} and new key {key!r} exist"
+                )
+            zones.setdefault(key, zones.pop(entry.entry_id))
+            changed = True
+        if key in zones and isinstance(zones[key], dict):
+            zones[key].setdefault("name", entry.data.get("name", "Zone"))
+            zones[key].setdefault("config_entry_id", entry.entry_id)
+            changed = True
+    for entry in candidates:
+        key = zone_key(entry.data.get("name", "Zone"))
+        zone = zones.setdefault(key, {})
+        if not isinstance(zone, dict):
+            raise ScheduleError(f"zone {key} must be a mapping")
+        zone.setdefault("events", [
+            {"days": [_DAY_NAMES[day] for day in event.days],
+             "time": f"{event.minute // 60:02d}:{event.minute % 60:02d}",
+             "target": event.target, "preheat": event.preheat}
+            for event in legacy_events({**entry.data, **entry.options})
+        ])
+        zone.setdefault("name", entry.data.get("name", "Zone"))
+        zone.setdefault("config_entry_id", entry.entry_id)
+        changed = True
+    if changed:
+        await _write_yaml(hass, data)
+    for entry in affected:
+        new_data = {key: value for key, value in entry.data.items() if key not in _LEGACY_KEYS}
+        new_options = {
+            key: value for key, value in entry.options.items() if key not in _LEGACY_KEYS
+        }
+        hass.config_entries.async_update_entry(entry, data=new_data, options=new_options)

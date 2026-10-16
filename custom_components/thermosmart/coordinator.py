@@ -57,6 +57,7 @@ from .window import WindowMixin
 from .season import SeasonMixin
 from .trv_control import TRVControlMixin, _DispatchStats
 from .maintenance import MaintenanceMixin
+from .schedule import ScheduleEvent, resolve_event, resolve_target
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -150,6 +151,9 @@ class ThermoSmartCoordinator(
         self._mode: str = HEATING_MODE_AUTO
         self._override: float | None = None
         self._override_schedule_period: str | None = None
+        self._scheduling_enabled: bool = True
+        self._scheduling_disabled_until: datetime | None = None
+        self._schedule_hold_target: float | None = None
         self._pre_vacation_mode: str | None = None
         self._summer_override: bool | None = None
 
@@ -332,7 +336,13 @@ class ThermoSmartCoordinator(
 
     @property
     def zone_cfg(self) -> dict:
-        return {**self.entry.data, **self.entry.options}
+        cfg = {**self.entry.data, **self.entry.options}
+        domain_data = self.hass.data.get(DOMAIN, {})
+        schedules = domain_data.get("schedules", {}) if isinstance(domain_data, dict) else {}
+        configured = schedules.get(self.entry.entry_id) if isinstance(schedules, dict) else None
+        if configured is not None:
+            cfg["schedule_events"] = configured
+        return cfg
 
     # ── Setter ──────────────────────────────────────────────────────
 
@@ -427,9 +437,27 @@ class ThermoSmartCoordinator(
     def get_override(self) -> float | None:
         return self._override
 
+    def set_scheduling_enabled(self, enabled: bool) -> None:
+        self._scheduling_enabled = enabled
+
+    def set_scheduling_disabled_until(self, value: datetime | None) -> None:
+        self._scheduling_disabled_until = value
+
+    def _scheduling_active(self, now: datetime | None = None) -> bool:
+        if not self._scheduling_enabled:
+            return False
+        until = self._scheduling_disabled_until
+        return until is None or (now or self._now_local()) >= until
+
     # ── Zeitplan-Helfer ──────────────────────────────────────────────
 
     def _current_schedule_period(self) -> str:
+        if "schedule_events" in self.zone_cfg:
+            event = resolve_event(self.zone_cfg["schedule_events"], self._now_local())
+            return event.key if event else "no_schedule"
+        event = resolve_event(self.zone_cfg.get("schedule_events", []), self._now_local())
+        if event is not None:
+            return event.key
         now = self._now_local()
         cfg = self.zone_cfg
         is_weekend = now.weekday() >= 5
@@ -455,6 +483,18 @@ class ThermoSmartCoordinator(
         if cur < morning or cur >= night:
             return f"{day_type}_night"
         return f"{day_type}_comfort"
+
+    def _minutes_until_next_event(self, cfg: dict) -> tuple[int, ScheduleEvent] | None:
+        """Return the minutes and event for the next weekly change."""
+        now = self._now_local()
+        current = now.weekday() * 1440 + now.hour * 60 + now.minute
+        future = [
+            ((day * 1440 + event.minute - current) % (7 * 1440), event)
+            for event in cfg.get("schedule_events", [])
+            for day in event.days
+            if (day * 1440 + event.minute - current) % (7 * 1440) > 0
+        ]
+        return min(future, key=lambda item: (item[0], item[1].order)) if future else None
 
     def _minutes_until_next_comfort(self, cfg: dict) -> int | None:
         """Minuten bis zur nächsten Komfortphase – None wenn bereits aktiv."""
@@ -1474,8 +1514,9 @@ class ThermoSmartCoordinator(
         if mode in (HEATING_MODE_COMFORT, HEATING_MODE_NIGHT, HEATING_MODE_ECO, HEATING_MODE_AWAY):
             return mode
         # AUTO mode: derive from the active schedule slot
-        if not cfg.get("schedule_enabled", True):
-            return "comfort"
+        if "schedule_events" in cfg:
+            event = resolve_event(cfg["schedule_events"], self._now_local())
+            return event.key if event else None
         raw = self._current_schedule_period()
         return raw.split("_", 1)[1] if "_" in raw else "comfort"
 
@@ -1934,15 +1975,24 @@ class ThermoSmartCoordinator(
 
         comfort_temp = cfg.get("comfort_temp", 21.0)
         night_temp_cfg = cfg.get("night_temp", TEMP_NIGHT)
-        base_target = await self.learning_engine.async_get_base_target(
-            self.zone_id, mode,
-            comfort_temp=comfort_temp,
-            night_temp=night_temp_cfg,
-            away_temp=cfg.get("away_temp", 17.0),
-            vacation_temp=cfg.get(CONF_VACATION_TEMP, 12.0),
-            eco_temp=cfg.get(CONF_ECO_TEMP, TEMP_ECO),
-            schedule_cfg=cfg,
+        active_schedule_event = (
+            resolve_event(cfg["schedule_events"], now)
+            if "schedule_events" in cfg else None
         )
+        if mode == HEATING_MODE_AUTO and not self._scheduling_active(now):
+            base_target = self._schedule_hold_target or comfort_temp
+        else:
+            base_target = await self.learning_engine.async_get_base_target(
+                self.zone_id, mode,
+                comfort_temp=comfort_temp,
+                night_temp=night_temp_cfg,
+                away_temp=cfg.get("away_temp", 17.0),
+                vacation_temp=cfg.get(CONF_VACATION_TEMP, 12.0),
+                eco_temp=cfg.get(CONF_ECO_TEMP, TEMP_ECO),
+                schedule_cfg=cfg,
+            )
+            if mode == HEATING_MODE_AUTO:
+                self._schedule_hold_target = base_target
 
         weather_offset = 0.0
         if mode == HEATING_MODE_AUTO:
@@ -1971,14 +2021,29 @@ class ThermoSmartCoordinator(
             _onset_delay_status = "cold_start_prior"
 
         preheat_active = False
-        if mode == HEATING_MODE_AUTO and preheat_minutes > 0 and base_target < comfort_temp:
-            mins_until_comfort = self._minutes_until_next_comfort(cfg)
-            if mins_until_comfort is not None and 0 < mins_until_comfort <= preheat_minutes:
-                base_target = comfort_temp
+        if (
+            mode == HEATING_MODE_AUTO
+            and self._scheduling_active(now)
+            and preheat_minutes > 0
+            and base_target < comfort_temp
+        ):
+            next_event = self._minutes_until_next_event(cfg)
+            if "schedule_events" in cfg:
+                mins_until = next_event[0] if next_event else None
+                preheat_target = (
+                    resolve_target(next_event[1].target, cfg) if next_event else comfort_temp
+                )
+                should_preheat = bool(next_event and next_event[1].preheat)
+            else:
+                mins_until = self._minutes_until_next_comfort(cfg)
+                preheat_target = comfort_temp
+                should_preheat = True
+            if should_preheat and mins_until is not None and 0 < mins_until <= preheat_minutes:
+                base_target = preheat_target
                 preheat_active = True
                 _LOGGER.debug(
                     "ThermoSmart '%s': Vorheizen – %d min bis Komfortphase, %.1f min Aufheizzeit [%s]",
-                    self.zone_name, mins_until_comfort, preheat_minutes, preheat_status,
+                    self.zone_name, mins_until, preheat_minutes, preheat_status,
                 )
 
         if self._override is not None and self._override_schedule_period is not None:
@@ -2295,6 +2360,16 @@ class ThermoSmartCoordinator(
             "current_temp": current_temp,
             "window_open": window_open,
             "base_target": base_target,
+            "schedule_event": (
+                active_schedule_event.key if active_schedule_event else None
+            ),
+            "schedule_target": (
+                active_schedule_event.target if active_schedule_event else None
+            ),
+            "schedule_preheat": (
+                active_schedule_event.preheat if active_schedule_event else False
+            ),
+            "schedule_active": self._scheduling_active(now),
             "weather_offset": weather_offset,
             "adjusted_target": adjusted_target,    # display value – no offsets
             "effective_target": effective_target,  # internal value – weather + suppression
