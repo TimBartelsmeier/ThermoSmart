@@ -21,7 +21,6 @@ from custom_components.thermosmart.const import (
     CONF_OUTDOOR_SOLAR_SENSOR,
     CONF_OUTDOOR_RAIN_SENSOR,
     CONF_LEARNING_ENABLED,
-    CONF_SCHEDULE_ENABLED,
     CONF_PRESENCE_PERSONS,
     CONF_HOME_ZONE,
     CONF_VACATION_TEMP,
@@ -30,10 +29,6 @@ from custom_components.thermosmart.const import (
     CONF_VALVE_MAINTENANCE,
     CONF_MANAGE_TEMP_SOURCE,
     CONF_CALIBRATION_INVERT,
-    CONF_SCHED_WD_MORNING,
-    CONF_SCHED_WD_NIGHT,
-    CONF_SCHED_WE_MORNING,
-    CONF_SCHED_WE_NIGHT,
 )
 
 # ── Shared zone entry data ────────────────────────────────────────────────────
@@ -57,11 +52,6 @@ _BASE_DATA = {
     CONF_ECO_TEMP: 18.0,
     CONF_WINDOW_OPEN_TEMP: 12.0,
     "temp_tolerance": 0.5,
-    CONF_SCHEDULE_ENABLED: True,
-    CONF_SCHED_WD_MORNING: "06:00:00",
-    CONF_SCHED_WD_NIGHT: "22:00:00",
-    CONF_SCHED_WE_MORNING: "08:00:00",
-    CONF_SCHED_WE_NIGHT: "23:00:00",
     CONF_PRESENCE_PERSONS: [],
     CONF_HOME_ZONE: "zone.home",
     CONF_LEARNING_ENABLED: True,
@@ -80,8 +70,7 @@ _STEP_DEVICES = {k: _BASE_DATA[k] for k in [
 ]}
 _STEP_SCHEDULE = {k: _BASE_DATA[k] for k in [
     "comfort_temp", "night_temp", "away_temp", CONF_VACATION_TEMP, CONF_ECO_TEMP,
-    CONF_WINDOW_OPEN_TEMP, "temp_tolerance", CONF_SCHEDULE_ENABLED,
-    CONF_SCHED_WD_MORNING, CONF_SCHED_WD_NIGHT, CONF_SCHED_WE_MORNING, CONF_SCHED_WE_NIGHT,
+    CONF_WINDOW_OPEN_TEMP,     "temp_tolerance",
 ]}
 _STEP_PRESENCE = {k: _BASE_DATA[k] for k in [
     CONF_PRESENCE_PERSONS, CONF_HOME_ZONE,
@@ -169,6 +158,15 @@ class TestOptionsHub:
         result = await _select_section(hass, hub, "schedule")
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "schedule"
+        assert {str(k) for k in result["data_schema"].schema} == {
+            "comfort_temp",
+            "night_temp",
+            "away_temp",
+            CONF_VACATION_TEMP,
+            CONF_ECO_TEMP,
+            CONF_WINDOW_OPEN_TEMP,
+            "temp_tolerance",
+        }
 
     async def test_hub_presence_section_shows_form(self, hass, enable_custom_integrations):
         entry = _zone_entry()

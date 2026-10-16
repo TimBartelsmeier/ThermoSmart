@@ -211,7 +211,7 @@
         "name": "Learning mode"
       },
       "scheduling_enabled": {
-        "name": "Scheduling Enabled"
+        "name": "Scheduling enabled"
       },
       "vacation_mode": {
         "name": "Vacation Mode"
@@ -243,9 +243,9 @@
     },
     "datetime": {
         "scheduling_disabled_until": {
-          "name": "Scheduling Disabled Until"
+          "name": "Schedule disabled until"
         }
-      },
+    },
     "sensor": {
       "adjusted_target": {
         "name": "Target temperature"
