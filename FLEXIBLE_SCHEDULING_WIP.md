@@ -17,21 +17,25 @@ You may make decisions about implementation details if there is a clear favorite
 Do not try to "tick off" this entire list in one go. Only work on the tasks the developer has explicetly specified. If there is some foreseeable coupling between tasks and you think the current "work package" has to be broadened, ask for permission.
 
 ## Step 1: implement/rework features
-- **Scheduling**
-  Done. Scheduling now happens via "change events". The user can define these events in a yaml file. An event is set for a specific time of day on specific days of the week. When the event is fired, the target temperature is changed to a defined numeric value; or a preset is applied (which in turn also changes the target temperature).
-- **Presence-based automatic Away switching**  
-  Reimplement presence handling as an independent target-selection or
-  scheduling rule rather than as an `auto`-mode side effect.
-- **Weather offsets and forecast suppression**  
-  Define how weather adjustments apply to explicit preset targets, numeric
-  schedule targets, and periods without an active event.
-- **Automatic pre-heating before a schedule event**  
-  Attach pre-heating to the relevant schedule event without changing the
-  selected preset state.
-- **Learning-based early-cutoff/coasting holds**  
-  Rework learning holds so they operate as an independent control adjustment
-  and do not depend on `auto`.
-As mentioned above, the nature of the features differs significantly and there are multiple valid ways to implement them.
+As mentioned above, the nature of the features differs significantly and there might be multiple valid ways to implement them. They do not need to necessarily mirror other, already implemented features.
+
+### Scheduling
+Done. Scheduling now happens via "change events". The user can define these events in a yaml file. An event is set for a specific time of day on specific days of the week. When the event is fired, the target temperature is changed to a defined numeric value; or a preset is applied (which in turn also changes the target temperature). The user can enable or disable schedulin (i.e. whether events are fired or skipped) with a toggle, or they can temporarily disable it be selecting a datetime.
+
+### Automatic pre-heating before a schedule event
+The user can specify whether pre-heating should be enabled for an event, i.e. whether the target temperature is switched _at_ that time (pre-heating disabled) or whether the coordinator should try and start heating early so that the temperature is reached at the specified time.
+
+The configuration is adapted already, left to do is the implementation. So far, pre-heating is tied to the "auto" state, so for implementation the current logic must be "extracted" from this and modified so that it can be applied to any event.
+
+For debugging, the coordinator should expose (via entities) when the next scheduled event takes place and if/when pre-heating for it will be started.
+
+### Learning-based early-cutoff/coasting holds
+todo
+### Weather offsets and forecast suppression
+todo
+
+### Presence-based automatic Away switching
+todo
 
 ## Step 2: ensure internal consistency & test coverage
 Once all features are reworked, the codebase should be evaluated to make sure that there is no "legacy" code left and that the new behaviour is covered sufficiently by tests. This encompasses checking whether some "legacy concepts" have sneaked into the logic, not just checking for unused properties/functions.
