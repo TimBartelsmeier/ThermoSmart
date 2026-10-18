@@ -44,6 +44,7 @@ from .learning_engine import LearningEngine
 from .schedule import (
     SCHEDULE_FILENAME,
     ScheduleError,
+    async_manage_schedule_yaml,
     async_load_schedule,
     async_migrate_legacy,
 )
@@ -182,6 +183,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     _LOGGER.error("ThermoSmart schedule migration failed: %s", err)
                     raise ConfigEntryNotReady(str(err)) from err
                 hass.data[DOMAIN]["schedule_migration_done"] = True
+
+    try:
+        await async_manage_schedule_yaml(
+            hass, hass.config_entries.async_entries(DOMAIN)
+        )
+    except ScheduleError as err:
+        _LOGGER.error("ThermoSmart schedule YAML management failed: %s", err)
+        raise ConfigEntryNotReady(str(err)) from err
 
     # ── System-Entry: nur globale Schalter, kein Coordinator ────────
     if cfg.get("entry_type") == "system":

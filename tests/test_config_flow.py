@@ -92,6 +92,7 @@ async def _navigate_to_weather(hass) -> dict:
             result["flow_id"], {"next_step_id": "add_zone"}
         )
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICES)
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _PRESENCE)
     return result
@@ -236,6 +237,7 @@ class TestNoGlobalLearningStep:
             result["flow_id"], {"next_step_id": "add_zone"}
         )
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICES)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
 
         assert result["step_id"] == "presence"
@@ -366,13 +368,13 @@ class TestZoneFlowDeviceValidation:
         assert result["type"] == FlowResultType.FORM
         assert result["errors"].get("climate_entities") == "required"
 
-    async def test_valid_devices_advances_to_schedule(self, hass, enable_custom_integrations):
+    async def test_valid_devices_advances_to_zone_key(self, hass, enable_custom_integrations):
         result = await self._to_add_zone(hass)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], _DEVICES
         )
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "schedule"
+        assert result["step_id"] == "zone_key"
 
 
 # ── Zone Flow – schedule step validation ──────────────────────────────────────
@@ -385,7 +387,8 @@ class TestZoneFlowScheduleValidation:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"next_step_id": "add_zone"}
         )
-        return await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICES)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICES)
+        return await hass.config_entries.flow.async_configure(result["flow_id"], {})
 
     async def test_night_above_comfort_shows_error(self, hass, enable_custom_integrations):
         result = await self._to_schedule(hass)

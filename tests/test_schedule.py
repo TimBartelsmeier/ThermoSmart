@@ -1,9 +1,13 @@
 from datetime import datetime
+from types import SimpleNamespace
 
 import pytest
 
+import custom_components.thermosmart.schedule as schedule_module
 from custom_components.thermosmart.schedule import (
     ScheduleError,
+    async_manage_schedule_yaml,
+    async_schedule_zone_warnings,
     legacy_events,
     next_occurrence,
     parse_events,
@@ -86,3 +90,74 @@ def test_next_occurrence_duplicate_timestamp_uses_last_configured_event():
 
     assert occurrence is not None
     assert occurrence.event.target == 21.0
+
+
+@pytest.mark.asyncio
+async def test_manage_schedule_yaml_adds_missing_zones_and_sorts(monkeypatch):
+    data = {
+        "other": {"preserved": True},
+        "zones": {"zulu": {"events": [{"target": 21}]}, "orphan": {"custom": "value"}},
+    }
+    writes = []
+
+    async def read(_hass):
+        return data
+
+    async def write(_hass, value):
+        writes.append(value)
+
+    monkeypatch.setattr(schedule_module, "_read_yaml", read)
+    monkeypatch.setattr(schedule_module, "_write_yaml", write)
+    entries = [
+        SimpleNamespace(entry_id="one", data={"name": "Living Room"}),
+        SimpleNamespace(entry_id="two", data={"name": "Bedroom"}),
+    ]
+
+    await async_manage_schedule_yaml(object(), entries)
+
+    assert list(data["zones"]) == ["bedroom", "living_room", "orphan", "zulu"]
+    assert data["zones"]["bedroom"] == {"events": []}
+    assert data["zones"]["living_room"] == {"events": []}
+    assert data["zones"]["zulu"] == {"events": [{"target": 21}]}
+    assert data["other"] == {"preserved": True}
+    assert len(writes) == 1
+
+
+@pytest.mark.asyncio
+async def test_manage_schedule_yaml_allows_duplicate_normalized_keys(monkeypatch):
+    async def read(_hass):
+        return {}
+
+    async def write(_hass, _data):
+        return None
+
+    monkeypatch.setattr(schedule_module, "_read_yaml", read)
+    monkeypatch.setattr(schedule_module, "_write_yaml", write)
+    entries = [
+        SimpleNamespace(entry_id="one", data={"name": "Living Room"}),
+        SimpleNamespace(entry_id="two", data={"name": "living-room"}),
+    ]
+
+    await async_manage_schedule_yaml(object(), entries)
+
+
+@pytest.mark.asyncio
+async def test_schedule_zone_warnings_report_duplicate_and_unused_yaml_zone(monkeypatch):
+    async def read(_hass):
+        return {"zones": {"living_room": {"events": []}}}
+
+    monkeypatch.setattr(schedule_module, "_read_yaml", read)
+    entries = [
+        SimpleNamespace(entry_id="one", data={"name": "Living Room"}),
+    ]
+
+    warnings = await async_schedule_zone_warnings(
+        object(), entries, "Living-Room", current_entry_id="new"
+    )
+
+    assert warnings == ("duplicate:living_room:Living Room",)
+
+    warnings = await async_schedule_zone_warnings(
+        object(), [], "Living Room", current_entry_id="new"
+    )
+    assert warnings == ("existing:living_room",)

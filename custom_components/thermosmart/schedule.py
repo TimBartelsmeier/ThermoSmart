@@ -248,6 +248,68 @@ def _atomic_write(path: str, temp_path: str, text: str) -> None:
     os.replace(temp_path, path)
 
 
+async def async_manage_schedule_yaml(
+    hass: HomeAssistant, entries: list[ConfigEntry]
+) -> None:
+    """Add missing zone blocks and keep the configured zone keys sorted."""
+    data = await _read_yaml(hass)
+    zones = data.setdefault("zones", {})
+    if not isinstance(zones, dict):
+        raise ScheduleError("zones in schedule YAML must be a mapping")
+
+    managed_keys: dict[str, ConfigEntry] = {}
+    for entry in entries:
+        if entry.data.get("entry_type") == "system":
+            continue
+        key = zone_key(entry.data.get("name", "Zone"))
+        managed_keys.setdefault(key, entry)
+
+    managed_zones = dict(zones)
+    for key in managed_keys:
+        managed_zones.setdefault(key, {"events": []})
+
+    sorted_zones = dict(sorted(managed_zones.items()))
+    if sorted_zones != zones:
+        data["zones"] = sorted_zones
+        await _write_yaml(hass, data)
+
+
+async def async_schedule_zone_warnings(
+    hass: HomeAssistant,
+    entries: list[ConfigEntry],
+    name: str,
+    *,
+    current_entry_id: str | None = None,
+) -> tuple[str, ...]:
+    """Return warnings for duplicate or already-used schedule zone keys."""
+    key = zone_key(name)
+    matching_entries = [
+        entry for entry in entries
+        if entry.entry_id != current_entry_id
+        and entry.data.get("entry_type") != "system"
+        and zone_key(entry.data.get("name", "Zone")) == key
+    ]
+    warnings: list[str] = []
+    if matching_entries:
+        names = ", ".join(
+            str(entry.data.get("name", entry.entry_id)) for entry in matching_entries
+        )
+        warnings.append(f"duplicate:{key}:{names}")
+
+    data = await _read_yaml(hass)
+    zones = data.get("zones", {})
+    if isinstance(zones, dict) and key in zones:
+        matching_yaml_entry = zones[key]
+        associated_entry_id = (
+            matching_yaml_entry.get("config_entry_id")
+            if isinstance(matching_yaml_entry, dict)
+            else None
+        )
+        if associated_entry_id != current_entry_id and not matching_entries:
+            warnings.append(f"existing:{key}")
+    return tuple(warnings)
+
+
 async def async_load_schedule(hass: HomeAssistant, entry: ConfigEntry) -> list[ScheduleEvent]:
     data = await _read_yaml(hass)
     zones = data.get("zones", {})
@@ -287,13 +349,7 @@ async def async_migrate_legacy(hass: HomeAssistant, entries: list[ConfigEntry]) 
         if entry.data.get("entry_type") == "system":
             continue
         key = zone_key(entry.data.get("name", "Zone"))
-        previous = zone_keys.get(key)
-        if previous is not None and previous.entry_id != entry.entry_id:
-            raise ScheduleError(
-                f"zone names produce duplicate YAML key {key!r}: "
-                f"{previous.data.get('name')} and {entry.data.get('name')}"
-            )
-        zone_keys[key] = entry
+        zone_keys.setdefault(key, entry)
 
     changed = False
     for entry in zone_keys.values():

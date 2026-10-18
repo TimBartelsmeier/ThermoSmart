@@ -35,6 +35,11 @@
           "calibration_invert": "Inverts the calibration offset sign for specific TRV models whose offset direction differs from the standard behavior. Only enable this if required by your device."
         }
       },
+      "zone_key": {
+        "title": "Schedule YAML key",
+        "description": "This zone uses the YAML key `{zone_key}`.\n\n{duplicate_warning}\n\n{existing_warning}",
+        "data": {}
+      },
       "schedule": {
         "title": "Step 2 / 4 – Temperatures & Schedule",
         "description": "Daily flow: Night → Comfort → Night\n\nWhen all persons are away, ThermoSmart automatically switches to the away temperature – regardless of the schedule.",
@@ -132,6 +137,11 @@
           "manage_temp_source": "ThermoSmart continues to use external temperature sensors for its own control logic. When enabled, ThermoSmart also switches supported TRVs to their external temperature source and falls back to the internal TRV sensor if external sensors become unavailable.",
           "calibration_invert": "Inverts the calibration offset sign for specific TRV models whose offset direction differs from the standard behavior. Only enable this if required by your device."
         }
+      },
+      "zone_key": {
+        "title": "Schedule YAML key",
+        "description": "This zone uses the YAML key `{zone_key}`.\n\n{duplicate_warning}\n\n{existing_warning}",
+        "data": {}
       },
       "schedule": {
         "title": "Temperatures & Schedule",

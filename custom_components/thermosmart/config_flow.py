@@ -26,7 +26,7 @@ from .const import (
     TEMP_ECO,
     WINDOW_OPEN_SETPOINT,
 )
-from .schedule import zone_key
+from .schedule import async_schedule_zone_warnings, zone_key
 
 
 # ── Hilfklasse: EntitySelector der None und "" als "nicht gesetzt" akzeptiert ─
@@ -119,6 +119,28 @@ def _schema_devices(d: dict) -> vol.Schema:
 
 def _zone_key_placeholder(data: dict) -> dict[str, str]:
     return {"zone_key": zone_key(str(data.get("name", "")).strip())}
+
+
+def _zone_key_step_placeholders(
+    name: str, warnings: tuple[str, ...]
+) -> dict[str, str]:
+    key = zone_key(name.strip())
+    duplicate = next((warning for warning in warnings if warning.startswith("duplicate:")), None)
+    existing = any(warning.startswith("existing:") for warning in warnings)
+    duplicate_names = duplicate.split(":", 2)[2] if duplicate else ""
+    return {
+        "zone_key": key,
+        "duplicate_warning": (
+            f"Warning: this key is also used by {duplicate_names}. "
+            "Both zones will follow the schedule under this key."
+            if duplicate_names else ""
+        ),
+        "existing_warning": (
+            "Warning: a schedule already exists under this key but is not "
+            "currently associated with an active zone. The new zone will use it."
+            if existing else ""
+        ),
+    }
 
 
 def _schema_schedule(d: dict) -> vol.Schema:
@@ -242,13 +264,29 @@ class ThermoSmartConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["climate_entities"] = "required"
             else:
                 self._data.update(user_input)
-                return await self.async_step_schedule()
+                return await self.async_step_zone_key()
 
         return self.async_show_form(
             step_id="add_zone",
             data_schema=_schema_devices(self._data),
             errors=errors,
             description_placeholders=_zone_key_placeholder(self._data),
+        )
+
+    async def async_step_zone_key(self, user_input: dict | None = None):
+        if user_input is not None:
+            return await self.async_step_schedule()
+        warnings = await async_schedule_zone_warnings(
+            self.hass,
+            self.hass.config_entries.async_entries(DOMAIN),
+            str(self._data.get("name", "")),
+        )
+        return self.async_show_form(
+            step_id="zone_key",
+            data_schema=vol.Schema({}),
+            description_placeholders=_zone_key_step_placeholders(
+                str(self._data.get("name", "")), warnings
+            ),
         )
 
     async def async_step_schedule(self, user_input: dict | None = None):
@@ -352,12 +390,31 @@ class ThermoSmartOptionsFlow(config_entries.OptionsFlow):
             elif not user_input.get("climate_entities"):
                 errors["climate_entities"] = "required"
             else:
-                return self.async_create_entry(title="", data={**current, **user_input})
+                self._pending_devices = {**current, **user_input}
+                return await self.async_step_zone_key()
         return self.async_show_form(
             step_id="devices",
             data_schema=_schema_devices(current),
             errors=errors,
             description_placeholders=_zone_key_placeholder(current),
+        )
+
+    async def async_step_zone_key(self, user_input: dict | None = None):
+        current = getattr(self, "_pending_devices", self._current())
+        if user_input is not None:
+            return self.async_create_entry(title="", data=current)
+        warnings = await async_schedule_zone_warnings(
+            self.hass,
+            self.hass.config_entries.async_entries(DOMAIN),
+            str(current.get("name", "")),
+            current_entry_id=self.config_entry.entry_id,
+        )
+        return self.async_show_form(
+            step_id="zone_key",
+            data_schema=vol.Schema({}),
+            description_placeholders=_zone_key_step_placeholders(
+                str(current.get("name", "")), warnings
+            ),
         )
 
     async def async_step_schedule(self, user_input: dict | None = None):

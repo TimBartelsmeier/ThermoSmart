@@ -93,11 +93,16 @@ Add **ThermoSmart System** first (Summer mode select + Vacation switch), then ad
 Schedules are configured in `/config/thermosmart_schedules.yaml`. The key under
 `zones` uses a normalized slug of the zone name entered during setup. For
 example, `Living Room` becomes `living_room`; the setup form shows the exact
-expected key below the zone-name field. ThermoSmart also stores the display
-name and an internal config-entry association in each zone block, so renaming a
-zone can be migrated without losing its schedule. A schedule entry is a
+expected key during setup. ThermoSmart adds missing zone blocks automatically,
+with an empty `events` list, and sorts zone keys. Existing zone blocks and
+orphaned blocks are retained. A schedule entry is a
 setpoint change, not a time slot:
 the most recent event in the repeating week remains active until the next event.
+
+If two zone names normalize to the same key, both zones use the schedule under
+that key. Setup displays a warning before the zone is created. It also warns
+when a schedule block already exists for a key that is not currently associated
+with an active zone.
 
 ```yaml
 zones:
