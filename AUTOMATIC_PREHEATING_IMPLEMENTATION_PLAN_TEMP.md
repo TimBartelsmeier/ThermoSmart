@@ -49,8 +49,10 @@ Refactor the coordinator preheat path around the event target rather than
 7. Let normal schedule application take over at the event time.
 
 Retain the existing learning/deterministic fallback and maximum preheat
-duration. Preserve higher-priority suppression from manual overrides, windows,
-summer/vacation state, inactive control, and scheduling pauses.
+duration. Preserve higher-priority suppression from windows, summer/vacation
+state, inactive control, and scheduling pauses. A user-selected temperature is
+the current target, not a separate override mode or a preheat suppression
+condition; a later schedule event may replace it normally.
 
 ### 3. Add canonical coordinator state
 
@@ -93,7 +95,7 @@ Extend coordinator tests for:
 - lead-time boundaries
 - event-time termination
 - scheduling pause/disable
-- manual override, window, summer/vacation, and active-control suppression
+- window, summer/vacation, and active-control suppression
 - learning, deterministic, and shadow-only paths
 - stale-state prevention when the next event changes
 

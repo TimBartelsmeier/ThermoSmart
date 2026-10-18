@@ -105,26 +105,23 @@ class TestUpdateSummerMode:
             coord._update_summer_mode({"temperature": SUMMER_THRESHOLD + 5.0})
         assert coord._is_summer is True  # override prevented automatic clearing
 
-    def test_summer_transition_clears_manual_override(self):
-        """When season transitions to summer, any manual override is cleared."""
+    def test_summer_transition_keeps_current_target(self):
         coord = make_coordinator()
         coord._is_summer = False
-        coord._override = 22.0
-        coord._override_schedule_period = "wd_comfort"
+        coord.set_target_temperature(22.0)
         for _ in range(3):
             coord._update_summer_mode({"temperature": SUMMER_THRESHOLD + 2.0})
         assert coord._is_summer is True
-        assert coord._override is None
+        assert coord._target_temperature == 22.0
 
-    def test_winter_transition_does_not_clear_override(self):
-        """Winter transition does NOT clear manual override (only summer does)."""
+    def test_winter_transition_keeps_current_target(self):
         coord = make_coordinator()
         coord._is_summer = True
-        coord._override = 22.0
+        coord.set_target_temperature(22.0)
         for _ in range(3):
             coord._update_summer_mode({"temperature": WINTER_THRESHOLD - 2.0})
         assert coord._is_summer is False
-        assert coord._override == 22.0  # override preserved on winter transition
+        assert coord._target_temperature == 22.0
 
     def test_samples_accumulate_across_calls(self):
         """History deque accumulates samples: avg is calculated over all retained values."""

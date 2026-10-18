@@ -101,14 +101,14 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
             if mode is None:
                 return
             self.coordinator.set_mode(mode)
-        # Restore manual temperature override (persisted via extra_state_attributes)
+        # Restore the last user-selected target before the first coordinator
+        # refresh. A schedule event, when enabled, may replace it normally.
         if last:
             try:
-                if last.attributes.get("override_active") is True:
-                    override_temp = last.attributes.get("override_temp")
-                    if override_temp is not None:
-                        self.coordinator.set_override(float(override_temp))
-                        await self.coordinator.async_request_refresh()
+                target_temp = last.attributes.get("target_temperature")
+                if target_temp is not None:
+                    self.coordinator.set_target_temperature(float(target_temp))
+                    await self.coordinator.async_request_refresh()
             except (TypeError, ValueError):
                 pass
 
@@ -233,8 +233,6 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
             "window_open":          bool(z.get("window_open", False)),
             "summer_mode":          self.coordinator._is_summer,
             "heating_failure":      self.coordinator._heating_failure_notified,
-            "override_active":      bool(z.get("override_active", False)),
-            "override_temp":        z.get("override_temp"),
             "preheat_active":       bool(z.get("preheat_active", False)),
             "device_batteries":     self._get_device_batteries(),
         }
@@ -242,11 +240,11 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
     # ── Steuerung ────────────────────────────────────────────────────
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Zieltemperatur manuell setzen (Override)."""
+        """Set the current zone target temperature."""
         temp = kwargs.get(ATTR_TEMPERATURE)
         if temp is None:
             return
-        self.coordinator.set_override(float(temp))
+        self.coordinator.set_target_temperature(float(temp))
         self.async_write_ha_state()
         await self.coordinator.async_request_refresh()
 

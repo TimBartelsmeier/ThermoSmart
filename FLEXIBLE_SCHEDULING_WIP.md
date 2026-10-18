@@ -26,6 +26,10 @@ Done. Scheduling now happens via "change events". The user can define these even
 Implementation complete on the flexible-scheduling branch. Per-event
 pre-heating is now event-driven and no longer depends on the legacy `auto`
 state. Dedicated sensors expose the next event and planned pre-heating start.
+The zone now has one current target source: user target selections, preset
+selections, and schedule events update that target directly. A user-selected
+temperature is not treated as a separate override mode and does not block a
+later eligible schedule event or its pre-heating.
 
 The user can specify whether pre-heating should be enabled for an event, i.e. whether the target temperature is switched _at_ that time (pre-heating disabled) or whether the coordinator should try and start heating early so that the temperature is reached at the specified time.
 

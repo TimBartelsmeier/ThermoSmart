@@ -485,8 +485,8 @@ class TestControlReasonTraceability:
         assert self._reason(rec) == "window_open"
 
     def test_manual_override_second_priority(self):
-        rec = {"window_open": False, "override_active": True, "mode": "auto"}
-        assert self._reason(rec) == "manual_override"
+        rec = {"window_open": False, "mode": "auto"}
+        assert self._reason(rec) == "schedule"
 
     def test_vacation_mode_third_priority(self):
         from custom_components.thermosmart.const import HEATING_MODE_VACATION
@@ -514,14 +514,13 @@ class TestControlReasonTraceability:
         assert isinstance(self._reason({}), str)
 
     def test_all_reasons_are_known_values(self):
-        known = {"window_open", "manual_override", "vacation",
+        known = {"window_open", "vacation",
                  "summer_mode", "presence", "schedule"}
         from custom_components.thermosmart.const import (
             HEATING_MODE_AWAY, HEATING_MODE_VACATION
         )
         test_cases = [
             {"window_open": True},
-            {"override_active": True},
             {"mode": HEATING_MODE_VACATION},
             {"is_summer": True},
             {"mode": HEATING_MODE_AWAY},
@@ -555,10 +554,10 @@ class TestRecommendationDictKeys:
         rec_with_window = {"window_open": True}
         assert coord._control_reason(rec_with_window) == "window_open"
 
-    def test_control_reason_uses_override_active_key(self):
+    def test_control_reason_uses_schedule_for_user_selected_targets(self):
         coord = make_coordinator()
-        rec = {"window_open": False, "override_active": True}
-        assert coord._control_reason(rec) == "manual_override"
+        rec = {"window_open": False}
+        assert coord._control_reason(rec) == "schedule"
 
     def test_control_reason_stable_for_missing_keys(self):
         coord = make_coordinator()

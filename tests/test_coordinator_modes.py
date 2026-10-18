@@ -1,6 +1,6 @@
 """Unit tests for ThermoSmart Coordinator mode logic (Welle 3).
 
-Tests _effective_mode, _control_reason, set_override, set_mode,
+Tests _effective_mode, _control_reason, target selection, set_mode,
 set_vacation_override, set_summer_override, and _is_person_home.
 
 Pure Python + MagicMock – runs on Windows without Docker.
@@ -95,8 +95,8 @@ class TestControlReason:
         assert make_coordinator()._control_reason(rec) == "window_open"
 
     def test_override_active_second_priority(self):
-        rec = self._rec(override_active=True, mode=HEATING_MODE_VACATION)
-        assert make_coordinator()._control_reason(rec) == "manual_override"
+        rec = self._rec(mode=HEATING_MODE_VACATION)
+        assert make_coordinator()._control_reason(rec) == "vacation"
 
     def test_vacation_mode_third_priority(self):
         rec = self._rec(mode=HEATING_MODE_VACATION)
@@ -118,32 +118,32 @@ class TestControlReason:
 # ── TestSetOverride ───────────────────────────────────────────────────────────
 
 
-class TestSetOverride:
+class TestTargetSelection:
     def test_coordinator_starts_without_active_preset(self):
         coord = make_coordinator()
         assert coord._preset_mode is None
 
-    def test_value_above_threshold_sets_override(self):
+    def test_value_sets_current_target(self):
         coord = make_coordinator()
-        coord.set_override(22.0)
-        assert coord._override == 22.0
+        coord.set_target_temperature(22.0)
+        assert coord._target_temperature == 22.0
 
-    def test_value_at_threshold_boundary_sets_override(self):
+    def test_value_at_threshold_sets_current_target(self):
         coord = make_coordinator()
-        coord.set_override(5.0)
-        assert coord._override == 5.0
+        coord.set_target_temperature(5.0)
+        assert coord._target_temperature == 5.0
 
-    def test_value_below_threshold_clears_override(self):
+    def test_value_below_threshold_is_ignored(self):
         coord = make_coordinator()
-        coord._override = 20.0
-        coord.set_override(4.9)
-        assert coord._override is None
+        coord._target_temperature = 20.0
+        coord.set_target_temperature(4.9)
+        assert coord._target_temperature == 20.0
 
-    def test_zero_value_clears_override(self):
+    def test_zero_value_is_ignored(self):
         coord = make_coordinator()
-        coord._override = 20.0
-        coord.set_override(0.0)
-        assert coord._override is None
+        coord._target_temperature = 20.0
+        coord.set_target_temperature(0.0)
+        assert coord._target_temperature == 20.0
 
 
 # ── TestClimatePresetState ────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ class TestClimatePresetState:
         climate = ThermoSmartClimate(coord, entry)
 
         coord.set_mode(HEATING_MODE_COMFORT)
-        coord.set_override(20.0)
+        coord.set_target_temperature(20.0)
 
         assert climate.preset_mode is None
 
@@ -167,21 +167,19 @@ class TestClimatePresetState:
 
 
 class TestSetMode:
-    def test_mode_change_clears_manual_override(self):
+    def test_mode_change_replaces_current_target(self):
         coord = make_coordinator()
         coord._mode = HEATING_MODE_AUTO
-        coord._override = 22.0
-        coord._override_schedule_period = "wd_comfort"
+        coord.set_target_temperature(22.0)
         coord.set_mode(HEATING_MODE_COMFORT)
-        assert coord._override is None
-        assert coord._override_schedule_period is None
+        assert coord._target_temperature == 21.0
 
-    def test_same_mode_preserves_manual_override(self):
+    def test_same_mode_preserves_current_target(self):
         coord = make_coordinator()
         coord._mode = HEATING_MODE_COMFORT
-        coord._override = 22.0
+        coord.set_target_temperature(22.0)
         coord.set_mode(HEATING_MODE_COMFORT)
-        assert coord._override == 22.0
+        assert coord._target_temperature == 21.0
 
     def test_set_mode_updates_internal_mode(self):
         coord = make_coordinator()
@@ -192,7 +190,7 @@ class TestSetMode:
     def test_manual_temperature_clears_preset(self):
         coord = make_coordinator()
         coord.set_mode(HEATING_MODE_ECO)
-        coord.set_override(21.5)
+        coord.set_target_temperature(21.5)
         assert coord._preset_mode is None
 
     def test_numeric_schedule_target_clears_preset(self):
@@ -226,7 +224,7 @@ class TestSetVacationOverride:
         coord._mode = HEATING_MODE_COMFORT
         coord.set_vacation_override(True)
         assert coord._pre_vacation_mode == HEATING_MODE_COMFORT
-        assert coord._schedule_target == 12.0
+        assert coord._target_temperature == 12.0
 
     def test_deactivate_restores_pre_vacation_mode(self):
         coord = make_coordinator()
@@ -251,6 +249,7 @@ class TestSetVacationOverride:
 class TestScheduleSetpoints:
     def test_event_applies_numeric_target_once(self):
         coord = make_coordinator()
+        coord.set_target_temperature(18.0)
         events = parse_events([{
             "days": ["mon"],
             "time": "06:00",
@@ -262,8 +261,24 @@ class TestScheduleSetpoints:
             now=datetime(2026, 10, 19, 7, 0),
         )
 
-        assert coord._schedule_target == 20.0
+        assert coord._target_temperature == 20.0
         assert coord._schedule_event_key == events[0].key
+
+    def test_schedule_event_replaces_user_selected_target(self):
+        coord = make_coordinator()
+        coord.set_target_temperature(18.0)
+        events = parse_events([{
+            "days": ["mon"],
+            "time": "06:00",
+            "target": 21,
+        }])
+
+        coord._apply_schedule_event(
+            {"schedule_events": events},
+            now=datetime(2026, 10, 19, 7, 0),
+        )
+
+        assert coord._target_temperature == 21.0
 
     def test_manual_preset_remains_until_next_event(self):
         coord = make_coordinator()
@@ -278,7 +293,7 @@ class TestScheduleSetpoints:
 
         coord._apply_schedule_event({"schedule_events": events}, now=now)
 
-        assert coord._schedule_target == 18.0
+        assert coord._target_temperature == 18.0
 
     def test_named_event_highlights_its_preset(self):
         coord = make_coordinator()
@@ -324,15 +339,14 @@ class TestScheduleSetpoints:
             now=datetime(2026, 10, 19, 7, 0),
         )
 
-        assert coord._schedule_target is None
+        assert coord._target_temperature is None
         assert coord._schedule_event_key is None
 
-    def test_activate_clears_manual_override(self):
+    def test_activate_replaces_current_target_with_vacation_target(self):
         coord = make_coordinator()
-        coord._override = 22.0
-        coord._override_schedule_period = "wd_comfort"
+        coord.set_target_temperature(22.0)
         coord.set_vacation_override(True)
-        assert coord._override is None
+        assert coord._target_temperature == 12.0
 
     def test_double_activate_does_not_overwrite_pre_vacation_mode(self):
         """Second activate keeps the original pre_vacation_mode (not VACATION)."""
@@ -365,11 +379,11 @@ class TestSetSummerOverride:
         coord.set_summer_override(None)
         assert coord._is_summer is True
 
-    def test_true_clears_manual_override(self):
+    def test_true_keeps_current_target_state_separate_from_summer_hold(self):
         coord = make_coordinator()
-        coord._override = 22.0
+        coord.set_target_temperature(22.0)
         coord.set_summer_override(True)
-        assert coord._override is None
+        assert coord._target_temperature == 22.0
 
     def test_sets_summer_override_attribute(self):
         coord = make_coordinator()

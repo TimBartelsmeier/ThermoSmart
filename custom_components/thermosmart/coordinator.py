@@ -160,12 +160,10 @@ class ThermoSmartCoordinator(
         # mode still defaults to comfort, but that must not imply a highlighted
         # preset before the user or a schedule selects one.
         self._preset_mode: str | None = None
-        self._override: float | None = None
-        self._override_schedule_period: str | None = None
         self._scheduling_enabled: bool = True
         self._scheduling_disabled_until: datetime | None = None
         self._schedule_hold_target: float | None = None
-        self._schedule_target: float | None = None
+        self._target_temperature: float | None = None
         self._schedule_event_key: str | None = None
         self._pre_vacation_mode: str | None = None
         self._pre_vacation_target: float | None = None
@@ -192,7 +190,6 @@ class ThermoSmartCoordinator(
         # Event production only; never read by any control/decision path.
         self._support_event_window_hold_active: bool = False
         self._support_event_summer_hold_active: bool = False
-        self._support_event_manual_override_active: bool = False
         # TRV dispatch event dedupe: fires only when the (event_type, reason,
         # setpoint) signature genuinely changes from the previous cycle —
         # a zone sitting at target for hours must not spam one event per
@@ -370,13 +367,6 @@ class ThermoSmartCoordinator(
         )
 
     def set_mode(self, mode: str) -> None:
-        if mode != self._mode and self._override is not None:
-            _LOGGER.debug(
-                "ThermoSmart '%s': clearing manual override due to mode change %s → %s",
-                self.zone_name, self._mode, mode,
-            )
-            self._override = None
-            self._override_schedule_period = None
         self._mode = mode
         self._preset_mode = mode
         # Immediately patch adjusted_target with the preset base temperature so
@@ -393,7 +383,7 @@ class ThermoSmartCoordinator(
             HEATING_MODE_VACATION: cfg.get(CONF_VACATION_TEMP, TEMP_FROST_PROTECTION),
         }.get(mode)
         if quick_target is not None:
-            self._schedule_target = quick_target
+            self._target_temperature = quick_target
         if self.data is not None and isinstance(self.data.get("zone"), dict):
             if quick_target is not None:
                 self.data["zone"]["adjusted_target"] = quick_target
@@ -401,25 +391,18 @@ class ThermoSmartCoordinator(
     def set_vacation_override(self, active: bool) -> None:
         """Globaler Urlaubs-Override – speichert/restauriert den bisherigen Modus."""
         if active:
-            if self._override is not None:
-                _LOGGER.debug(
-                    "ThermoSmart '%s': clearing manual override due to vacation mode",
-                    self.zone_name,
-                )
-                self._override = None
-                self._override_schedule_period = None
             if self._mode != HEATING_MODE_VACATION:
                 self._pre_vacation_mode = self._mode
-                self._pre_vacation_target = self._schedule_target
+                self._pre_vacation_target = self._target_temperature
             self._mode = HEATING_MODE_VACATION
             self._preset_mode = HEATING_MODE_VACATION
-            self._schedule_target = self.zone_cfg.get(
+            self._target_temperature = self.zone_cfg.get(
                 CONF_VACATION_TEMP, TEMP_FROST_PROTECTION
             )
         else:
             self._mode = self._pre_vacation_mode or HEATING_MODE_COMFORT
             self._preset_mode = self._mode
-            self._schedule_target = (
+            self._target_temperature = (
                 self._pre_vacation_target
                 if self._pre_vacation_target is not None
                 else self.zone_cfg.get(
@@ -448,13 +431,6 @@ class ThermoSmartCoordinator(
         """
         self._summer_override = value
         if value is True:
-            if self._override is not None:
-                _LOGGER.debug(
-                    "ThermoSmart '%s': clearing manual override due to summer mode",
-                    self.zone_name,
-                )
-                self._override = None
-                self._override_schedule_period = None
             self._is_summer = True
         elif value is False:
             self._is_summer = False
@@ -466,14 +442,14 @@ class ThermoSmartCoordinator(
             else ("AUS (erzwungen)" if value is False else "Automatik – 72h-Erkennung aktiv"),
         )
 
-    def set_override(self, value: float) -> None:
-        self._override = value if value >= 5.0 else None
-        self._override_schedule_period = self._current_schedule_period() if self._override else None
-        if self._override is not None:
-            self._preset_mode = None
-
-    def get_override(self) -> float | None:
-        return self._override
+    def set_target_temperature(self, value: float) -> None:
+        """Set the current target selected by the user."""
+        if value < 5.0:
+            return
+        self._target_temperature = value
+        self._preset_mode = None
+        if self.data is not None and isinstance(self.data.get("zone"), dict):
+            self.data["zone"]["adjusted_target"] = value
 
     def set_scheduling_enabled(self, enabled: bool) -> None:
         self._scheduling_enabled = enabled
@@ -1520,7 +1496,7 @@ class ThermoSmartCoordinator(
         if event is None or event.key == self._schedule_event_key:
             return
         self._schedule_event_key = event.key
-        self._schedule_target = resolve_target(event.target, cfg)
+        self._target_temperature = resolve_target(event.target, cfg)
         if isinstance(event.target, str) and event.target in HEATING_MODES:
             self._mode = event.target
             self._preset_mode = event.target
@@ -1530,7 +1506,7 @@ class ThermoSmartCoordinator(
             "ThermoSmart '%s': applied schedule event %s with target %.1f°C",
             self.zone_name,
             event.key,
-            self._schedule_target,
+            self._target_temperature,
         )
 
     def _control_reason(self, recommendation: dict) -> str:
@@ -1538,19 +1514,16 @@ class ThermoSmartCoordinator(
 
         Priority order ensures only one unambiguous reason is recorded:
           1. window_open    – heating suppressed due to open window
-          2. manual_override – user set an explicit target temperature
-          3. vacation       – vacation/frost-protection mode active
-          4. summer_mode    – season-based heating suppression active
-          5. presence       – away mode triggered by absence of all occupants
-          6. schedule       – default: auto mode driven by time schedule
+          2. vacation       – vacation/frost-protection mode active
+          3. summer_mode    – season-based heating suppression active
+          4. presence       – away mode triggered by absence of all occupants
+          5. schedule       – default: scheduled or user-selected target
         Note: frost_protection is not a separate state; it is covered by summer_mode.
         Note: explicit eco/night/comfort mode selections are covered by schedule
-              (they are schedule-like user preferences, not presence or override events).
+              (they are schedule-like user preferences, not presence events).
         """
         if recommendation.get("window_open"):
             return "window_open"
-        if recommendation.get("override_active"):
-            return "manual_override"
         if recommendation.get("mode") == HEATING_MODE_VACATION:
             return "vacation"
         if recommendation.get("is_summer"):
@@ -1605,7 +1578,7 @@ class ThermoSmartCoordinator(
     def _maybe_record_support_hold_events(self, recommendation: dict) -> None:
         """Record Support Critical Events for window/summer/manual hold
         TRANSITIONS only — never every cycle. Compares this cycle's
-        window_open/is_summer/override_active flags (already computed in
+        window_open/is_summer flags (already computed in
         ``recommendation``) against the previous cycle's own dedupe state;
         emits a landmark only when a flag actually flips. Pure event
         production: reads recommendation, never mutates it, never touches
@@ -1656,22 +1629,6 @@ class ThermoSmartCoordinator(
                 )
             self._support_event_summer_hold_active = summer_active
 
-            manual_active = bool(recommendation.get("override_active", False))
-            if manual_active and not self._support_event_manual_override_active:
-                self._record_support_hold_event(
-                    SupportEventType.MANUAL_OVERRIDE_START, SupportEventSeverity.INFO,
-                    reason="manual_override_start",
-                    summary="Manual override started",
-                    details={"source": "manual_override"},
-                )
-            elif not manual_active and self._support_event_manual_override_active:
-                self._record_support_hold_event(
-                    SupportEventType.MANUAL_OVERRIDE_END, SupportEventSeverity.INFO,
-                    reason="manual_override_end",
-                    summary="Manual override ended",
-                    details={"source": "manual_override"},
-                )
-            self._support_event_manual_override_active = manual_active
         except Exception:
             pass  # event production is best-effort; must never affect the control cycle
 
@@ -2038,8 +1995,8 @@ class ThermoSmartCoordinator(
         )
         if mode == HEATING_MODE_VACATION:
             base_target = cfg.get(CONF_VACATION_TEMP, TEMP_FROST_PROTECTION)
-        elif self._schedule_target is not None:
-            base_target = self._schedule_target
+        elif self._target_temperature is not None:
+            base_target = self._target_temperature
         else:
             base_target = await self.learning_engine.async_get_base_target(
                 self.zone_id, mode,
@@ -2113,7 +2070,6 @@ class ThermoSmartCoordinator(
             and preheat_minutes > 0
             and preheat_eligible
             and not window_open
-            and self._override is None
             and mode not in (HEATING_MODE_AWAY, HEATING_MODE_VACATION)
             and not self._is_summer
         ):
@@ -2131,41 +2087,12 @@ class ThermoSmartCoordinator(
                     self.zone_name, mins_until, preheat_minutes, preheat_status,
                 )
 
-        if self._override is not None and self._override_schedule_period is not None:
-            current_period = self._current_schedule_period()
-            if current_period != self._override_schedule_period:
-                _LOGGER.info(
-                    "ThermoSmart '%s': Manueller Override abgelaufen (Slot %s → %s)",
-                    self.zone_name, self._override_schedule_period, current_period,
-                )
-                self._override = None
-                self._override_schedule_period = None
-
-        # Presence-aware override clearing: when presence detection switches to
-        # all-away (AUTO mode only), a manual override must not block the away
-        # temperature from taking effect.
-        # VACATION mode has higher priority (set via set_vacation_override) and is
-        # never reached as HEATING_MODE_AWAY here.
-        # Non-AUTO modes (_mode != HEATING_MODE_AUTO) return their own mode via
-        # _effective_mode(), never HEATING_MODE_AWAY, so this block is inert.
-        if mode == HEATING_MODE_AWAY and self._override is not None:
-            _LOGGER.info(
-                "ThermoSmart '%s': Manual override cleared – all persons away",
-                self.zone_name,
-            )
-            self._override = None
-            self._override_schedule_period = None
-
-        override = self.get_override()
-
-        # Hard-release any active Early Cutoff hold on window open or manual override:
-        # both are structural safety events that take absolute priority.
-        if self._ec_hold_active and (window_open or override is not None):
+        # Hard-release any active Early Cutoff hold on window open:
+        # a window is a structural safety event that takes absolute priority.
+        if self._ec_hold_active and window_open:
             self._ec_hold_active = False
             self._ec_episode_failed = False
-            self._ec_state = (
-                "released_window_open" if window_open else "released_manual_override"
-            )
+            self._ec_state = "released_window_open"
 
         biased_suppression = 1.0
         # Learning forecast state – defaults represent "no evidence" (not "full trust")
@@ -2183,15 +2110,10 @@ class ThermoSmartCoordinator(
         # Used for TPI calculation and TRV setpoint – NOT shown to the user.
         #
         # ── Adjusted target (display) ──────────────────────────────────────────
-        # Always the configured schedule / mode temperature, or the manual override.
+        # Always the currently selected schedule or user target.
         # This is what the climate entity and all UI elements show – no hidden offsets.
 
-        if override is not None and not window_open:
-            # Manual override: user set an explicit temp → show AND use it as-is
-            effective_target = override
-            adjusted_target = override
-            override_active = True
-        elif not window_open:
+        if not window_open:
             # Guard: a negative weather offset must not pull the effective target
             # below the configured comfort temperature while the room hasn't
             # reached it yet — otherwise the corrected target can converge with
@@ -2297,7 +2219,6 @@ class ThermoSmartCoordinator(
             #
             # Structural safety guards (guaranteed by outer if/elif structure):
             #   • window_open: released above; we are inside `elif not window_open:`
-            #   • override: released above; override=None guaranteed here
             # Additional guards in _ec_eligible and the state machine below.
             if mode == HEATING_MODE_AUTO:
                 _heating_to_target = preheat_active or base_target >= comfort_temp
@@ -2417,13 +2338,11 @@ class ThermoSmartCoordinator(
 
             # Display: always show the configured base temperature (no offsets)
             adjusted_target = base_target
-            override_active = False
         else:
             effective_target = None
             adjusted_target = None
-            override_active = False
 
-        if mode == HEATING_MODE_AUTO and not window_open and override is None:
+        if mode == HEATING_MODE_AUTO and not window_open:
             suppression_pct = round((1.0 - biased_suppression) * 100)
         else:
             suppression_pct = 0
@@ -2439,7 +2358,6 @@ class ThermoSmartCoordinator(
             and self._scheduling_active(now)
             and preheat_target is not None
             and not window_open
-            and self._override is None
             and mode not in (HEATING_MODE_AWAY, HEATING_MODE_VACATION)
             and not self._is_summer
         ):
@@ -2455,9 +2373,6 @@ class ThermoSmartCoordinator(
         elif window_open:
             preheat_state = "suppressed"
             preheat_suppression_reason = "window_open"
-        elif self._override is not None:
-            preheat_state = "suppressed"
-            preheat_suppression_reason = "manual_override"
         elif mode in (HEATING_MODE_AWAY, HEATING_MODE_VACATION) or self._is_summer:
             preheat_state = "suppressed"
             preheat_suppression_reason = "higher_priority_hold"
@@ -2520,8 +2435,6 @@ class ThermoSmartCoordinator(
             "weather_offset": weather_offset,
             "adjusted_target": adjusted_target,    # display value – no offsets
             "effective_target": effective_target,  # internal value – weather + suppression
-            "override_active": override_active,
-            "override_temp": override,
             "preheat_minutes": preheat_minutes,
             "preheat_active": preheat_active,
             "preheat_status": preheat_status,

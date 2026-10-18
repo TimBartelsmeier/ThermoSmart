@@ -60,7 +60,7 @@ class TestRecommendationStructure:
         required = {
             "zone_name", "mode", "current_temp", "window_open",
             "base_target", "weather_offset", "adjusted_target", "effective_target",
-            "override_active", "override_temp", "preheat_minutes", "preheat_active",
+            "preheat_minutes", "preheat_active",
             "forecast_suppression", "learning_confidence",
             "outdoor_temp", "forecast_high", "weather_condition",
             "temp_slope", "temp_ema_1h",
@@ -109,7 +109,6 @@ class TestRecommendationModes:
         coord.learning_engine.async_get_base_target = AsyncMock(return_value=21.0)
         result = await coord._compute_recommendation(_CFG, _WEATHER, HEATING_MODE_COMFORT)
         assert result["adjusted_target"] == 21.0
-        assert result["override_active"] is False
 
     async def test_night_mode_adjusted_target_is_night_temp(self):
         coord = make_coordinator()
@@ -144,44 +143,39 @@ class TestRecommendationModes:
         result = await coord._compute_recommendation(_CFG, _WEATHER, HEATING_MODE_ECO)
         assert result["adjusted_target"] == 19.0
 
-    async def test_auto_without_override_override_active_is_false(self):
+    async def test_auto_uses_current_target(self):
         coord = make_coordinator()
-        coord._override = None
         result = await coord._compute_recommendation(_CFG, _WEATHER, HEATING_MODE_AUTO)
-        assert result["override_active"] is False
+        assert result["adjusted_target"] == 21.0
 
 
-# ── TestRecommendationOverride ────────────────────────────────────────────────
+# ── TestRecommendationTargetSelection ─────────────────────────────────────────
 
 
-class TestRecommendationOverride:
-    async def test_override_active_when_override_set(self):
+class TestRecommendationTargetSelection:
+    async def test_user_target_is_used_as_current_target(self):
         coord = make_coordinator()
-        coord._override = 22.0
+        coord.set_target_temperature(22.0)
         result = await coord._compute_recommendation(_CFG, _WEATHER, HEATING_MODE_AUTO)
-        assert result["override_active"] is True
         assert result["adjusted_target"] == 22.0
         assert result["effective_target"] == 22.0
 
-    async def test_override_temp_in_result(self):
+    async def test_user_target_has_no_override_attributes(self):
         coord = make_coordinator()
-        coord._override = 23.5
+        coord.set_target_temperature(23.5)
         result = await coord._compute_recommendation(_CFG, _WEATHER, HEATING_MODE_AUTO)
-        assert result["override_temp"] == 23.5
+        assert "override_active" not in result
+        assert "override_temp" not in result
 
-    async def test_away_mode_clears_override(self):
-        """When mode is AWAY, manual override is cleared (presence > override)."""
+    async def test_away_mode_does_not_create_a_second_target_source(self):
         coord = make_coordinator()
-        coord._override = 22.0
-        coord._override_schedule_period = "wd_comfort"
+        coord.set_target_temperature(22.0)
         result = await coord._compute_recommendation(_CFG, _WEATHER, HEATING_MODE_AWAY)
-        assert result["override_active"] is False
-        assert coord._override is None
+        assert result["adjusted_target"] == 22.0
 
-    async def test_window_open_overrides_manual_override(self):
-        """Window open suppresses output regardless of manual override."""
+    async def test_window_open_suppresses_current_target(self):
         coord = make_coordinator()
-        coord._override = 22.0
+        coord.set_target_temperature(22.0)
         cfg = {**_CFG, "window_sensors": ["binary_sensor.window"]}
         set_hass_states(coord, {
             "binary_sensor.window": make_state("on"),
@@ -189,7 +183,6 @@ class TestRecommendationOverride:
         result = await coord._compute_recommendation(cfg, _WEATHER, HEATING_MODE_AUTO)
         assert result["window_open"] is True
         assert result["effective_target"] is None
-        assert result["override_active"] is False
 
 
 # ── TestRecommendationWindowOpen ──────────────────────────────────────────────
@@ -296,7 +289,7 @@ class TestRecommendationPreheat:
     async def test_flagged_event_preheats_target_increase_without_auto_mode(self):
         coord = make_coordinator()
         set_hass_states(coord, {"sensor.test_temp": make_state("18.0")})
-        coord._schedule_target = 18.0
+        coord.set_target_temperature(18.0)
         coord._now_local = lambda: datetime(2026, 10, 19, 5, 30)
         cfg = {
             **_CFG,
@@ -319,7 +312,7 @@ class TestRecommendationPreheat:
     async def test_unflagged_event_does_not_preheat_target_increase(self):
         coord = make_coordinator()
         set_hass_states(coord, {"sensor.test_temp": make_state("18.0")})
-        coord._schedule_target = 18.0
+        coord.set_target_temperature(18.0)
         coord._now_local = lambda: datetime(2026, 10, 19, 5, 30)
         cfg = {
             **_CFG,
