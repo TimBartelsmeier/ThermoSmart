@@ -290,6 +290,42 @@ class TestZoneFlowNavigation:
         assert result["step_id"] == "schedule"
         assert "`living_room`" in result["description_placeholders"]["zone_key_info"]
 
+    async def test_options_flow_schedule_shows_zone_key_info(
+        self, hass, enable_custom_integrations
+    ):
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={
+                "entry_type": "zone",
+                "name": "Living Room",
+                "climate_entities": ["climate.test_trv"],
+                "temp_sensors": [],
+                "humidity_sensors": [],
+                "window_sensors": [],
+                "window_open_delay": 5,
+                "window_close_delay": 2,
+                "comfort_temp": 21.0,
+                "night_temp": 18.0,
+                "away_temp": 17.0,
+                CONF_VACATION_TEMP: 12.0,
+                CONF_ECO_TEMP: 18.0,
+                CONF_WINDOW_OPEN_TEMP: 12.0,
+                "temp_tolerance": 0.5,
+            },
+        )
+        entry.add_to_hass(hass)
+
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "init"
+
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"next_step_id": "schedule"}
+        )
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "schedule"
+        assert "`living_room`" in result["description_placeholders"]["zone_key_info"]
+
     async def test_zone_flow_completes_and_creates_entry(self, hass, enable_custom_integrations):
         """Full 4-step happy path creates an entry with correct title and data."""
         with patch(_PATCH, return_value=True):

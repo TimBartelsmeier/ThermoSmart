@@ -391,10 +391,20 @@ class ThermoSmartOptionsFlow(config_entries.OptionsFlow):
             errors = _validate_temps(user_input)
             if not errors:
                 return self.async_create_entry(title="", data={**current, **user_input})
+
+        warnings = await async_schedule_zone_warnings(
+            self.hass,
+            self.hass.config_entries.async_entries(DOMAIN),
+            str(current.get("name", "")),
+            current_entry_id=self.config_entry.entry_id,
+        )
         return self.async_show_form(
             step_id="schedule",
             data_schema=_schema_schedule(current),
             errors=errors,
+            description_placeholders={
+                "zone_key_info": _zone_key_info(str(current.get("name", "")), warnings)
+            },
         )
 
     async def async_step_presence(self, user_input: dict | None = None):
