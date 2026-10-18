@@ -111,6 +111,16 @@ def zone_key(name: str) -> str:
     return slug or "zone"
 
 
+def _entry_name(entry: Any) -> str:
+    """Zone name as currently configured (options override the initial data)."""
+    merged = {**entry.data, **(getattr(entry, "options", None) or {})}
+    return str(merged.get("name", "Zone"))
+
+
+def entry_zone_key(entry: Any) -> str:
+    return zone_key(_entry_name(entry))
+
+
 def parse_events(raw: Any) -> list[ScheduleEvent]:
     """Validate and normalize the ``events`` YAML list."""
     if not isinstance(raw, list):
@@ -276,7 +286,7 @@ async def _async_manage_schedule_yaml_locked(
     for entry in entries:
         if entry.data.get("entry_type") == "system":
             continue
-        key = zone_key(entry.data.get("name", "Zone"))
+        key = entry_zone_key(entry)
         managed_keys.setdefault(key, entry)
 
     managed_zones = dict(zones)
@@ -316,12 +326,12 @@ async def async_schedule_zone_warnings(
         entry for entry in entries
         if entry.entry_id != current_entry_id
         and entry.data.get("entry_type") != "system"
-        and zone_key(entry.data.get("name", "Zone")) == key
+        and entry_zone_key(entry) == key
     ]
     warnings: list[str] = []
     if matching_entries:
         names = ", ".join(
-            str(entry.data.get("name", entry.entry_id)) for entry in matching_entries
+            _entry_name(entry) for entry in matching_entries
         )
         warnings.append(f"duplicate:{key}:{names}")
 
@@ -338,7 +348,7 @@ async def async_load_schedule(hass: HomeAssistant, entry: ConfigEntry) -> list[S
     zones = data.get("zones", {})
     if not isinstance(zones, dict):
         raise ScheduleError("zones in schedule YAML must be a mapping")
-    key = zone_key(entry.data.get("name", "Zone"))
+    key = entry_zone_key(entry)
     zone = zones.get(key, {})
     if zone == {}:
         return []
@@ -364,7 +374,7 @@ async def async_migrate_legacy(hass: HomeAssistant, entries: list[ConfigEntry]) 
         raise ScheduleError("zones in schedule YAML must be a mapping")
     changed = False
     for entry in candidates:
-        key = zone_key(entry.data.get("name", "Zone"))
+        key = entry_zone_key(entry)
         zone = zones.setdefault(key, {})
         if not isinstance(zone, dict):
             raise ScheduleError(f"zone {key} must be a mapping")

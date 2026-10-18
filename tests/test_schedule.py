@@ -200,3 +200,12 @@ def test_zone_key_info_describes_key_and_warnings():
     )
     assert "Lounge" in warned
     assert warned.count("⚠️") == 2
+
+
+def test_entry_zone_key_uses_renamed_options_name():
+    from custom_components.thermosmart.schedule import entry_zone_key
+
+    entry = SimpleNamespace(
+        entry_id="one", data={"name": "Old Name"}, options={"name": "Renamed Zone"}
+    )
+    assert entry_zone_key(entry) == "renamed_zone"
