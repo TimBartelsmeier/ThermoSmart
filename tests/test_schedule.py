@@ -146,6 +146,23 @@ async def test_manage_schedule_yaml_allows_duplicate_normalized_keys(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_write_yaml_creates_missing_parent_directory(tmp_path):
+    async def async_add_executor_job(func, *args):
+        return func(*args)
+
+    hass = SimpleNamespace(
+        config=SimpleNamespace(path=lambda name: str(tmp_path / "nested" / name)),
+        async_add_executor_job=async_add_executor_job,
+    )
+
+    await schedule_module._write_yaml(hass, {"zones": {"living_room": {"events": []}}})
+
+    path = tmp_path / "nested" / schedule_module.SCHEDULE_FILENAME
+    assert path.exists()
+    assert path.read_text(encoding="utf-8")
+
+
+@pytest.mark.asyncio
 async def test_schedule_zone_warnings_report_duplicate_and_unused_yaml_zone(monkeypatch):
     async def read(_hass):
         return {"zones": {"living_room": {"events": []}}}

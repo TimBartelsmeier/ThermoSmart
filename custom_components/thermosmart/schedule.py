@@ -1,8 +1,10 @@
 """Flexible weekly setpoint-change schedules."""
 from __future__ import annotations
 
+import asyncio
 import os
 import re
+import tempfile
 import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -18,6 +20,7 @@ from .const import (
     CONF_SCHED_WD_NIGHT,
     CONF_SCHED_WE_MORNING,
     CONF_SCHED_WE_NIGHT,
+    DOMAIN,
 )
 
 SCHEDULE_FILENAME = "thermosmart_schedules.yaml"
@@ -235,23 +238,33 @@ def _read_text(path: str) -> str:
 
 async def _write_yaml(hass: HomeAssistant, data: dict) -> None:
     path = _path(hass)
-    temp_path = f"{path}.tmp"
     text = yaml.safe_dump(data, sort_keys=False, allow_unicode=False)
-    await hass.async_add_executor_job(_atomic_write, path, temp_path, text)
+    await hass.async_add_executor_job(_atomic_write, path, text)
 
 
-def _atomic_write(path: str, temp_path: str, text: str) -> None:
-    with open(temp_path, "w", encoding="utf-8") as file:
-        file.write(text)
-        file.flush()
-        os.fsync(file.fileno())
-    os.replace(temp_path, path)
+def _atomic_write(path: str, text: str) -> None:
+    directory = os.path.dirname(path) or "."
+    os.makedirs(directory, exist_ok=True)
+    fd, temp_path = tempfile.mkstemp(
+        prefix=f"{os.path.basename(path)}.", suffix=".tmp", dir=directory
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as file:
+            file.write(text)
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(temp_path, path)
+    except Exception:
+        try:
+            os.unlink(temp_path)
+        except FileNotFoundError:
+            pass
+        raise
 
 
-async def async_manage_schedule_yaml(
+async def _async_manage_schedule_yaml_locked(
     hass: HomeAssistant, entries: list[ConfigEntry]
 ) -> None:
-    """Add missing zone blocks and keep the configured zone keys sorted."""
     path = _path(hass)
     file_exists = os.path.exists(path)
     data = await _read_yaml(hass)
@@ -274,6 +287,20 @@ async def async_manage_schedule_yaml(
     if sorted_zones != zones or not file_exists:
         data["zones"] = sorted_zones
         await _write_yaml(hass, data)
+
+
+async def async_manage_schedule_yaml(
+    hass: HomeAssistant, entries: list[ConfigEntry]
+) -> None:
+    """Add missing zone blocks and keep the configured zone keys sorted."""
+    if not hasattr(hass, "data"):
+        await _async_manage_schedule_yaml_locked(hass, entries)
+        return
+
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    lock = domain_data.setdefault("schedule_write_lock", asyncio.Lock())
+    async with lock:
+        await _async_manage_schedule_yaml_locked(hass, entries)
 
 
 async def async_schedule_zone_warnings(
