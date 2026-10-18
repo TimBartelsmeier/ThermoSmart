@@ -106,6 +106,8 @@ async def test_manage_schedule_yaml_adds_missing_zones_and_sorts(monkeypatch):
     async def write(_hass, value):
         writes.append(value)
 
+    monkeypatch.setattr(schedule_module, "_path", lambda _hass: "schedule.yaml")
+    monkeypatch.setattr(schedule_module.os.path, "exists", lambda _path: False)
     monkeypatch.setattr(schedule_module, "_read_yaml", read)
     monkeypatch.setattr(schedule_module, "_write_yaml", write)
     entries = [
@@ -131,6 +133,8 @@ async def test_manage_schedule_yaml_allows_duplicate_normalized_keys(monkeypatch
     async def write(_hass, _data):
         return None
 
+    monkeypatch.setattr(schedule_module, "_path", lambda _hass: "schedule.yaml")
+    monkeypatch.setattr(schedule_module.os.path, "exists", lambda _path: False)
     monkeypatch.setattr(schedule_module, "_read_yaml", read)
     monkeypatch.setattr(schedule_module, "_write_yaml", write)
     entries = [

@@ -273,7 +273,9 @@ class TestZoneFlowNavigation:
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "add_zone"
 
-    async def test_add_zone_shows_yaml_zone_key(self, hass, enable_custom_integrations):
+    async def test_add_zone_does_not_show_yaml_key_on_first_page(
+        self, hass, enable_custom_integrations
+    ):
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )
@@ -281,13 +283,14 @@ class TestZoneFlowNavigation:
             result["flow_id"], {"next_step_id": "add_zone"}
         )
 
-        assert result["description_placeholders"] == {"zone_key": "zone"}
+        assert "description_placeholders" not in result
 
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {**_DEVICES, "name": "Living Room"}
         )
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "schedule"
+        assert result["step_id"] == "zone_key"
+        assert result["description_placeholders"]["zone_key"] == "living_room"
 
     async def test_zone_flow_completes_and_creates_entry(self, hass, enable_custom_integrations):
         """Full 4-step happy path creates an entry with correct title and data."""

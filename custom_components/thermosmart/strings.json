@@ -38,7 +38,9 @@
       "zone_key": {
         "title": "Schedule YAML key",
         "description": "This zone uses the YAML key `{zone_key}`.\n\n{duplicate_warning}\n\n{existing_warning}",
-        "data": {}
+        "data": {
+          "continue": "I understand; continue"
+        }
       },
       "schedule": {
         "title": "Step 2 / 4 – Temperatures & Schedule",
@@ -141,7 +143,9 @@
       "zone_key": {
         "title": "Schedule YAML key",
         "description": "This zone uses the YAML key `{zone_key}`.\n\n{duplicate_warning}\n\n{existing_warning}",
-        "data": {}
+        "data": {
+          "continue": "I understand; continue"
+        }
       },
       "schedule": {
         "title": "Temperatures & Schedule",

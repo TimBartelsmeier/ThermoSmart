@@ -117,10 +117,6 @@ def _schema_devices(d: dict) -> vol.Schema:
     })
 
 
-def _zone_key_placeholder(data: dict) -> dict[str, str]:
-    return {"zone_key": zone_key(str(data.get("name", "")).strip())}
-
-
 def _zone_key_step_placeholders(
     name: str, warnings: tuple[str, ...]
 ) -> dict[str, str]:
@@ -270,7 +266,6 @@ class ThermoSmartConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="add_zone",
             data_schema=_schema_devices(self._data),
             errors=errors,
-            description_placeholders=_zone_key_placeholder(self._data),
         )
 
     async def async_step_zone_key(self, user_input: dict | None = None):
@@ -283,7 +278,9 @@ class ThermoSmartConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         return self.async_show_form(
             step_id="zone_key",
-            data_schema=vol.Schema({}),
+            data_schema=vol.Schema({
+                vol.Required("continue", default=True): selector.BooleanSelector(),
+            }),
             description_placeholders=_zone_key_step_placeholders(
                 str(self._data.get("name", "")), warnings
             ),
@@ -396,7 +393,6 @@ class ThermoSmartOptionsFlow(config_entries.OptionsFlow):
             step_id="devices",
             data_schema=_schema_devices(current),
             errors=errors,
-            description_placeholders=_zone_key_placeholder(current),
         )
 
     async def async_step_zone_key(self, user_input: dict | None = None):
@@ -411,7 +407,9 @@ class ThermoSmartOptionsFlow(config_entries.OptionsFlow):
         )
         return self.async_show_form(
             step_id="zone_key",
-            data_schema=vol.Schema({}),
+            data_schema=vol.Schema({
+                vol.Required("continue", default=True): selector.BooleanSelector(),
+            }),
             description_placeholders=_zone_key_step_placeholders(
                 str(current.get("name", "")), warnings
             ),

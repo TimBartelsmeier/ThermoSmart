@@ -252,6 +252,8 @@ async def async_manage_schedule_yaml(
     hass: HomeAssistant, entries: list[ConfigEntry]
 ) -> None:
     """Add missing zone blocks and keep the configured zone keys sorted."""
+    path = _path(hass)
+    file_exists = os.path.exists(path)
     data = await _read_yaml(hass)
     zones = data.setdefault("zones", {})
     if not isinstance(zones, dict):
@@ -269,7 +271,7 @@ async def async_manage_schedule_yaml(
         managed_zones.setdefault(key, {"events": []})
 
     sorted_zones = dict(sorted(managed_zones.items()))
-    if sorted_zones != zones:
+    if sorted_zones != zones or not file_exists:
         data["zones"] = sorted_zones
         await _write_yaml(hass, data)
 
