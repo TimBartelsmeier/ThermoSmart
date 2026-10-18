@@ -328,13 +328,7 @@ async def async_schedule_zone_warnings(
     data = await _read_yaml(hass)
     zones = data.get("zones", {})
     if isinstance(zones, dict) and key in zones:
-        matching_yaml_entry = zones[key]
-        associated_entry_id = (
-            matching_yaml_entry.get("config_entry_id")
-            if isinstance(matching_yaml_entry, dict)
-            else None
-        )
-        if associated_entry_id != current_entry_id and not matching_entries:
+        if current_entry_id is None and not matching_entries:
             warnings.append(f"existing:{key}")
     return tuple(warnings)
 
@@ -345,12 +339,7 @@ async def async_load_schedule(hass: HomeAssistant, entry: ConfigEntry) -> list[S
     if not isinstance(zones, dict):
         raise ScheduleError("zones in schedule YAML must be a mapping")
     key = zone_key(entry.data.get("name", "Zone"))
-    zone = zones.get(key, zones.get(entry.entry_id, {}))
-    if zone == {}:
-        for candidate in zones.values():
-            if isinstance(candidate, dict) and candidate.get("config_entry_id") == entry.entry_id:
-                zone = candidate
-                break
+    zone = zones.get(key, {})
     if zone == {}:
         return []
     if not isinstance(zone, dict):
@@ -359,7 +348,7 @@ async def async_load_schedule(hass: HomeAssistant, entry: ConfigEntry) -> list[S
 
 
 async def async_migrate_legacy(hass: HomeAssistant, entries: list[ConfigEntry]) -> None:
-    """Migrate ID keys and legacy schedule fields to human-readable zone keys."""
+    """Migrate legacy schedule fields to events under the zone key."""
     affected = [
         entry for entry in entries
         if entry.data.get("entry_type") != "system"
@@ -373,39 +362,7 @@ async def async_migrate_legacy(hass: HomeAssistant, entries: list[ConfigEntry]) 
     zones = data.setdefault("zones", {})
     if not isinstance(zones, dict):
         raise ScheduleError("zones in schedule YAML must be a mapping")
-    zone_keys: dict[str, ConfigEntry] = {}
-    for entry in entries:
-        if entry.data.get("entry_type") == "system":
-            continue
-        key = zone_key(entry.data.get("name", "Zone"))
-        zone_keys.setdefault(key, entry)
-
     changed = False
-    for entry in zone_keys.values():
-        key = zone_key(entry.data.get("name", "Zone"))
-        if key not in zones:
-            renamed_from = next(
-                (
-                    old_key for old_key, old_zone in zones.items()
-                    if isinstance(old_zone, dict)
-                    and old_zone.get("config_entry_id") == entry.entry_id
-                ),
-                None,
-            )
-            if renamed_from is not None:
-                zones[key] = zones.pop(renamed_from)
-                changed = True
-        if entry.entry_id in zones:
-            if key in zones and key != entry.entry_id and zones[key] != zones[entry.entry_id]:
-                raise ScheduleError(
-                    f"both legacy zone key {entry.entry_id!r} and new key {key!r} exist"
-                )
-            zones.setdefault(key, zones.pop(entry.entry_id))
-            changed = True
-        if key in zones and isinstance(zones[key], dict):
-            zones[key].setdefault("name", entry.data.get("name", "Zone"))
-            zones[key].setdefault("config_entry_id", entry.entry_id)
-            changed = True
     for entry in candidates:
         key = zone_key(entry.data.get("name", "Zone"))
         zone = zones.setdefault(key, {})
@@ -417,8 +374,6 @@ async def async_migrate_legacy(hass: HomeAssistant, entries: list[ConfigEntry]) 
              "target": event.target, "preheat": event.preheat}
             for event in legacy_events({**entry.data, **entry.options})
         ])
-        zone.setdefault("name", entry.data.get("name", "Zone"))
-        zone.setdefault("config_entry_id", entry.entry_id)
         changed = True
     if changed:
         await _write_yaml(hass, data)

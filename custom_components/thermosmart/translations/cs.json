@@ -135,7 +135,7 @@
       },
       "schedule": {
         "title": "Teploty a plán",
-        "description": "Denní průběh: Noc → Komfort → Noc\n\nKdyž jsou všechny osoby nepřítomny, ThermoSmart automaticky přepne na teplotu při nepřítomnosti – bez ohledu na plán.",
+        "description": "Denní průběh: Noc → Komfort → Noc\n\nKdyž jsou všechny osoby nepřítomny, ThermoSmart automaticky přepne na teplotu při nepřítomnosti – bez ohledu na plán.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Teplota komfortu",
           "night_temp": "Noční teplota",

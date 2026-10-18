@@ -135,7 +135,7 @@
       },
       "schedule": {
         "title": "Temperatury i harmonogram",
-        "description": "Przebieg dnia: Noc → Komfort → Noc\n\nGdy wszystkie osoby są nieobecne, ThermoSmart automatycznie przełącza na temperaturę nieobecności – niezależnie od harmonogramu.",
+        "description": "Przebieg dnia: Noc → Komfort → Noc\n\nGdy wszystkie osoby są nieobecne, ThermoSmart automatycznie przełącza na temperaturę nieobecności – niezależnie od harmonogramu.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Temperatura komfortu",
           "night_temp": "Temperatura nocna",

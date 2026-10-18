@@ -135,7 +135,7 @@
       },
       "schedule": {
         "title": "Temperaturer og tidsplan",
-        "description": "Dagligt forløb: Nat → Komfort → Nat\n\nNår alle personer er væk, skifter ThermoSmart automatisk til fraværstemperaturen – uanset tidsplanen.",
+        "description": "Dagligt forløb: Nat → Komfort → Nat\n\nNår alle personer er væk, skifter ThermoSmart automatisk til fraværstemperaturen – uanset tidsplanen.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Komforttemperatur",
           "night_temp": "Nattemperatur",

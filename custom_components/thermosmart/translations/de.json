@@ -135,7 +135,7 @@
       },
       "schedule": {
         "title": "Temperaturen & Zeitplan",
-        "description": "Tagesablauf: Nacht → Komfort → Nacht\n\nWenn alle Personen abwesend sind, schaltet ThermoSmart automatisch auf die Abwesenheitstemperatur – unabhängig vom Zeitplan.",
+        "description": "Tagesablauf: Nacht → Komfort → Nacht\n\nWenn alle Personen abwesend sind, schaltet ThermoSmart automatisch auf die Abwesenheitstemperatur – unabhängig vom Zeitplan.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Komforttemperatur",
           "night_temp": "Nachttemperatur",

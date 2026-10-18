@@ -135,7 +135,7 @@
       },
       "schedule": {
         "title": "Hőmérsékletek és ütemterv",
-        "description": "Napi folyamat: Éjszaka → Komfort → Éjszaka\n\nHa minden személy távol van, a ThermoSmart automatikusan a távolléti hőmérsékletre vált – az ütemtervtől függetlenül.",
+        "description": "Napi folyamat: Éjszaka → Komfort → Éjszaka\n\nHa minden személy távol van, a ThermoSmart automatikusan a távolléti hőmérsékletre vált – az ütemtervtől függetlenül.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Kényelmi hőmérséklet",
           "night_temp": "Éjszakai hőmérséklet",

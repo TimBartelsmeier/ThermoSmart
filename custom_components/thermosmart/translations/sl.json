@@ -135,7 +135,7 @@
       },
       "schedule": {
         "title": "Temperature in urnik",
-        "description": "Dnevni potek: Noč → Udobje → Noč\n\nKo so vse osebe odsotne, ThermoSmart samodejno preklopi na temperaturo odsotnosti – ne glede na urnik.",
+        "description": "Dnevni potek: Noč → Udobje → Noč\n\nKo so vse osebe odsotne, ThermoSmart samodejno preklopi na temperaturo odsotnosti – ne glede na urnik.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Temperatura udobja",
           "night_temp": "Nočna temperatura",

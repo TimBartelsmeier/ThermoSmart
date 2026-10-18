@@ -135,7 +135,7 @@
       },
       "schedule": {
         "title": "Temperature e pianificazione",
-        "description": "Flusso giornaliero: Notte → Comfort → Notte\n\nQuando tutte le persone sono assenti, ThermoSmart passa automaticamente alla temperatura di assenza – indipendentemente dalla pianificazione.",
+        "description": "Flusso giornaliero: Notte → Comfort → Notte\n\nQuando tutte le persone sono assenti, ThermoSmart passa automaticamente alla temperatura di assenza – indipendentemente dalla pianificazione.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Temperatura comfort",
           "night_temp": "Temperatura notturna",

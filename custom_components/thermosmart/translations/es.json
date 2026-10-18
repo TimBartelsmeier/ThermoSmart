@@ -135,7 +135,7 @@
       },
       "schedule": {
         "title": "Temperaturas y horario",
-        "description": "Flujo diario: Noche → Confort → Noche\n\nCuando todas las personas están ausentes, ThermoSmart cambia automáticamente a la temperatura de ausencia – independientemente del horario.",
+        "description": "Flujo diario: Noche → Confort → Noche\n\nCuando todas las personas están ausentes, ThermoSmart cambia automáticamente a la temperatura de ausencia – independientemente del horario.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Temperatura de confort",
           "night_temp": "Temperatura nocturna",

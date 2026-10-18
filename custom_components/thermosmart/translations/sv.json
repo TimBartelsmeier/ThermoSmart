@@ -135,7 +135,7 @@
       },
       "schedule": {
         "title": "Temperaturer & Schema",
-        "description": "Dagligt flöde: Natt → Komfort → Natt\n\nNär alla personer är borta växlar ThermoSmart automatiskt till borta-temperaturen – oavsett schemat.",
+        "description": "Dagligt flöde: Natt → Komfort → Natt\n\nNär alla personer är borta växlar ThermoSmart automatiskt till borta-temperaturen – oavsett schemat.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Komforttemperatur",
           "night_temp": "Natttemperatur",

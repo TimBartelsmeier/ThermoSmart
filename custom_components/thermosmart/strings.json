@@ -133,7 +133,7 @@
       },
       "schedule": {
         "title": "Temperatures & Schedule",
-        "description": "Daily flow: Night → Comfort → Night\n\nWhen all persons are away, ThermoSmart automatically switches to the away temperature – regardless of the schedule.",
+        "description": "Daily flow: Night → Comfort → Night\n\nWhen all persons are away, ThermoSmart automatically switches to the away temperature – regardless of the schedule.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Comfort temperature",
           "night_temp": "Night temperature",

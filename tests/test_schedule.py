@@ -173,15 +173,20 @@ async def test_schedule_zone_warnings_report_duplicate_and_unused_yaml_zone(monk
     ]
 
     warnings = await async_schedule_zone_warnings(
-        object(), entries, "Living-Room", current_entry_id="new"
+        object(), entries, "Living-Room"
     )
 
     assert warnings == ("duplicate:living_room:Living Room",)
 
     warnings = await async_schedule_zone_warnings(
-        object(), [], "Living Room", current_entry_id="new"
+        object(), [], "Living Room"
     )
     assert warnings == ("existing:living_room",)
+
+    warnings = await async_schedule_zone_warnings(
+        object(), [], "Living Room", current_entry_id="one"
+    )
+    assert warnings == ()
 
 
 def test_zone_key_info_describes_key_and_warnings():

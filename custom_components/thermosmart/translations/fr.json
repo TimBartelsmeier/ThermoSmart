@@ -135,7 +135,7 @@
       },
       "schedule": {
         "title": "Températures & Horaires",
-        "description": "Déroulement journalier : Nuit → Confort → Nuit\n\nQuand toutes les personnes sont absentes, ThermoSmart bascule automatiquement en température d'absence – indépendamment du planning.",
+        "description": "Déroulement journalier : Nuit → Confort → Nuit\n\nQuand toutes les personnes sont absentes, ThermoSmart bascule automatiquement en température d'absence – indépendamment du planning.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Température de confort",
           "night_temp": "Température de nuit",
