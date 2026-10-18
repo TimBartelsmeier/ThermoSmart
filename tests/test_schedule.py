@@ -5,6 +5,7 @@ import pytest
 from custom_components.thermosmart.schedule import (
     ScheduleError,
     legacy_events,
+    next_occurrence,
     parse_events,
     resolve_event,
     resolve_target,
@@ -48,3 +49,40 @@ def test_zone_key_is_human_readable_and_yaml_safe():
 def test_invalid_targets_are_rejected(target):
     with pytest.raises(ScheduleError):
         parse_events([{"days": ["mon"], "time": "06:00", "target": target}])
+
+
+def test_next_occurrence_returns_concrete_time_and_target_event():
+    events = parse_events([
+        {"days": ["mon"], "time": "06:00", "target": "comfort", "preheat": True},
+    ])
+
+    occurrence = next_occurrence(events, datetime(2026, 10, 19, 5, 30))
+
+    assert occurrence is not None
+    assert occurrence.at == datetime(2026, 10, 19, 6, 0)
+    assert occurrence.minutes_until == 30
+    assert occurrence.event.preheat is True
+
+
+def test_next_occurrence_crosses_week_boundary():
+    events = parse_events([
+        {"days": ["mon"], "time": "06:00", "target": 21},
+    ])
+
+    occurrence = next_occurrence(events, datetime(2026, 10, 19, 7, 0))
+
+    assert occurrence is not None
+    assert occurrence.at == datetime(2026, 10, 26, 6, 0)
+    assert occurrence.minutes_until == 10020
+
+
+def test_next_occurrence_duplicate_timestamp_uses_last_configured_event():
+    events = parse_events([
+        {"days": ["mon"], "time": "06:00", "target": 18},
+        {"days": ["mon"], "time": "06:00", "target": 21, "preheat": True},
+    ])
+
+    occurrence = next_occurrence(events, datetime(2026, 10, 19, 5, 0))
+
+    assert occurrence is not None
+    assert occurrence.event.target == 21.0

@@ -58,7 +58,13 @@ from .window import WindowMixin
 from .season import SeasonMixin
 from .trv_control import TRVControlMixin, _DispatchStats
 from .maintenance import MaintenanceMixin
-from .schedule import ScheduleEvent, resolve_event, resolve_target
+from .schedule import (
+    ScheduleEvent,
+    ScheduleOccurrence,
+    next_occurrence,
+    resolve_event,
+    resolve_target,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -518,15 +524,14 @@ class ThermoSmartCoordinator(
 
     def _minutes_until_next_event(self, cfg: dict) -> tuple[int, ScheduleEvent] | None:
         """Return the minutes and event for the next weekly change."""
-        now = self._now_local()
-        current = now.weekday() * 1440 + now.hour * 60 + now.minute
-        future = [
-            ((day * 1440 + event.minute - current) % (7 * 1440), event)
-            for event in cfg.get("schedule_events", [])
-            for day in event.days
-            if (day * 1440 + event.minute - current) % (7 * 1440) > 0
-        ]
-        return min(future, key=lambda item: (item[0], item[1].order)) if future else None
+        occurrence = self._next_schedule_occurrence(cfg)
+        if occurrence is None:
+            return None
+        return occurrence.minutes_until, occurrence.event
+
+    def _next_schedule_occurrence(self, cfg: dict) -> ScheduleOccurrence | None:
+        """Return the next concrete occurrence in the local schedule timeline."""
+        return next_occurrence(cfg.get("schedule_events", []), self._now_local())
 
     def _minutes_until_next_comfort(self, cfg: dict) -> int | None:
         """Minuten bis zur nächsten Komfortphase – None wenn bereits aktiv."""
@@ -2050,15 +2055,45 @@ class ThermoSmartCoordinator(
         if mode == HEATING_MODE_AUTO:
             weather_offset = self.weather_engine.compute_temperature_offset(weather_data)
 
+        # ── Preheat target and timing ─────────────────────────────────────────
+        # A flexible schedule event owns its preheat decision.  The legacy
+        # comfort transition remains available only for installations that
+        # still use the old four-time-field configuration.
+        next_occurrence = (
+            self._next_schedule_occurrence(cfg)
+            if "schedule_events" in cfg
+            else None
+        )
+        if "schedule_events" in cfg:
+            next_event = next_occurrence.event if next_occurrence else None
+            next_event_target = (
+                resolve_target(next_event.target, cfg) if next_event else None
+            )
+            preheat_target = next_event_target
+            preheat_eligible = bool(
+                next_event
+                and next_event.preheat
+                and next_event_target is not None
+                and next_event_target > base_target
+            )
+        else:
+            next_event = None
+            next_event_target = comfort_temp
+            preheat_target = comfort_temp
+            preheat_eligible = mode == HEATING_MODE_AUTO and base_target < comfort_temp
+
         # ── Preheat duration: Learning is the sole adaptive source ────────────
         # LE v1 is NEVER read for preheat; the frozen LE v1 store is historical.
         # When Learning has no evidence, or Learning Mode is OFF, the deterministic
         # baseline is used. Learning OFF → no adaptive preheat, no onset delay.
         # Onset delay is separate from HeatRate learning (never folded in).
         from .learning.runtime.ha_integration import LearningShadowController
+        preheat_measurement_target = (
+            preheat_target if preheat_target is not None else comfort_temp
+        )
         if _learning_mode_on and self._learning_shadow is not None:
             preheat_minutes, preheat_status = self._learning_shadow.read_preheat_minutes_safe(
-                current_temp, comfort_temp,
+                current_temp, preheat_measurement_target,
                 outdoor_temp=weather_data.get("temperature") if weather_data else None,
             )
             _onset_delay_min, _onset_delay_status = self._learning_shadow.read_onset_delay_safe()
@@ -2066,7 +2101,7 @@ class ThermoSmartCoordinator(
             # No shadow: deterministic baseline (1.5 °C/h prior; onset prior 5 min).
             preheat_minutes, preheat_status = (
                 LearningShadowController.compute_deterministic_preheat_baseline(
-                    current_temp, comfort_temp
+                    current_temp, preheat_measurement_target
                 )
             )
             _onset_delay_min = LearningShadowController._ONSET_DELAY_PRIOR_MIN
@@ -2074,27 +2109,25 @@ class ThermoSmartCoordinator(
 
         preheat_active = False
         if (
-            mode == HEATING_MODE_AUTO
-            and self._scheduling_active(now)
+            self._scheduling_active(now)
             and preheat_minutes > 0
-            and base_target < comfort_temp
+            and preheat_eligible
+            and not window_open
+            and self._override is None
+            and mode not in (HEATING_MODE_AWAY, HEATING_MODE_VACATION)
+            and not self._is_summer
         ):
-            next_event = self._minutes_until_next_event(cfg)
             if "schedule_events" in cfg:
-                mins_until = next_event[0] if next_event else None
-                preheat_target = (
-                    resolve_target(next_event[1].target, cfg) if next_event else comfort_temp
-                )
-                should_preheat = bool(next_event and next_event[1].preheat)
+                mins_until = next_occurrence.minutes_until if next_occurrence else None
+                should_preheat = True
             else:
                 mins_until = self._minutes_until_next_comfort(cfg)
-                preheat_target = comfort_temp
                 should_preheat = True
             if should_preheat and mins_until is not None and 0 < mins_until <= preheat_minutes:
                 base_target = preheat_target
                 preheat_active = True
                 _LOGGER.debug(
-                    "ThermoSmart '%s': Vorheizen – %d min bis Komfortphase, %.1f min Aufheizzeit [%s]",
+                    "ThermoSmart '%s': Vorheizen – %d min bis schedule event, %.1f min Aufheizzeit [%s]",
                     self.zone_name, mins_until, preheat_minutes, preheat_status,
                 )
 
@@ -2395,6 +2428,49 @@ class ThermoSmartCoordinator(
         else:
             suppression_pct = 0
 
+        next_schedule_event_at = (
+            next_occurrence.at if next_occurrence is not None else None
+        )
+        planned_preheat_start_at = None
+        if (
+            next_occurrence is not None
+            and preheat_eligible
+            and preheat_minutes > 0
+            and self._scheduling_active(now)
+            and preheat_target is not None
+            and not window_open
+            and self._override is None
+            and mode not in (HEATING_MODE_AWAY, HEATING_MODE_VACATION)
+            and not self._is_summer
+        ):
+            planned_preheat_start_at = (
+                next_occurrence.at - timedelta(minutes=preheat_minutes)
+            )
+        if next_occurrence is None:
+            preheat_state = "no_event"
+            preheat_suppression_reason = "no_next_event"
+        elif not self._scheduling_active(now):
+            preheat_state = "disabled"
+            preheat_suppression_reason = "scheduling_disabled"
+        elif window_open:
+            preheat_state = "suppressed"
+            preheat_suppression_reason = "window_open"
+        elif self._override is not None:
+            preheat_state = "suppressed"
+            preheat_suppression_reason = "manual_override"
+        elif mode in (HEATING_MODE_AWAY, HEATING_MODE_VACATION) or self._is_summer:
+            preheat_state = "suppressed"
+            preheat_suppression_reason = "higher_priority_hold"
+        elif not preheat_eligible:
+            preheat_state = "not_eligible"
+            preheat_suppression_reason = "event_not_target_increase"
+        elif preheat_active:
+            preheat_state = "active"
+            preheat_suppression_reason = None
+        else:
+            preheat_state = "scheduled"
+            preheat_suppression_reason = "outside_preheat_window"
+
         # Learning progress from real per-zone model updates (display value, 0.0–1.0).
         # Uses learning_progress_safe() so the value matches ThermoSmartConfidenceSensor.
         # Guarded: a learning failure must never become a heating failure -> neutral 0.0.
@@ -2422,6 +2498,25 @@ class ThermoSmartCoordinator(
                 active_schedule_event.preheat if active_schedule_event else False
             ),
             "schedule_active": self._scheduling_active(now),
+            "next_schedule_event": (
+                next_occurrence.event.key if next_occurrence is not None else None
+            ),
+            "next_schedule_event_at": next_schedule_event_at,
+            "next_schedule_minutes": (
+                next_occurrence.minutes_until if next_occurrence is not None else None
+            ),
+            "next_schedule_target": (
+                next_occurrence.event.target if next_occurrence is not None else None
+            ),
+            "next_schedule_target_temperature": (
+                next_event_target if next_occurrence is not None else None
+            ),
+            "next_schedule_preheat": (
+                next_occurrence.event.preheat if next_occurrence is not None else False
+            ),
+            "preheat_start_at": planned_preheat_start_at,
+            "preheat_state": preheat_state,
+            "preheat_suppression_reason": preheat_suppression_reason,
             "weather_offset": weather_offset,
             "adjusted_target": adjusted_target,    # display value – no offsets
             "effective_target": effective_target,  # internal value – weather + suppression

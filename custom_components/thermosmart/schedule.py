@@ -5,7 +5,7 @@ import os
 import re
 import unicodedata
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 import yaml
@@ -44,6 +44,15 @@ class ScheduleEvent:
     @property
     def key(self) -> str:
         return f"{','.join(_DAY_NAMES[d] for d in self.days)}@{self.minute:04d}#{self.order}"
+
+
+@dataclass(frozen=True, slots=True)
+class ScheduleOccurrence:
+    """A concrete occurrence of a recurring schedule event."""
+
+    event: ScheduleEvent
+    at: datetime
+    minutes_until: int
 
 
 class ScheduleError(ValueError):
@@ -145,6 +154,46 @@ def resolve_event(events: list[ScheduleEvent], now: datetime) -> ScheduleEvent |
     if not prior:
         return max(candidates, key=lambda item: (item[0], item[1].order))[1]
     return max(prior, key=lambda item: (item[0], item[1].order))[1]
+
+
+def next_occurrence(
+    events: list[ScheduleEvent], now: datetime
+) -> ScheduleOccurrence | None:
+    """Return the next concrete occurrence after ``now``.
+
+    Occurrences at the same weekday/time retain the existing last-configured
+    event precedence. ``now`` is expected to use the local timezone used by the
+    schedule configuration.
+    """
+    candidates: list[tuple[timedelta, ScheduleEvent, datetime]] = []
+    for day_offset in range(8):
+        date = (now + timedelta(days=day_offset)).date()
+        weekday = date.weekday()
+        for event in events:
+            if weekday not in event.days:
+                continue
+            occurrence = now.replace(
+                year=date.year,
+                month=date.month,
+                day=date.day,
+                hour=event.minute // 60,
+                minute=event.minute % 60,
+                second=0,
+                microsecond=0,
+            )
+            delta = occurrence - now
+            if delta.total_seconds() > 0:
+                candidates.append((delta, event, occurrence))
+    if not candidates:
+        return None
+    delta, event, occurrence = min(
+        candidates, key=lambda item: (item[0], -item[1].order)
+    )
+    return ScheduleOccurrence(
+        event=event,
+        at=occurrence,
+        minutes_until=max(1, int((delta.total_seconds() + 59) // 60)),
+    )
 
 
 def resolve_target(target: float | str, cfg: dict) -> float:

@@ -121,8 +121,11 @@ zones:
 `days` accepts `mon` through `sun`, `time` is local `HH:MM`, and `target` is a
 number from 4 to 35°C or one of `comfort`, `night`/`sleep`, `eco`, `away`, or
 `vacation`. Duplicate day/time entries are allowed; the last configured entry
-wins. The `preheat` flag is stored per event for forward compatibility. General
-per-event pre-heating is not enabled yet.
+wins. The The `preheat` flag enables automatic pre-heating for that event when its target
+is higher than the currently active scheduled target. It works for both numeric
+targets and named presets. The calculated lead time is exposed through
+`sensor.*_preheat_minutes`; the next event and planned pre-heating start are
+exposed through the dedicated timestamp sensors listed below.
 
 Scheduling can be paused temporarily with the zone's **Scheduling Disabled
 Until** date/time entity, which provides Home Assistant's native date/time
@@ -162,6 +165,8 @@ date/time entity.
 | `sensor.*_confidence` | Learning progress 0–100 % |
 | `sensor.*_adjusted_target` | Configured target temperature (schedule or mode) |
 | `sensor.*_preheat_minutes` | Calculated preheat lead time in minutes |
+| `sensor.*_next_schedule_event` | Next scheduled event timestamp and target details |
+| `sensor.*_preheat_start` | Planned preheat start timestamp and current preheat state |
 
 Additional diagnostic sensors (disabled by default): TRV setpoint · TPI duty-cycle · Weather offset · Temperature slope · Heat loss · Heating power · Outcome score · Solar gain · TRV observations · Window cooling rate · EMA temperature
 

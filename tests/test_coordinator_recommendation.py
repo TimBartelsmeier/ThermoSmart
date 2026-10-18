@@ -9,6 +9,7 @@ executes all async test functions automatically.
 """
 from __future__ import annotations
 
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
 from custom_components.thermosmart.const import (
@@ -23,6 +24,7 @@ from custom_components.thermosmart.const import (
 )
 
 from tests.helpers import make_coordinator, make_state, make_weather_data, set_hass_states
+from custom_components.thermosmart.schedule import parse_events
 
 # Shared zone config used across most tests
 _CFG = {
@@ -290,6 +292,50 @@ class TestRecommendationPreheat:
             result = await coord._compute_recommendation(_CFG, _WEATHER, HEATING_MODE_AUTO)
         assert result["preheat_active"] is True
         assert result["base_target"] == _CFG["comfort_temp"]
+
+    async def test_flagged_event_preheats_target_increase_without_auto_mode(self):
+        coord = make_coordinator()
+        set_hass_states(coord, {"sensor.test_temp": make_state("18.0")})
+        coord._schedule_target = 18.0
+        coord._now_local = lambda: datetime(2026, 10, 19, 5, 30)
+        cfg = {
+            **_CFG,
+            "schedule_events": parse_events([{
+                "days": ["mon"],
+                "time": "06:00",
+                "target": 21,
+                "preheat": True,
+            }]),
+        }
+
+        result = await coord._compute_recommendation(cfg, _WEATHER, HEATING_MODE_NIGHT)
+
+        assert result["preheat_active"] is True
+        assert result["base_target"] == 21.0
+        assert result["next_schedule_target_temperature"] == 21.0
+        assert result["next_schedule_preheat"] is True
+        assert result["preheat_state"] == "active"
+
+    async def test_unflagged_event_does_not_preheat_target_increase(self):
+        coord = make_coordinator()
+        set_hass_states(coord, {"sensor.test_temp": make_state("18.0")})
+        coord._schedule_target = 18.0
+        coord._now_local = lambda: datetime(2026, 10, 19, 5, 30)
+        cfg = {
+            **_CFG,
+            "schedule_events": parse_events([{
+                "days": ["mon"],
+                "time": "06:00",
+                "target": 21,
+                "preheat": False,
+            }]),
+        }
+
+        result = await coord._compute_recommendation(cfg, _WEATHER, HEATING_MODE_NIGHT)
+
+        assert result["preheat_active"] is False
+        assert result["base_target"] == 18.0
+        assert result["preheat_state"] == "not_eligible"
 
 
 # pytest.approx shortcut for concise assertions

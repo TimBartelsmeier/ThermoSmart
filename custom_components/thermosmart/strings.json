@@ -263,6 +263,12 @@
       "preheat_minutes": {
         "name": "Preheat time"
       },
+      "next_schedule_event": {
+        "name": "Next scheduled event"
+      },
+      "preheat_start": {
+        "name": "Preheat start"
+      },
       "confidence": {
         "name": "Learning progress"
       },

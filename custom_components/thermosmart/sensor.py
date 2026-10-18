@@ -29,6 +29,8 @@ async def async_setup_entry(
         ThermoSmartTRVSetpointSensor(coordinator, entry),
         ThermoSmartTpiSensor(coordinator, entry),
         ThermoSmartPreheatSensor(coordinator, entry),
+        ThermoSmartNextScheduleEventSensor(coordinator, entry),
+        ThermoSmartPreheatStartSensor(coordinator, entry),
         ThermoSmartConfidenceSensor(coordinator, entry),
         ThermoSmartWeatherOffsetSensor(coordinator, entry),
         ThermoSmartStatusSensor(coordinator, entry),
@@ -153,6 +155,61 @@ class ThermoSmartPreheatSensor(_Base):
     @property
     def native_value(self):
         return self._zone.get("preheat_minutes", 0)
+
+
+class ThermoSmartNextScheduleEventSensor(_Base):
+    """Timestamp and details for the next configured schedule event."""
+
+    _attr_entity_registry_enabled_default = True
+    _attr_translation_key = "next_schedule_event"
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry, "next_schedule_event")
+        self._attr_unique_id = f"{entry.entry_id}_next_schedule_event"
+        self._attr_device_class = SensorDeviceClass.TIMESTAMP
+        self._attr_icon = "mdi:calendar-clock"
+
+    @property
+    def native_value(self):
+        return self._zone.get("next_schedule_event_at")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        z = self._zone
+        return {
+            "event_key": z.get("next_schedule_event"),
+            "minutes_until": z.get("next_schedule_minutes"),
+            "target": z.get("next_schedule_target"),
+            "target_temperature": z.get("next_schedule_target_temperature"),
+            "preheat": z.get("next_schedule_preheat", False),
+        }
+
+
+class ThermoSmartPreheatStartSensor(_Base):
+    """Planned preheat start and current event-driven preheat state."""
+
+    _attr_entity_registry_enabled_default = True
+    _attr_translation_key = "preheat_start"
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry, "preheat_start")
+        self._attr_unique_id = f"{entry.entry_id}_preheat_start"
+        self._attr_device_class = SensorDeviceClass.TIMESTAMP
+        self._attr_icon = ICON_PREHEAT
+
+    @property
+    def native_value(self):
+        return self._zone.get("preheat_start_at")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        z = self._zone
+        return {
+            "event_at": z.get("next_schedule_event_at"),
+            "duration_minutes": z.get("preheat_minutes", 0),
+            "state": z.get("preheat_state"),
+            "suppression_reason": z.get("preheat_suppression_reason"),
+        }
 
 
 class ThermoSmartConfidenceSensor(_Base):

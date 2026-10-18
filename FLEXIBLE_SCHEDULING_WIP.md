@@ -23,6 +23,10 @@ As mentioned above, the nature of the features differs significantly and there m
 Done. Scheduling now happens via "change events". The user can define these events in a yaml file. An event is set for a specific time of day on specific days of the week. When the event is fired, the target temperature is changed to a defined numeric value; or a preset is applied (which in turn also changes the target temperature). The user can enable or disable schedulin (i.e. whether events are fired or skipped) with a toggle, or they can temporarily disable it be selecting a datetime.
 
 ### Automatic pre-heating before a schedule event
+Implementation complete on the flexible-scheduling branch. Per-event
+pre-heating is now event-driven and no longer depends on the legacy `auto`
+state. Dedicated sensors expose the next event and planned pre-heating start.
+
 The user can specify whether pre-heating should be enabled for an event, i.e. whether the target temperature is switched _at_ that time (pre-heating disabled) or whether the coordinator should try and start heating early so that the temperature is reached at the specified time.
 
 The configuration is adapted already, left to do is the implementation. So far, pre-heating is tied to the "auto" state, so for implementation the current logic must be "extracted" from this and modified so that it can be applied to any event.
