@@ -29,22 +29,14 @@
           "calibration_invert": "Invert calibration offset (for TRVs like ME167 that reverse the sign)"
         },
         "data_description": {
-          "name": "The YAML schedule key will be: {zone_key}",
           "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active.",
           "manage_temp_source": "ThermoSmart continues to use external temperature sensors for its own control logic. When enabled, ThermoSmart also switches supported TRVs to their external temperature source and falls back to the internal TRV sensor if external sensors become unavailable.",
           "calibration_invert": "Inverts the calibration offset sign for specific TRV models whose offset direction differs from the standard behavior. Only enable this if required by your device."
         }
       },
-      "zone_key": {
-        "title": "Schedule YAML key",
-        "description": "This zone uses the YAML key `{zone_key}`.\n\n{duplicate_warning}\n\n{existing_warning}",
-        "data": {
-          "continue": "I understand; continue"
-        }
-      },
       "schedule": {
         "title": "Step 2 / 4 – Temperatures & Schedule",
-        "description": "Daily flow: Night → Comfort → Night\n\nWhen all persons are away, ThermoSmart automatically switches to the away temperature – regardless of the schedule.",
+        "description": "Daily flow: Night → Comfort → Night\n\nWhen all persons are away, ThermoSmart automatically switches to the away temperature – regardless of the schedule.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Comfort temperature (when someone is home)",
           "night_temp": "Night temperature (setback during sleep)",
@@ -134,17 +126,9 @@
           "calibration_invert": "Invert calibration offset (ME167 and similar)"
         },
         "data_description": {
-          "name": "The YAML schedule key will be: {zone_key}",
           "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active.",
           "manage_temp_source": "ThermoSmart continues to use external temperature sensors for its own control logic. When enabled, ThermoSmart also switches supported TRVs to their external temperature source and falls back to the internal TRV sensor if external sensors become unavailable.",
           "calibration_invert": "Inverts the calibration offset sign for specific TRV models whose offset direction differs from the standard behavior. Only enable this if required by your device."
-        }
-      },
-      "zone_key": {
-        "title": "Schedule YAML key",
-        "description": "This zone uses the YAML key `{zone_key}`.\n\n{duplicate_warning}\n\n{existing_warning}",
-        "data": {
-          "continue": "I understand; continue"
         }
       },
       "schedule": {

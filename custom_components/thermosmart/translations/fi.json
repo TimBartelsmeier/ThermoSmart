@@ -36,7 +36,7 @@
       },
       "schedule": {
         "title": "Vaihe 2 / 4 – Lämpötilat ja aikataulu",
-        "description": "Päivittäinen kulku: Yö → Mukavuus → Yö\n\nKun kaikki henkilöt ovat poissa, ThermoSmart vaihtaa automaattisesti poissaololämpötilaan – aikataulusta riippumatta.",
+        "description": "Päivittäinen kulku: Yö → Mukavuus → Yö\n\nKun kaikki henkilöt ovat poissa, ThermoSmart vaihtaa automaattisesti poissaololämpötilaan – aikataulusta riippumatta.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Mukavuuslämpötila (kun joku on kotona)",
           "night_temp": "Yölämpötila (alennus unen aikana)",

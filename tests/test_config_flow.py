@@ -92,7 +92,6 @@ async def _navigate_to_weather(hass) -> dict:
             result["flow_id"], {"next_step_id": "add_zone"}
         )
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICES)
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _PRESENCE)
     return result
@@ -237,7 +236,6 @@ class TestNoGlobalLearningStep:
             result["flow_id"], {"next_step_id": "add_zone"}
         )
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICES)
-        result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
 
         assert result["step_id"] == "presence"
@@ -283,14 +281,14 @@ class TestZoneFlowNavigation:
             result["flow_id"], {"next_step_id": "add_zone"}
         )
 
-        assert "description_placeholders" not in result
+        assert not result.get("description_placeholders")
 
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {**_DEVICES, "name": "Living Room"}
         )
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "zone_key"
-        assert result["description_placeholders"]["zone_key"] == "living_room"
+        assert result["step_id"] == "schedule"
+        assert "`living_room`" in result["description_placeholders"]["zone_key_info"]
 
     async def test_zone_flow_completes_and_creates_entry(self, hass, enable_custom_integrations):
         """Full 4-step happy path creates an entry with correct title and data."""
@@ -371,13 +369,13 @@ class TestZoneFlowDeviceValidation:
         assert result["type"] == FlowResultType.FORM
         assert result["errors"].get("climate_entities") == "required"
 
-    async def test_valid_devices_advances_to_zone_key(self, hass, enable_custom_integrations):
+    async def test_valid_devices_advances_to_schedule(self, hass, enable_custom_integrations):
         result = await self._to_add_zone(hass)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], _DEVICES
         )
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "zone_key"
+        assert result["step_id"] == "schedule"
 
 
 # ── Zone Flow – schedule step validation ──────────────────────────────────────
@@ -390,8 +388,7 @@ class TestZoneFlowScheduleValidation:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"next_step_id": "add_zone"}
         )
-        result = await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICES)
-        return await hass.config_entries.flow.async_configure(result["flow_id"], {})
+        return await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICES)
 
     async def test_night_above_comfort_shows_error(self, hass, enable_custom_integrations):
         result = await self._to_schedule(hass)

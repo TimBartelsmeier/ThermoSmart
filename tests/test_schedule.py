@@ -165,3 +165,16 @@ async def test_schedule_zone_warnings_report_duplicate_and_unused_yaml_zone(monk
         object(), [], "Living Room", current_entry_id="new"
     )
     assert warnings == ("existing:living_room",)
+
+
+def test_zone_key_info_describes_key_and_warnings():
+    from custom_components.thermosmart.config_flow import _zone_key_info
+
+    plain = _zone_key_info("Living Room", ())
+    assert "`living_room`" in plain and "⚠️" not in plain
+
+    warned = _zone_key_info(
+        "Living Room", ("duplicate:living_room:Lounge", "existing:living_room")
+    )
+    assert "Lounge" in warned
+    assert warned.count("⚠️") == 2

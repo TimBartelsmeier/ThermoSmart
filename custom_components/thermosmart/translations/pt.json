@@ -36,7 +36,7 @@
       },
       "schedule": {
         "title": "Passo 2 / 4 – Temperaturas e horário",
-        "description": "Fluxo diário: Noite → Conforto → Noite\n\nQuando todas as pessoas estão ausentes, o ThermoSmart muda automaticamente para a temperatura de ausência, independentemente do horário.",
+        "description": "Fluxo diário: Noite → Conforto → Noite\n\nQuando todas as pessoas estão ausentes, o ThermoSmart muda automaticamente para a temperatura de ausência, independentemente do horário.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Temperatura de conforto (quando alguém está em casa)",
           "night_temp": "Temperatura noturna (redução durante o sono)",

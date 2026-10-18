@@ -36,7 +36,7 @@
       },
       "schedule": {
         "title": "Pas 2 / 4 – Temperatures i horari",
-        "description": "Flux diari: Nit → Confort → Nit\n\nQuan totes les persones estan absents, ThermoSmart canvia automàticament a la temperatura d'absència, independentment de l'horari.",
+        "description": "Flux diari: Nit → Confort → Nit\n\nQuan totes les persones estan absents, ThermoSmart canvia automàticament a la temperatura d'absència, independentment de l'horari.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Temperatura de confort (quan hi ha algú a casa)",
           "night_temp": "Temperatura nocturna (reducció durant el son)",

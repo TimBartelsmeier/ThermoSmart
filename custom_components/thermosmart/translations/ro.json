@@ -36,7 +36,7 @@
       },
       "schedule": {
         "title": "Pasul 2 / 4 – Temperaturi și program",
-        "description": "Flux zilnic: Noapte → Confort → Noapte\n\nCând toate persoanele sunt absente, ThermoSmart trece automat la temperatura de absență – indiferent de program.",
+        "description": "Flux zilnic: Noapte → Confort → Noapte\n\nCând toate persoanele sunt absente, ThermoSmart trece automat la temperatura de absență – indiferent de program.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Temperatură de confort (când cineva este acasă)",
           "night_temp": "Temperatură de noapte (reducere în timpul somnului)",

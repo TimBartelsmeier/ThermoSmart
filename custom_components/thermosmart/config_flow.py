@@ -117,26 +117,26 @@ def _schema_devices(d: dict) -> vol.Schema:
     })
 
 
-def _zone_key_step_placeholders(
-    name: str, warnings: tuple[str, ...]
-) -> dict[str, str]:
+def _zone_key_info(name: str, warnings: tuple[str, ...]) -> str:
+    """Markdown paragraph about the zone's schedule YAML key and related warnings."""
     key = zone_key(name.strip())
-    duplicate = next((warning for warning in warnings if warning.startswith("duplicate:")), None)
-    existing = any(warning.startswith("existing:") for warning in warnings)
-    duplicate_names = duplicate.split(":", 2)[2] if duplicate else ""
-    return {
-        "zone_key": key,
-        "duplicate_warning": (
-            f"Warning: this key is also used by {duplicate_names}. "
-            "Both zones will follow the schedule under this key."
-            if duplicate_names else ""
-        ),
-        "existing_warning": (
-            "Warning: a schedule already exists under this key but is not "
-            "currently associated with an active zone. The new zone will use it."
-            if existing else ""
-        ),
-    }
+    paragraphs = [
+        f"Schedule YAML key: `{key}`. Events for this zone are defined under "
+        f"`zones.{key}` in `thermosmart_schedules.yaml`."
+    ]
+    for warning in warnings:
+        if warning.startswith("duplicate:"):
+            names = warning.split(":", 2)[2]
+            paragraphs.append(
+                f"⚠️ This key is already used by another zone ({names}). "
+                "Both zones will follow the same schedule."
+            )
+        elif warning.startswith("existing:"):
+            paragraphs.append(
+                "⚠️ A schedule for this key already exists in the YAML file "
+                "and will be used by this zone."
+            )
+    return "\n\n".join(paragraphs)
 
 
 def _schema_schedule(d: dict) -> vol.Schema:
@@ -260,30 +260,12 @@ class ThermoSmartConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["climate_entities"] = "required"
             else:
                 self._data.update(user_input)
-                return await self.async_step_zone_key()
+                return await self.async_step_schedule()
 
         return self.async_show_form(
             step_id="add_zone",
             data_schema=_schema_devices(self._data),
             errors=errors,
-        )
-
-    async def async_step_zone_key(self, user_input: dict | None = None):
-        if user_input is not None:
-            return await self.async_step_schedule()
-        warnings = await async_schedule_zone_warnings(
-            self.hass,
-            self.hass.config_entries.async_entries(DOMAIN),
-            str(self._data.get("name", "")),
-        )
-        return self.async_show_form(
-            step_id="zone_key",
-            data_schema=vol.Schema({
-                vol.Required("continue", default=True): selector.BooleanSelector(),
-            }),
-            description_placeholders=_zone_key_step_placeholders(
-                str(self._data.get("name", "")), warnings
-            ),
         )
 
     async def async_step_schedule(self, user_input: dict | None = None):
@@ -294,10 +276,18 @@ class ThermoSmartConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._data.update(user_input)
                 return await self.async_step_presence()
 
+        warnings = await async_schedule_zone_warnings(
+            self.hass,
+            self.hass.config_entries.async_entries(DOMAIN),
+            str(self._data.get("name", "")),
+        )
         return self.async_show_form(
             step_id="schedule",
             data_schema=_schema_schedule(self._data),
             errors=errors,
+            description_placeholders={
+                "zone_key_info": _zone_key_info(str(self._data.get("name", "")), warnings)
+            },
         )
 
     async def async_step_presence(self, user_input: dict | None = None):
@@ -387,32 +377,11 @@ class ThermoSmartOptionsFlow(config_entries.OptionsFlow):
             elif not user_input.get("climate_entities"):
                 errors["climate_entities"] = "required"
             else:
-                self._pending_devices = {**current, **user_input}
-                return await self.async_step_zone_key()
+                return self.async_create_entry(title="", data={**current, **user_input})
         return self.async_show_form(
             step_id="devices",
             data_schema=_schema_devices(current),
             errors=errors,
-        )
-
-    async def async_step_zone_key(self, user_input: dict | None = None):
-        current = getattr(self, "_pending_devices", self._current())
-        if user_input is not None:
-            return self.async_create_entry(title="", data=current)
-        warnings = await async_schedule_zone_warnings(
-            self.hass,
-            self.hass.config_entries.async_entries(DOMAIN),
-            str(current.get("name", "")),
-            current_entry_id=self.config_entry.entry_id,
-        )
-        return self.async_show_form(
-            step_id="zone_key",
-            data_schema=vol.Schema({
-                vol.Required("continue", default=True): selector.BooleanSelector(),
-            }),
-            description_placeholders=_zone_key_step_placeholders(
-                str(current.get("name", "")), warnings
-            ),
         )
 
     async def async_step_schedule(self, user_input: dict | None = None):

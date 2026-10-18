@@ -36,7 +36,7 @@
       },
       "schedule": {
         "title": "Étape 2 / 4 – Températures & Horaires",
-        "description": "Déroulement journalier : Nuit → Confort → Nuit\n\nQuand toutes les personnes sont absentes, ThermoSmart bascule automatiquement en température d'absence – indépendamment du planning.",
+        "description": "Déroulement journalier : Nuit → Confort → Nuit\n\nQuand toutes les personnes sont absentes, ThermoSmart bascule automatiquement en température d'absence – indépendamment du planning.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Température de confort (quand quelqu'un est à la maison)",
           "night_temp": "Température de nuit (réduction pendant le sommeil)",

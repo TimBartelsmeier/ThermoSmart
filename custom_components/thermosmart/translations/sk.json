@@ -36,7 +36,7 @@
       },
       "schedule": {
         "title": "Krok 2 / 4 – Teploty a plán",
-        "description": "Denný priebeh: Noc → Komfort → Noc\n\nKeď sú všetky osoby preč, ThermoSmart automaticky prepne na teplotu neprítomnosti – bez ohľadu na plán.",
+        "description": "Denný priebeh: Noc → Komfort → Noc\n\nKeď sú všetky osoby preč, ThermoSmart automaticky prepne na teplotu neprítomnosti – bez ohľadu na plán.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Komfortná teplota (keď je niekto doma)",
           "night_temp": "Nočná teplota (zníženie počas spánku)",

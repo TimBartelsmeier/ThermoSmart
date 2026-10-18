@@ -36,7 +36,7 @@
       },
       "schedule": {
         "title": "Adım 2 / 4 – Sıcaklıklar ve program",
-        "description": "Günlük akış: Gece → Konfor → Gece\n\nTüm kişiler uzakta olduğunda, ThermoSmart programdan bağımsız olarak otomatik olarak uzakta sıcaklığına geçer.",
+        "description": "Günlük akış: Gece → Konfor → Gece\n\nTüm kişiler uzakta olduğunda, ThermoSmart programdan bağımsız olarak otomatik olarak uzakta sıcaklığına geçer.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Konfor sıcaklığı (biri evdeyken)",
           "night_temp": "Gece sıcaklığı (uyku sırasında azaltma)",

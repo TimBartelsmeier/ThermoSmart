@@ -36,7 +36,7 @@
       },
       "schedule": {
         "title": "第 2 步 / 4 – 温度和计划",
-        "description": "每日流程：夜间 → 舒适 → 夜间\n\n当所有人员离开时，ThermoSmart 会自动切换到离家温度——与计划无关。",
+        "description": "每日流程：夜间 → 舒适 → 夜间\n\n当所有人员离开时，ThermoSmart 会自动切换到离家温度——与计划无关。\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "舒适温度（有人在家时）",
           "night_temp": "夜间温度（睡眠期间降低）",

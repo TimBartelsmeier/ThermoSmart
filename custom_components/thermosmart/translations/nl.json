@@ -36,7 +36,7 @@
       },
       "schedule": {
         "title": "Stap 2 / 4 – Temperaturen & Schema",
-        "description": "Dagverloop: Nacht → Comfort → Nacht\n\nAls alle personen afwezig zijn, schakelt ThermoSmart automatisch naar de afwezigheidstemperatuur – ongeacht het schema.",
+        "description": "Dagverloop: Nacht → Comfort → Nacht\n\nAls alle personen afwezig zijn, schakelt ThermoSmart automatisch naar de afwezigheidstemperatuur – ongeacht het schema.\n\n{zone_key_info}",
         "data": {
           "comfort_temp": "Comforttemperatuur (als iemand thuis is)",
           "night_temp": "Nachttemperatuur (verlaging tijdens slaap)",
