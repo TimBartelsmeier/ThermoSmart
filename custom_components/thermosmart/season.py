@@ -63,6 +63,7 @@ class SeasonMixin:
         task_ids: list[str] = []
 
         for entity_id in cfg.get("climate_entities", []):
+            await self._async_enforce_device_state_settings(entity_id, cfg)
             state = self.hass.states.get(entity_id)
             if not state or state.state in ("unavailable", "unknown"):
                 continue
@@ -70,6 +71,7 @@ class SeasonMixin:
             if current_setpoint is not None and abs(current_setpoint - TEMP_FROST_PROTECTION) < 0.5:
                 continue
             self._last_written_setpoints[entity_id] = TEMP_FROST_PROTECTION
+            self._mark_trv_write(entity_id, cfg)
             tasks.append(self.hass.services.async_call(
                 "climate", "set_temperature",
                 {"entity_id": entity_id,

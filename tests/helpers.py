@@ -84,7 +84,6 @@ def make_zone_config(**overrides) -> dict:
         "window_open_delay": 5,
         "window_close_delay": 2,
         "valve_maintenance": True,
-        "manage_temp_source": False,
         "calibration_invert": False,
     }
     defaults.update(overrides)

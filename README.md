@@ -81,7 +81,7 @@ Add **ThermoSmart System** first (Summer mode select + Vacation switch), then ad
 
 | Step | Fields |
 |---|---|
-| **1 – Devices** | Zone name · TRVs · Temperature sensors *(optional)* · Humidity sensors · Window / door sensors · Window delays · Valve maintenance · Calibration invert |
+| **1 – Devices** | Zone name · TRVs · Temperature sensors *(optional)* · Humidity sensors · Window / door sensors · Window delays · Valve maintenance |
 | **2 – Temperatures** | Comfort · Night · Away · Vacation · Eco · Tolerance · Weekday/weekend schedule times |
 | **3 – Presence** | Person entities · Home zone · Learning on/off |
 | **4 – Weather** | Weather entity · Outdoor temp/humidity · Wind speed · Solar radiation · Precipitation |
@@ -144,12 +144,12 @@ These devices have a named profile with device-specific handling applied automat
 | Eurotronic Spirit | Zigbee (Z2M / ZHA) | HVAC mode written to `heat` before each setpoint — required for the TRV to accept external setpoints reliably. |
 | Eurotronic SPZB0001 | Zigbee (Z2M / ZHA) | Same HVAC-first setpoint workflow as Eurotronic Spirit. |
 | Avatto ME167 | Zigbee (Z2M) | Calibration offset sign is inverted to match this device's firmware convention. |
-| Eve Thermo (HomeKit / SEA80x) | HomeKit | Valve position exposed as read-only sensor — ThermoSmart reads it for learning but does not write to it. External temperature, temperature source select, and calibration writes are disabled. |
+| Eve Thermo (HomeKit / SEA80x) | HomeKit | Valve position exposed as read-only sensor — ThermoSmart reads it for learning but does not write to it. External temperature and calibration writes are disabled. |
 | Beca BHT-002 | Zigbee (Z2M) | Calibration plausibility limit tightened to ±3 °C to account for known firmware offset behaviour on some revisions. |
 
 ### Prepared profiles — standard behavior
 
-These devices have a named profile. Autodetection of valve, calibration, and quirk entities runs as normal. No device-specific overrides apply beyond what the hardware exposes. Dedicated profiles allow future device-specific optimizations and quirks handling while remaining compatible with generic climate devices.
+These devices have a named profile. Valve, calibration, and quirk entities are detected once when you set up the TRV and pre-filled in its settings. No device-specific overrides apply beyond what the hardware exposes. Dedicated profiles allow future device-specific optimizations and quirks handling while remaining compatible with generic climate devices.
 
 | Device | Protocol |
 |---|---|
@@ -172,7 +172,7 @@ ThermoSmart can observe these devices and record learning data, but active setpo
 
 ### Generic fallback
 
-Any `climate` entity supporting `set_temperature` that does not match a named profile receives the generic fallback profile. Setpoint boost and all auto-detected features (valve, calibration, quirk entities) apply as normal.
+Any `climate` entity supporting `set_temperature` that does not match a named profile receives the generic fallback profile. Setpoint boost and all detected features (valve, calibration) are pre-filled in the TRV settings during setup.
 
 | Profile | Applies to |
 |---|---|
@@ -197,6 +197,12 @@ Any `climate` entity supporting `set_temperature` that does not match a named pr
 **Direct valve control** auto-detects writable `number` entities matching: `pi_heating_demand`, `valve_position`, `heating_demand`, or `level`. Note: `valve_opening_degree` (used on some devices as a max-opening limit, not a live position) is intentionally excluded and not written by ThermoSmart.
 
 **Setpoint boost** converts TPI duty-cycle to `setpoint = target + duty% × 8 °C` via `climate.set_temperature`. Works on all devices; less precise than direct valve control.
+
+**Configurable control strategy** — each zone has a default *Zone control mode* (setpoint only, TPI setpoint modulation, or direct valve control) plus a *minimum control cycle interval*, temperature tolerance and external-temperature write threshold. Every TRV can override the zone mode and has its own valve entity, external-temperature input, calibration (entity, on/off, inversion), valve-maintenance switch and optional *state settings* (`select`, `number` and `switch` entities of the TRV that ThermoSmart keeps at a chosen value, e.g. TRV-internal window detection or child lock switched off; a service is only called when the current value differs). Known devices get these fields pre-filled from a device preset; all values can be changed in the setup and options flows. TRVs in one zone may use different strategies. Detection happens only in the setup/options flow; at runtime ThermoSmart uses exactly what is configured there (a cleared entity field turns that feature off).
+
+**Physical TRV setpoint control** — each TRV can send a physical setpoint adjustment back to its zone (enabled by default). ThermoSmart waits for a configurable debounce period before adopting the last reported value as the zone override, then updates all TRVs according to their configured control strategies. The debounce and post-write settling periods are zone-wide options, both defaulting to 5 seconds. Physical changes are also accepted while a window is open; they update the zone target for when heating resumes while the TRV remains in its configured window-open state.
+
+**Window open behaviour** — by default a TRV is set to the zone's *window open temperature* (default 5 °C) while a window is open. Each TRV can instead be switched to HVAC mode `off` via *Turn off when window is open* (default off; pre-enabled for the SONOFF TRVZB preset, which keeps frost protection active when off). Only enable it if your TRV has frost protection while off. If the TRV has no `off` mode, the window open temperature is used. When the window closes, TRVs that were turned off are set back to `heat`. There is no maximum off duration.
 
 ---
 
@@ -261,7 +267,7 @@ ThermoSmart averages the remaining sensors. Temperature decisions pause only if 
 Learning data is stored locally under Home Assistant's `/config/.storage/` directory. For debugging or support, download ThermoSmart's diagnostics (see below) instead of sharing raw storage files. Do not share or manually edit files under `/config/.storage` unless specifically asked by a maintainer.
 
 **Which TRVs use direct valve control?**  
-ThermoSmart auto-detects a direct-valve entity on each TRV device and writes the TPI duty-cycle (0–100%) to it when one is found. Recognised patterns:
+When setting up a TRV, ThermoSmart pre-fills a detected direct-valve entity; with direct valve control it writes the TPI duty-cycle (0–100%) to it. Recognised patterns:
 
 | Pattern | Example devices |
 |---|---|

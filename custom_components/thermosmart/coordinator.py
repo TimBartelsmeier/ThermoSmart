@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import time
 from collections import deque
 from datetime import datetime, timedelta
 
@@ -19,6 +20,18 @@ from .tpi import compute_tpi, duty_to_setpoint
 from .const import (
     DOMAIN,
     DEFAULT_SCAN_INTERVAL,
+    CONF_CONTROL_INTERVAL,
+    CONF_ZONE_CONTROL_MODE,
+    CONF_DEVICE_SETTINGS,
+    CONF_TRV_SETPOINT_DEBOUNCE,
+    CONF_TRV_SETPOINT_SETTLING,
+    CONF_DEV_ACCEPT_SETPOINT_CHANGES,
+    CONF_DEV_CONTROL_MODE,
+    CONF_DEV_VALVE_ENTITY,
+    CONTROL_MODE_INHERIT,
+    CONTROL_MODE_DIRECT_VALVE,
+    CONTROL_MODE_SETPOINT,
+    CONTROL_MODE_TPI_BOOST,
     CONF_PRESENCE_PERSONS,
     CONF_HOME_ZONE,
     CONF_VACATION_BOOLEAN,
@@ -26,6 +39,7 @@ from .const import (
     CONF_ECO_TEMP,
     NOISE_FILTER_SPIKE_THRESHOLD,
     NOISE_FILTER_EMA_ALPHA,
+    CONF_EXT_TEMP_THRESHOLD,
     TEMP_NIGHT,
     TEMP_ECO,
     TEMP_COMFORT,
@@ -59,10 +73,6 @@ from .trv_control import TRVControlMixin, _DispatchStats
 from .maintenance import MaintenanceMixin
 
 _LOGGER = logging.getLogger(__name__)
-
-# valve_opening_degree recovery is retried across the first N coordinator refreshes
-# to handle slow Zigbee2MQTT startup on full HA restart.
-_VALVE_RESET_MAX_ATTEMPTS = 3
 
 # Learning forecast bias application gates
 _FORECAST_BIAS_MIN_TRUST = 0.35        # minimum trust to apply the °C bias correction
@@ -139,7 +149,9 @@ class ThermoSmartCoordinator(
         super().__init__(
             hass, _LOGGER,
             name=f"{DOMAIN}_{entry.entry_id}",
-            update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
+            update_interval=timedelta(minutes=(
+                {**entry.data, **entry.options}.get(CONF_CONTROL_INTERVAL, 5)
+            )),
         )
         self.entry = entry
         self.weather_engine = weather_engine
@@ -164,6 +176,12 @@ class ThermoSmartCoordinator(
         self._window_delay_cancel: dict[str, Callable[[], None]] = {}
 
         self._last_written_setpoints: dict[str, float] = {}
+        self._trv_write_settle_until: dict[str, float] = {}
+        self._manual_setpoint_cancel: Callable[[], None] | None = None
+        self._pending_manual_setpoint: tuple[str, float] | None = None
+        self._manual_setpoint_generation = 0
+        # TRVs switched to HVAC off because of an open window (restored on close).
+        self._window_off_entities: set[str] = set()
         # Boost tracking per zone (keyed by zone_id; used by TRVControlMixin._apply_temperature).
         # Must be initialized before the first coordinator refresh to avoid AttributeError.
         self._boost_active: dict = {}
@@ -199,14 +217,8 @@ class ThermoSmartCoordinator(
 
         # Kalibrierung (genutzt von TRVControlMixin)
         self._calibration_offsets: dict[str, float] = {}
-        self._auto_quirk_entities: list[str] = []
-        self._auto_calibration_map: dict[str, str] = {}
-        self._auto_ext_temp_map: dict[str, str] = {}
-        self._auto_valve_map: dict[str, str] = {}
-        self._auto_temp_source_map: dict[str, str] = {}
         self._trv_offline: set[str] = set()
-        self._valve_reset_done: bool = False
-        self._valve_reset_attempts: int = 0
+        self._last_logged_control_modes: tuple[str, ...] | None = None
         # Per-entity consecutive setpoint-dispatch-failure counter (Device
         # Compatibility P1) — reset to 0 on any successful dispatch for that
         # entity; drives a single, rate-limited Support Critical Event after
@@ -219,14 +231,11 @@ class ThermoSmartCoordinator(
         # Device profiles — populated by async_detect_device_entities (TRVControlMixin)
         self._device_profiles: dict[str, DeviceProfile] = {}
 
-        # Temperature source management (genutzt von TRVControlMixin)
-        self._temp_source_owned: dict[str, str] = {}   # select_entity_id → "external"
-        self._sensor_unavail_since: datetime | None = None
-        self._temp_source_warn_ts: datetime | None = None
-
         # Sommer (genutzt von SeasonMixin)
         self._outdoor_temp_history: deque = deque(
-            maxlen=int(SEASON_HOURS * 3600 / DEFAULT_SCAN_INTERVAL)
+            maxlen=max(3, int(
+                SEASON_HOURS * 3600 / self.update_interval.total_seconds()
+            ))
         )
         self._is_summer: bool = False
         self._indoor_safety_active: bool = False
@@ -243,10 +252,14 @@ class ThermoSmartCoordinator(
         # Live-Cache für sofortige Card-Aktualisierung (unabhängig vom 5-min-Zyklus)
         self._live_temp: float | None = None
         self._live_humidity: float | None = None
+        # Raw room temperature at the last full cycle; reference for
+        # sensor-triggered refreshes.
+        self._cycle_ref_temp: float | None = None
 
         # Temperatur-Trend
         self._indoor_temp_prev: tuple[datetime, float] | None = None
         self._indoor_temp_slope: float | None = None
+        self._slope_sample_fresh: bool = False
         self._ema_1h: float | None = None
 
         # Slope-basierte Fenstererkennung (genutzt von WindowMixin._check_window_slope)
@@ -588,28 +601,10 @@ class ThermoSmartCoordinator(
                     if trv_t is not None:
                         self._live_temp = trv_t
                         self.async_update_listeners()
-                if not self._active_control:
-                    return
-                # During window-open, the TRV may echo its previous setpoint before
-                # confirming the frost temp — suppress manual-change detection to
-                # prevent ping-pong between frost temp and normal setpoint.
-                if (self.data or {}).get("zone", {}).get("window_open", False):
-                    return
                 entity_id = event.data["entity_id"]
-                new_setpoint = new.attributes.get("temperature")
-                last_written = self._last_written_setpoints.get(entity_id)
-                if new_setpoint is None or last_written is None:
-                    return
-                try:
-                    if abs(float(new_setpoint) - last_written) > 0.4:
-                        _LOGGER.info(
-                            "ThermoSmart '%s': Manuelle TRV-Änderung erkannt %s "
-                            "(%.1f°C statt %.1f°C) – Sofort-Korrektur",
-                            self.zone_name, entity_id, float(new_setpoint), last_written,
-                        )
-                        self.hass.async_create_task(self.async_request_refresh())
-                except (TypeError, ValueError):
-                    pass
+                self._handle_trv_setpoint_change(
+                    entity_id, event.data.get("old_state"), new, cfg
+                )
 
             cancel_trv = async_track_state_change_event(
                 self.hass, list(climate_entities), _handle_trv_change
@@ -630,6 +625,7 @@ class ThermoSmartCoordinator(
                     val = self._read_raw_avg_sensor(list(temp_sensors))
                     if val is not None:
                         self._live_temp = val
+                        self._maybe_refresh_on_temp_change(val, cfg)
                 if humidity_sensors:
                     val = self._read_avg_sensor(list(humidity_sensors))
                     if val is not None:
@@ -653,6 +649,152 @@ class ThermoSmartCoordinator(
         for cancel in self._window_delay_cancel.values():
             cancel()
         self._window_delay_cancel.clear()
+        if self._manual_setpoint_cancel is not None:
+            self._manual_setpoint_cancel()
+            self._manual_setpoint_cancel = None
+        self._pending_manual_setpoint = None
+        self._manual_setpoint_generation += 1
+        self._trv_write_settle_until.clear()
+
+    def _maybe_refresh_on_temp_change(self, raw_temp: float, cfg: dict) -> None:
+        """Trigger a full cycle once the room temperature moved by the threshold.
+
+        The reference is the raw temperature at the last full cycle, so slow drifts
+        accumulate.
+        """
+        ref = self._cycle_ref_temp
+        if ref is None or not self._active_control:
+            return
+        if (
+            self._mode == HEATING_MODE_VACATION
+            or self._is_summer
+            or (self.data or {}).get("presence", {}).get("vacation", False)
+        ):
+            return
+        try:
+            threshold = float(cfg.get(CONF_EXT_TEMP_THRESHOLD, 0.5))
+        except (TypeError, ValueError):
+            threshold = 0.5
+        if abs(raw_temp - ref) < threshold:
+            return
+        _LOGGER.debug(
+            "ThermoSmart '%s': room temperature %.1f°C moved ≥ %.1f°C since last cycle (%.1f°C) – refresh",
+            self.zone_name, raw_temp, threshold, ref,
+        )
+        self.hass.async_create_task(self.async_request_refresh())
+
+    def _mark_trv_write(self, entity_id: str, cfg: dict) -> None:
+        """Suppress device echoes for the configured settling period after a write."""
+        try:
+            settling = max(0.0, float(cfg.get(CONF_TRV_SETPOINT_SETTLING, 5)))
+        except (TypeError, ValueError):
+            settling = 5.0
+        if settling:
+            self._trv_write_settle_until[entity_id] = time.monotonic() + settling
+        else:
+            self._trv_write_settle_until.pop(entity_id, None)
+
+    def _trv_write_is_settling(self, entity_id: str) -> bool:
+        deadline = self._trv_write_settle_until.get(entity_id)
+        if deadline is None:
+            return False
+        if time.monotonic() < deadline:
+            return True
+        self._trv_write_settle_until.pop(entity_id, None)
+        return False
+
+    def _manual_setpoint_is_pending(self, entity_id: str) -> bool:
+        return (
+            self._pending_manual_setpoint is not None
+            and self._pending_manual_setpoint[0] == entity_id
+        )
+
+    def _handle_trv_setpoint_change(
+        self, entity_id: str, old_state, new_state, cfg: dict
+    ) -> None:
+        """Adopt physical TRV setpoint changes after debounce, or correct them."""
+        if (
+            not self._active_control
+            or self._mode == HEATING_MODE_VACATION
+            or self._is_summer
+            or (self.data or {}).get("presence", {}).get("vacation", False)
+        ):
+            return
+        if old_state is None or old_state.state in ("unknown", "unavailable"):
+            return
+        old_raw = old_state.attributes.get("temperature")
+        new_raw = new_state.attributes.get("temperature")
+        if old_raw is None or new_raw is None:
+            if old_raw != new_raw:
+                _LOGGER.debug(
+                    "ThermoSmart '%s': ignoring %s state change (%s → %s): setpoint "
+                    "attribute missing (old=%s, new=%s)",
+                    self.zone_name, entity_id, old_state.state, new_state.state,
+                    old_raw, new_raw,
+                )
+            return
+        if self._trv_write_is_settling(entity_id):
+            _LOGGER.debug(
+                "ThermoSmart '%s': ignoring %s setpoint change %s → %s (settling after own write)",
+                self.zone_name, entity_id, old_raw, new_raw,
+            )
+            return
+        try:
+            old_setpoint = to_internal_temperature_c(self.hass, old_raw)
+            new_setpoint = to_internal_temperature_c(self.hass, new_raw)
+        except (TypeError, ValueError):
+            return
+        if old_setpoint is None or new_setpoint is None or abs(new_setpoint - old_setpoint) < 0.05:
+            return
+
+        settings = cfg.get(CONF_DEVICE_SETTINGS, {}).get(entity_id, {})
+        if not settings.get(CONF_DEV_ACCEPT_SETPOINT_CHANGES, True):
+            last_written = self._last_written_setpoints.get(entity_id)
+            if last_written is not None and abs(new_setpoint - last_written) > 0.4:
+                _LOGGER.info(
+                    "ThermoSmart '%s': correcting manual TRV setpoint change on %s",
+                    self.zone_name, entity_id,
+                )
+                self.hass.async_create_task(self.async_request_refresh())
+            return
+
+        self._pending_manual_setpoint = (entity_id, new_setpoint)
+        self._manual_setpoint_generation += 1
+        generation = self._manual_setpoint_generation
+        if self._manual_setpoint_cancel is not None:
+            self._manual_setpoint_cancel()
+        try:
+            debounce = max(0.0, float(cfg.get(CONF_TRV_SETPOINT_DEBOUNCE, 5)))
+        except (TypeError, ValueError):
+            debounce = 5.0
+
+        @callback
+        def _apply_manual_setpoint(_now) -> None:
+            if generation != self._manual_setpoint_generation:
+                return
+            self._manual_setpoint_cancel = None
+            pending = self._pending_manual_setpoint
+            self._pending_manual_setpoint = None
+            if pending is None:
+                return
+            if (
+                not self._active_control
+                or self._mode == HEATING_MODE_VACATION
+                or self._is_summer
+                or (self.data or {}).get("presence", {}).get("vacation", False)
+            ):
+                return
+            changed_entity, temperature = pending
+            _LOGGER.info(
+                "ThermoSmart '%s': adopting physical setpoint %.1f°C from %s",
+                self.zone_name, temperature, changed_entity,
+            )
+            self.set_override(temperature)
+            self.hass.async_create_task(self.async_request_refresh())
+
+        self._manual_setpoint_cancel = async_call_later(
+            self.hass, debounce, _apply_manual_setpoint
+        )
 
     # ── Authoritative Live Decision Builder ──────────────────────────
 
@@ -756,23 +898,6 @@ class ThermoSmartCoordinator(
             # when the shadow is absent or removed between cycles.
             self._last_live_decision = None
             cfg = self.zone_cfg
-
-            # Safety-net for full HA restart: valve_opening_degree recovery is also
-            # called from async_detect_device_entities, but at startup Z2M entities
-            # may not be available yet.  Retry across up to _VALVE_RESET_MAX_ATTEMPTS
-            # refreshes; stop as soon as recovery reports success (all relevant entities
-            # were reachable) or after the attempt limit is exhausted.
-            if not self._valve_reset_done:
-                done = await self._reset_valve_opening_degree()
-                self._valve_reset_attempts += 1
-                if done or self._valve_reset_attempts >= _VALVE_RESET_MAX_ATTEMPTS:
-                    if not done:
-                        _LOGGER.warning(
-                            "ThermoSmart '%s': valve_opening_degree recovery gave up after "
-                            "%d attempts — some TRV entities were still unavailable",
-                            self.zone_name, self._valve_reset_attempts,
-                        )
-                    self._valve_reset_done = True
 
             weather_data = await self.weather_engine.async_get_data()
             self._update_summer_mode(weather_data)
@@ -916,19 +1041,15 @@ class ThermoSmartCoordinator(
                 else:
                     duty_cycle = 0.0
 
-                has_valve = any(
-                    self._auto_valve_map.get(eid)
-                    for eid in cfg.get("climate_entities", [])
+                zone_mode = cfg.get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
+                boosted_setpoint = duty_to_setpoint(
+                    target, duty_cycle, TPI_MAX_BOOST_CELSIUS
                 )
-
-                if has_valve:
-                    # TRV mit Ventilsteuerung: Setpoint = Ziel (kein Boost nötig)
-                    trv_setpoint = target
-                else:
-                    # TRV ohne Ventilsteuerung: Duty-Cycle → Boost-Setpoint
-                    trv_setpoint = duty_to_setpoint(target, duty_cycle, TPI_MAX_BOOST_CELSIUS)
-
+                trv_setpoint = (
+                    target if zone_mode == CONTROL_MODE_SETPOINT else boosted_setpoint
+                )
                 recommendation["trv_setpoint"] = trv_setpoint
+                recommendation["tpi_boosted_setpoint"] = boosted_setpoint
                 # boost_offset_c / boost_factor: prediction semantics — set below from
                 # _boost_candidate_c (raw Learning proposal, pre-guard) after resolver runs.
                 # applied_boost_offset_c: confirmed dispatch truth — updated post-dispatch.
@@ -938,18 +1059,44 @@ class ThermoSmartCoordinator(
                 recommendation["tpi_duty_cycle"] = round(duty_cycle, 1)
                 recommendation["tpi_coef_int"] = round(coef_int, 3)
                 recommendation["tpi_coef_ext"] = round(coef_ext, 4)
-                recommendation["tpi_valve_direct"] = has_valve
-                # Mixed-zone detection: a zone combining setpoint-TRVs and direct-valve-TRVs
-                # cannot safely receive a per-device boost split → boost blocked conservatively.
-                _climate_eids = [e for e in cfg.get("climate_entities", []) if e]
-                _has_valve_ctrl = has_valve
-                _has_setpoint_ctrl = any(
-                    not self._auto_valve_map.get(eid) for eid in _climate_eids)
+                device_settings = cfg.get(CONF_DEVICE_SETTINGS, {})
+                modes_by_device = {}
+                for eid in cfg.get("climate_entities", []):
+                    setting = device_settings.get(eid, {})
+                    device_mode = setting.get(
+                        CONF_DEV_CONTROL_MODE, CONTROL_MODE_INHERIT
+                    )
+                    modes_by_device[eid] = (
+                        device_mode if device_mode != CONTROL_MODE_INHERIT else zone_mode
+                    )
+                effective_modes = set(modes_by_device.values())
+                recommendation["tpi_valve_direct"] = (
+                    bool(effective_modes)
+                    and effective_modes == {CONTROL_MODE_DIRECT_VALVE}
+                )
+                recommendation["tpi_control_entities"] = [
+                    eid for eid, effective_mode in modes_by_device.items()
+                    if effective_mode == CONTROL_MODE_TPI_BOOST
+                ]
+                if not recommendation["tpi_control_entities"]:
+                    # No device consumes a boosted setpoint: don't advertise one
+                    # (display, boost-active tracking, learning baseline).
+                    recommendation["trv_setpoint"] = target
                 recommendation["zone_control_type"] = (
-                    "mixed" if (_has_valve_ctrl and _has_setpoint_ctrl) else
-                    "direct_valve" if _has_valve_ctrl else
+                    "mixed" if len(effective_modes) > 1 else
+                    "direct_valve" if effective_modes == {CONTROL_MODE_DIRECT_VALVE} else
                     "setpoint"
                 )
+                if len(effective_modes) > 1:
+                    _modes = tuple(sorted(effective_modes))
+                    if _modes != self._last_logged_control_modes:
+                        _LOGGER.info(
+                            "ThermoSmart '%s': devices use mixed control strategies: %s",
+                            self.zone_name, list(_modes),
+                        )
+                        self._last_logged_control_modes = _modes
+                else:
+                    self._last_logged_control_modes = None
                 # Enrich tpi_coef_diag with duty-level trace for transition audit.
                 # duty_candidate: duty that would result from using candidate coef_int directly.
                 # duty_previous: duty from the previous cycle (for delta/stability verification).
@@ -1012,10 +1159,6 @@ class ThermoSmartCoordinator(
             # – verbessert die TRV-interne Regelung unabhängig von der aktiven Steuerung
             await self._async_write_external_temp(cfg, recommendation)
 
-            # Temperature source select management (external/internal)
-            # Must run after effective_summer is resolved so recommendation["is_summer"] is set.
-            await self._async_manage_temp_source(cfg, recommendation)
-
             # ── Learning Adaptive Boost Control ────────────────────────────
             # resolve_adaptive_boost_control() is the single authority for real boost.
             # Gate order: learning_mode_on → active_control_on
@@ -1023,19 +1166,21 @@ class ThermoSmartCoordinator(
             # Runs BEFORE dispatch so the approved offset flows through device guards and
             # the single setpoint dispatch path.  Never raises into heating.
             _boost_result = None  # AdaptiveBoostControlResult | None; None = not evaluated this cycle
-            if self._learning_shadow is not None and not effective_summer:
-                # Pre-dispatch device availability: if any setpoint TRV is unavailable
-                # right now, block boost for this cycle to prevent partial dispatch.
-                # (Mixed/valve zones are caught by zone_control_type in the resolver.)
+            if (
+                self._learning_shadow is not None
+                and not effective_summer
+                and recommendation.get("tpi_control_entities")
+                and cfg.get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
+                != CONTROL_MODE_SETPOINT
+            ):
+                # Block adaptive boost only when a device that consumes setpoint
+                # modulation is unavailable; direct-valve devices are independent.
                 _setpoint_device_unavailable = False
-                if recommendation.get("zone_control_type") == "setpoint":
-                    for _eid in cfg.get("climate_entities", []):
-                        if not _eid:
-                            continue
-                        _dev_st = self.hass.states.get(_eid)
-                        if _dev_st is None or _dev_st.state in ("unavailable", "unknown"):
-                            _setpoint_device_unavailable = True
-                            break
+                for _eid in recommendation.get("tpi_control_entities", []):
+                    _dev_st = self.hass.states.get(_eid)
+                    if _dev_st is None or _dev_st.state in ("unavailable", "unknown"):
+                        _setpoint_device_unavailable = True
+                        break
                 recommendation["_setpoint_device_unavailable"] = _setpoint_device_unavailable
                 _restore_pending = not self._active_control_initialized
                 try:
@@ -1099,7 +1244,9 @@ class ThermoSmartCoordinator(
             _sp_stats = _DispatchStats()   # setpoint/frost dispatch stats
             _vv_stats = _DispatchStats()   # direct valve dispatch stats
             if self._active_control and not effective_summer:
-                await self._async_apply_quirks(cfg)
+                self._state_settings_enforced = set()
+                for _eid in cfg.get("climate_entities", []):
+                    await self._async_enforce_device_state_settings(_eid, cfg)
                 await self._watchdog_hvac(cfg, recommendation)
                 await self._async_calibrate_trvs(cfg, recommendation)
                 _sp_stats = await self._apply_temperature(cfg, recommendation)
@@ -1111,7 +1258,9 @@ class ThermoSmartCoordinator(
                     duty = 0.0
                 _vv_stats = await self._async_set_valve_percent(cfg, duty)
             elif self._active_control and effective_summer:
-                await self._async_apply_quirks(cfg)
+                self._state_settings_enforced = set()
+                for _eid in cfg.get("climate_entities", []):
+                    await self._async_enforce_device_state_settings(_eid, cfg)
                 await self._apply_frost_protection(cfg)
                 recommendation["trv_setpoint"] = TEMP_FROST_PROTECTION
 
@@ -1279,6 +1428,7 @@ class ThermoSmartCoordinator(
                 raw_temp = self._read_trv_avg_temp(cfg.get("climate_entities", []))
             if raw_temp is not None:
                 self._live_temp = raw_temp
+            self._cycle_ref_temp = raw_temp
             if indoor_humidity is not None:
                 self._live_humidity = indoor_humidity
 
@@ -1916,13 +2066,20 @@ class ThermoSmartCoordinator(
         self._maybe_record_room_sensor_events(cfg, _primary_room_temp, current_temp)
 
         now = self._now_local()
+        self._slope_sample_fresh = False
         if current_temp is not None:
-            if self._indoor_temp_prev is not None:
+            # The slope is sampled over >= 1 min only, so extra (event-triggered)
+            # cycles in between neither shorten the baseline nor re-count a stale slope.
+            if self._indoor_temp_prev is None:
+                self._indoor_temp_prev = (now, current_temp)
+            else:
                 prev_time, prev_temp = self._indoor_temp_prev
                 elapsed_min = (now - prev_time).total_seconds() / 60
-                if 1.0 <= elapsed_min <= 30.0:
-                    self._indoor_temp_slope = round((current_temp - prev_temp) / elapsed_min, 4)
-            self._indoor_temp_prev = (now, current_temp)
+                if elapsed_min >= 1.0:
+                    if elapsed_min <= 30.0:
+                        self._indoor_temp_slope = round((current_temp - prev_temp) / elapsed_min, 4)
+                        self._slope_sample_fresh = True
+                    self._indoor_temp_prev = (now, current_temp)
             if self._ema_1h is None:
                 self._ema_1h = current_temp
             else:

@@ -14,7 +14,7 @@
         "description": "Nastaví globální selektor letního režimu (Automaticky / Zapnuto / Vypnuto) a přepínač dovolené. Nevyžaduje se žádný termostat. Obě ovládání se vztahují na všechny zóny současně."
       },
       "add_zone": {
-        "title": "Krok 1 / 4 – Zařízení a senzory",
+        "title": "Krok 1 – Zařízení a senzory",
         "description": "Vyberte ventily TRV a senzory pro tuto topnou zónu. Kalibrační entity a přepínače pro výjimky jsou rozpoznány automaticky.",
         "data": {
           "name": "Název zóny (např. Obývací pokoj)",
@@ -23,19 +23,109 @@
           "humidity_sensors": "Senzory vlhkosti uvnitř",
           "window_sensors": "Senzory oken (binary_sensor)",
           "window_open_delay": "Topení vypnuto – prodleva po otevření okna",
-          "window_close_delay": "Topení zapnuto – prodleva po zavření okna",
-          "valve_maintenance": "Aktivovat údržbu ventilů (neděle 03:00 – pouze letní nebo dovolenkový režim)",
-          "manage_temp_source": "Automaticky použít externí teplotu místnosti pro podporované TRV",
-          "calibration_invert": "Invertovat kalibrační offset (pro ventily TRV jako ME167, které invertují znaménko)"
+          "window_close_delay": "Topení zapnuto – prodleva po zavření okna"
+        }
+      },
+      "control_options": {
+        "title": "Krok 2 – Strategie řízení zóny",
+        "description": "Vyberte výchozí strategii zóny. Nastavení jednotlivých zařízení (další stránky) mohou tuto strategii přepsat.\n\nNalezená zařízení:\n\n{detected_devices}",
+        "data": {
+          "zone_control_mode": "Režim řízení zóny",
+          "control_interval": "Minimální interval řídicího cyklu",
+          "temp_tolerance": "Tolerance teploty",
+          "ext_temp_threshold": "Práh zápisu externí teploty",
+          "trv_setpoint_debounce": "Zpoždění fyzických změn žádané teploty TRV",
+          "trv_setpoint_settling": "Doba ustálení žádané teploty TRV"
         },
         "data_description": {
-          "valve_maintenance": "Zabraňuje zaseknutí ventilů při delších periodách bez topení. ThermoSmart příležitostně automaticky pohybuje ventily, když je aktivní letní nebo dovolenkový režim.",
-          "manage_temp_source": "ThermoSmart nadále používá externí teplotní senzory pro vlastní řídicí logiku. Po aktivaci ThermoSmart také přepne podporované TRV na jejich externí zdroj teploty a vrátí se na interní senzor TRV, pokud se externí senzory stanou nedostupnými.",
-          "calibration_invert": "Invertuje znaménko kalibračního offsetu pro konkrétní modely TRV, jejichž směr offsetu se liší od standardního chování. Aktivujte pouze v případě, že to vaše zařízení vyžaduje."
+          "zone_control_mode": "**Pouze žádaná hodnota:** ThermoSmart posílá čistou cílovou teplotu a TRV reguluje svůj ventil samo.\n\n**Modulace žádané hodnoty TPI:** ThermoSmart vypočítá potřebu topení a zvyšuje nebo snižuje žádanou hodnotu odesílanou do TRV, aby otevřel nebo zavřel jeho ventil.\n\n**Přímé řízení ventilu:** ThermoSmart zapisuje vypočítané otevření ventilu (0–100 %) do entity polohy ventilu TRV a jako žádanou hodnotu posílá čistou cílovou teplotu.",
+          "control_interval": "Minimální doba mezi pravidelnými řídicími cykly. Každý cyklus znovu vypočítá potřebu topení a zapíše žádané hodnoty, polohy ventilů a stavová nastavení do TRV. Události, jako je otevření okna nebo ruční přepsání, mohou vyvolat další cyklus dříve. Kratší intervaly znamenají rychlejší reakce, ale mohou také přetížit zařízení nebo zahltit sítě, např. Zigbee. V praxi by mělo stačit 2–3 minuty v kombinaci s rozumnými prahovými hodnotami změn teploty, které musí být překročeny, aby se nové hodnoty odeslaly do TRV.",
+          "ext_temp_threshold": "Hodnota z externího teplotního senzoru se do TRV odešle až poté, co se oproti poslední aktualizaci změnila o více než tento práh. Má účinek pouze při nakonfigurovaném externím senzoru a u TRV s povoleným externím teplotním vstupem.",
+          "temp_tolerance": "Nová nastavená teplota se do TRV odešle jen tehdy, pokud se od aktuální nastavené teploty TRV liší nejméně o tuto hodnotu. Vyšší hodnoty snižují provoz v rádiové síti, nižší hodnoty nutí TRV sledovat ThermoSmart přesněji.",
+          "trv_setpoint_debounce": "Počkejte tuto dobu od poslední aktualizace žádané teploty z TRV, než ji použijete jako cílovou teplotu zóny. Můžete tak dokončit nastavení; použije se pouze poslední nahlášená hodnota.",
+          "trv_setpoint_settling": "Po zápisu ThermoSmart ignoruje po tuto dobu hlášení žádané teploty z TRV, aby se opožděná potvrzení nebo průběžné hodnoty nepovažovaly za ruční změnu."
+        }
+      },
+      "device_settings": {
+        "title": "Krok 3 – Nastavení TRV (TRV {index}/{total})",
+        "description": "**Zóna:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nTato nastavení platí pouze pro toto TRV. Poté můžete definovat stavová nastavení pro toto TRV.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Režim řízení",
+          "valve_entity": "Entita pro řízení ventilu",
+          "feed_external_temp": "Posílat teplotu místnosti do TRV",
+          "ext_temp_entity": "Entita vstupu externí teploty",
+          "calibration_sync": "Zapisovat kalibrační offset",
+          "calibration_entity": "Entita kalibračního offsetu",
+          "calibration_invert": "Invertovat kalibrační offset",
+          "valve_maintenance": "Povolit cvičení / údržbu ventilu",
+          "window_off": "Vypnout při otevřeném okně",
+          "accept_setpoint_changes": "Přijímat fyzické změny žádané teploty"
+        },
+        "data_description": {
+          "feed_external_temp": "Posílá teplotu místnosti do TRV. Vyžaduje výběr správné entity vstupu externí teploty níže; bez ní se nic neodešle.",
+          "valve_maintenance": "Zabraňuje zaseknutí ventilů při delších obdobích bez topení. ThermoSmart příležitostně automaticky pohybuje ventily, když je aktivní letní nebo dovolenkový režim.",
+          "calibration_sync": "Koriguje interní teplotní senzor TRV zápisem rozdílu oproti pokojové teplotě do kalibrační entity níže. Vypněte u TRV, které používají externí zdroj teploty. Vyžaduje kalibrační entitu.",
+          "calibration_entity": "Číselná entita s lokálním kalibračním offsetem TRV. Nechte prázdné pro vypnutí kalibrace.",
+          "calibration_invert": "Zapněte, pokud TRV používá offset s opačným znaménkem.",
+          "valve_entity": "Číselná entita řídící otevření ventilu tohoto TRV. Potřebná jen při zapnutém přímém řízení ventilu, jinak se ignoruje a lze ji nechat prázdnou. ThermoSmart zapisuje 0–100 (%), nebo 0–1 u entit s „level“ v názvu.",
+          "window_off": "Vypne zařízení (režim HVAC vypnuto), když je otevřené okno. Pokud to použijete, ujistěte se, že má TRV po vypnutí stále aktivní ochranu proti zamrznutí (některé modely ano, jiné ne), aby nezamrzlo. Pokud tento přepínač vypnete, TRV zůstane v režimu topení, ale při otevřeném okně se nastaví cílová teplota pro otevřené okno definovaná na jedné z dalších stránek.",
+          "accept_setpoint_changes": "Je-li zapnuto, změna žádané teploty na tomto TRV se po nastaveném zpoždění použije jako cílová teplota zóny a odešle se všem TRV. Změny se přijímají i při otevřeném okně."
+        }
+      },
+      "state_menu": {
+        "title": "Krok 3 – Stavová nastavení TRV",
+        "description": "**Zóna:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nStavová nastavení udržují vybrané entity tohoto TRV (select, number nebo switch) na hodnotě, kterou definujete. Při každém řídicím cyklu nebo řídicí události je ThermoSmart zkontroluje a hodnotu nastaví, pouze pokud se liší. Pokud to nepotřebujete, nechte seznam prázdný.\n\n**Aktuálně nakonfigurováno:**\n\n{state_rules}\n\nVyberte akci. Po dokončení zvolte **Hotovo s tímto TRV**.",
+        "menu_options": {
+          "state_add_device": "Přidat entitu tohoto TRV",
+          "state_add_any": "Přidat jinou entitu",
+          "state_remove": "Odebrat nastavení",
+          "state_done": "Hotovo s tímto TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Krok 3 – Přidat stavové nastavení (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nVyberte entitu, kterou má ThermoSmart udržovat na určité hodnotě. {scope}\n\nHodnotu vyberete na další stránce.",
+        "data": {
+          "entity_id": "Entita"
+        },
+        "data_description": {
+          "entity_id": "Nechte prázdné a odešlete pro návrat bez přidání."
+        }
+      },
+      "state_add_any": {
+        "title": "Krok 3 – Přidat stavové nastavení (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nVyberte entitu, kterou má ThermoSmart udržovat na určité hodnotě. {scope}\n\nHodnotu vyberete na další stránce.",
+        "data": {
+          "entity_id": "Entita"
+        },
+        "data_description": {
+          "entity_id": "Nechte prázdné a odešlete pro návrat bez přidání."
+        }
+      },
+      "state_value": {
+        "title": "Krok 3 – Hodnota stavového nastavení (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nDefinujte hodnotu, kterou ThermoSmart vynucuje pro **{entity}**.\n\nAktuální hodnota: {current}",
+        "data": {
+          "value": "Vynucovaná hodnota",
+          "cancel": "Zrušit – toto nastavení neukládat"
+        },
+        "data_description": {
+          "value": "Pokud se entita liší od této hodnoty, ThermoSmart ji nastaví při dalším řídicím cyklu nebo události.",
+          "cancel": "Zaškrtněte a odešlete pro návrat do seznamu bez uložení."
+        }
+      },
+      "state_remove": {
+        "title": "Krok 3 – Odebrat stavová nastavení (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nVyberte stavová nastavení, která má ThermoSmart pro toto TRV přestat vynucovat.",
+        "data": {
+          "remove": "Nastavení k odebrání"
+        },
+        "data_description": {
+          "remove": "Nechte prázdné a odešlete pro návrat bez odebrání."
         }
       },
       "schedule": {
-        "title": "Krok 2 / 4 – Teploty a plán",
+        "title": "Krok 4 – Teploty a plán",
         "description": "Denní průběh: Noc → Komfort → Noc\n\nKdyž jsou všechny osoby nepřítomny, ThermoSmart automaticky přepne na teplotu při nepřítomnosti – bez ohledu na plán.",
         "data": {
           "comfort_temp": "Teplota komfortu (když je někdo doma)",
@@ -44,7 +134,6 @@
           "vacation_temp": "Teplota na dovolené (ochrana před mrazem)",
           "eco_temp": "Eco teplota (úspora energie, mezi noční a komfortní)",
           "window_open_temp": "Teplota při otevřeném okně",
-          "temp_tolerance": "Tolerance teploty – práh aktualizace žádané hodnoty",
           "schedule_enabled": "Aktivovat časový plán",
           "sched_wd_morning": "Pracovní den: Komfort od",
           "sched_wd_night": "Pracovní den: Noc od",
@@ -59,12 +148,11 @@
           "sched_we_night": "Noční teplota platí od tohoto času",
           "away_temp": "Použije se automaticky pouze při nakonfigurovaném rozpoznávání přítomnosti (Krok 3). Lze nastavit i ručně přes výběr režimu.",
           "eco_temp": "Použije se, když je výběr režimu ručně nastaven na 'Eco'. Neaktivuje se automaticky.",
-          "window_open_temp": "Cílová teplota při otevřeném okně. Pro termostaty, které nepodporují velmi nízké hodnoty, použijte vyšší hodnotu, například 10 °C.",
-          "temp_tolerance": "Minimální změna vypočítané žádané hodnoty TRV před odesláním nové aktualizace ThermoSmartem. Snižuje zbytečné zápisy do termostatu. 0,5 °C funguje dobře pro většinu místností."
+          "window_open_temp": "Cílová teplota nastavená na TRV při otevřeném okně, pokud tento TRV není nakonfigurován na vypnutí při otevřeném okně (viz nastavení jednotlivých zařízení). U termostatů, které nepodporují velmi nízké hodnoty, použijte vyšší hodnotu, např. 10 °C."
         }
       },
       "presence": {
-        "title": "Krok 3 / 4 – Přítomnost a učení",
+        "title": "Krok 5 – Přítomnost",
         "description": "Kdo je doma? ThermoSmart automaticky přepne do režimu nepřítomnosti, když všichni odejdou.",
         "data": {
           "presence_persons": "Osoby pro detekci přítomnosti",
@@ -72,7 +160,7 @@
         }
       },
       "weather": {
-        "title": "Krok 4 / 4 – Počasí a venkovní senzory",
+        "title": "Krok 6 – Počasí a venkovní senzory",
         "description": "Všechna pole jsou nepovinná – vlastní senzory mají přednost před entitou počasí. Systém funguje i bez dat o počasí.",
         "data": {
           "weather_entity": "Entita počasí (např. weather.home)",
@@ -105,8 +193,11 @@
     "step": {
       "init": {
         "title": "Nastavení",
+        "description": "Vyberte, kterou část zóny **{zone}** upravit. Každá sekce se ukládá samostatně.",
         "menu_options": {
           "devices": "Zařízení a senzory",
+          "control_options": "Strategie řízení zóny (výchozí režim, interval, prahové hodnoty)",
+          "device_settings": "Nastavení jednotlivých TRV (přepsání režimu, entity, stavová nastavení)",
           "schedule": "Teploty a plán",
           "presence": "Přítomnost a učení",
           "weather": "Počasí a venkovní senzory"
@@ -122,15 +213,105 @@
           "humidity_sensors": "Senzory vlhkosti uvnitř",
           "window_sensors": "Senzory oken",
           "window_open_delay": "Topení vypnuto – prodleva po otevření okna",
-          "window_close_delay": "Topení zapnuto – prodleva po zavření okna",
-          "valve_maintenance": "Aktivovat údržbu ventilů (pouze letní / dovolenkový režim)",
-          "manage_temp_source": "Automaticky použít externí teplotu místnosti pro podporované TRV",
-          "calibration_invert": "Invertovat kalibrační offset (ME167 a podobné)"
+          "window_close_delay": "Topení zapnuto – prodleva po zavření okna"
+        }
+      },
+      "control_options": {
+        "title": "Strategie řízení zóny",
+        "description": "Zóna **{zone}**: vyberte výchozí strategii zóny. Nastavení jednotlivých zařízení mohou tuto strategii přepsat.",
+        "data": {
+          "zone_control_mode": "Režim řízení zóny",
+          "control_interval": "Minimální interval řídicího cyklu",
+          "temp_tolerance": "Tolerance teploty",
+          "ext_temp_threshold": "Práh zápisu externí teploty",
+          "trv_setpoint_debounce": "Zpoždění fyzických změn žádané teploty TRV",
+          "trv_setpoint_settling": "Doba ustálení žádané teploty TRV"
         },
         "data_description": {
-          "valve_maintenance": "Zabraňuje zaseknutí ventilů při delších periodách bez topení. ThermoSmart příležitostně automaticky pohybuje ventily, když je aktivní letní nebo dovolenkový režim.",
-          "manage_temp_source": "ThermoSmart nadále používá externí teplotní senzory pro vlastní řídicí logiku. Po aktivaci ThermoSmart také přepne podporované TRV na jejich externí zdroj teploty a vrátí se na interní senzor TRV, pokud se externí senzory stanou nedostupnými.",
-          "calibration_invert": "Invertuje znaménko kalibračního offsetu pro konkrétní modely TRV, jejichž směr offsetu se liší od standardního chování. Aktivujte pouze v případě, že to vaše zařízení vyžaduje."
+          "zone_control_mode": "**Pouze žádaná hodnota:** ThermoSmart posílá čistou cílovou teplotu a TRV reguluje svůj ventil samo.\n\n**Modulace žádané hodnoty TPI:** ThermoSmart vypočítá potřebu topení a zvyšuje nebo snižuje žádanou hodnotu odesílanou do TRV, aby otevřel nebo zavřel jeho ventil.\n\n**Přímé řízení ventilu:** ThermoSmart zapisuje vypočítané otevření ventilu (0–100 %) do entity polohy ventilu TRV a jako žádanou hodnotu posílá čistou cílovou teplotu.",
+          "control_interval": "Minimální doba mezi pravidelnými řídicími cykly. Každý cyklus znovu vypočítá potřebu topení a zapíše žádané hodnoty, polohy ventilů a stavová nastavení do TRV. Události, jako je otevření okna nebo ruční přepsání, mohou vyvolat další cyklus dříve. Kratší intervaly znamenají rychlejší reakce, ale mohou také přetížit zařízení nebo zahltit sítě, např. Zigbee. V praxi by mělo stačit 2–3 minuty v kombinaci s rozumnými prahovými hodnotami změn teploty, které musí být překročeny, aby se nové hodnoty odeslaly do TRV.",
+          "ext_temp_threshold": "Hodnota z externího teplotního senzoru se do TRV odešle až poté, co se oproti poslední aktualizaci změnila o více než tento práh. Má účinek pouze při nakonfigurovaném externím senzoru a u TRV s povoleným externím teplotním vstupem.",
+          "temp_tolerance": "Nová nastavená teplota se do TRV odešle jen tehdy, pokud se od aktuální nastavené teploty TRV liší nejméně o tuto hodnotu. Vyšší hodnoty snižují provoz v rádiové síti, nižší hodnoty nutí TRV sledovat ThermoSmart přesněji.",
+          "trv_setpoint_debounce": "Počkejte tuto dobu od poslední aktualizace žádané teploty z TRV, než ji použijete jako cílovou teplotu zóny. Můžete tak dokončit nastavení; použije se pouze poslední nahlášená hodnota.",
+          "trv_setpoint_settling": "Po zápisu ThermoSmart ignoruje po tuto dobu hlášení žádané teploty z TRV, aby se opožděná potvrzení nebo průběžné hodnoty nepovažovaly za ruční změnu."
+        }
+      },
+      "device_settings": {
+        "title": "Nastavení TRV (TRV {index}/{total})",
+        "description": "**Zóna:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nTato nastavení platí pouze pro toto TRV. Poté můžete upravit stavová nastavení pro toto TRV. Nic se neuloží, dokud neprojdete poslední TRV.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Režim řízení",
+          "valve_entity": "Entita pro řízení ventilu",
+          "feed_external_temp": "Posílat teplotu místnosti do TRV",
+          "ext_temp_entity": "Entita vstupu externí teploty",
+          "calibration_sync": "Zapisovat kalibrační offset",
+          "calibration_entity": "Entita kalibračního offsetu",
+          "calibration_invert": "Invertovat kalibrační offset",
+          "valve_maintenance": "Povolit cvičení / údržbu ventilu",
+          "window_off": "Vypnout při otevřeném okně",
+          "accept_setpoint_changes": "Přijímat fyzické změny žádané teploty"
+        },
+        "data_description": {
+          "feed_external_temp": "Posílá teplotu místnosti do TRV. Vyžaduje výběr správné entity vstupu externí teploty níže; bez ní se nic neodešle.",
+          "valve_maintenance": "Zabraňuje zaseknutí ventilů při delších obdobích bez topení. ThermoSmart příležitostně automaticky pohybuje ventily, když je aktivní letní nebo dovolenkový režim.",
+          "calibration_sync": "Koriguje interní teplotní senzor TRV zápisem rozdílu oproti pokojové teplotě do kalibrační entity níže. Vypněte u TRV, které používají externí zdroj teploty. Vyžaduje kalibrační entitu.",
+          "calibration_entity": "Číselná entita s lokálním kalibračním offsetem TRV. Nechte prázdné pro vypnutí kalibrace.",
+          "calibration_invert": "Zapněte, pokud TRV používá offset s opačným znaménkem.",
+          "valve_entity": "Číselná entita řídící otevření ventilu tohoto TRV. Potřebná jen při zapnutém přímém řízení ventilu, jinak se ignoruje a lze ji nechat prázdnou. ThermoSmart zapisuje 0–100 (%), nebo 0–1 u entit s „level“ v názvu.",
+          "window_off": "Vypne zařízení (režim HVAC vypnuto), když je otevřené okno. Pokud to použijete, ujistěte se, že má TRV po vypnutí stále aktivní ochranu proti zamrznutí (některé modely ano, jiné ne), aby nezamrzlo. Pokud tento přepínač vypnete, TRV zůstane v režimu topení, ale při otevřeném okně se nastaví cílová teplota pro otevřené okno definovaná na jedné z dalších stránek.",
+          "accept_setpoint_changes": "Je-li zapnuto, změna žádané teploty na tomto TRV se po nastaveném zpoždění použije jako cílová teplota zóny a odešle se všem TRV. Změny se přijímají i při otevřeném okně."
+        }
+      },
+      "state_menu": {
+        "title": "Stavová nastavení TRV",
+        "description": "**Zóna:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nStavová nastavení udržují vybrané entity tohoto TRV (select, number nebo switch) na hodnotě, kterou definujete. Při každém řídicím cyklu nebo řídicí události je ThermoSmart zkontroluje a hodnotu nastaví, pouze pokud se liší. Pokud to nepotřebujete, nechte seznam prázdný.\n\n**Aktuálně nakonfigurováno:**\n\n{state_rules}\n\nVyberte akci. Po dokončení zvolte **Hotovo s tímto TRV**; změny se uloží po posledním TRV.",
+        "menu_options": {
+          "state_add_device": "Přidat entitu tohoto TRV",
+          "state_add_any": "Přidat jinou entitu",
+          "state_remove": "Odebrat nastavení",
+          "state_done": "Hotovo s tímto TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Přidat stavové nastavení (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nVyberte entitu, kterou má ThermoSmart udržovat na určité hodnotě. {scope}\n\nHodnotu vyberete na další stránce.",
+        "data": {
+          "entity_id": "Entita"
+        },
+        "data_description": {
+          "entity_id": "Nechte prázdné a odešlete pro návrat bez přidání."
+        }
+      },
+      "state_add_any": {
+        "title": "Přidat stavové nastavení (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nVyberte entitu, kterou má ThermoSmart udržovat na určité hodnotě. {scope}\n\nHodnotu vyberete na další stránce.",
+        "data": {
+          "entity_id": "Entita"
+        },
+        "data_description": {
+          "entity_id": "Nechte prázdné a odešlete pro návrat bez přidání."
+        }
+      },
+      "state_value": {
+        "title": "Hodnota stavového nastavení (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nDefinujte hodnotu, kterou ThermoSmart vynucuje pro **{entity}**.\n\nAktuální hodnota: {current}",
+        "data": {
+          "value": "Vynucovaná hodnota",
+          "cancel": "Zrušit – toto nastavení neukládat"
+        },
+        "data_description": {
+          "value": "Pokud se entita liší od této hodnoty, ThermoSmart ji nastaví při dalším řídicím cyklu nebo události.",
+          "cancel": "Zaškrtněte a odešlete pro návrat do seznamu bez uložení."
+        }
+      },
+      "state_remove": {
+        "title": "Odebrat stavová nastavení (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nVyberte stavová nastavení, která má ThermoSmart pro toto TRV přestat vynucovat.",
+        "data": {
+          "remove": "Nastavení k odebrání"
+        },
+        "data_description": {
+          "remove": "Nechte prázdné a odešlete pro návrat bez odebrání."
         }
       },
       "schedule": {
@@ -143,7 +324,6 @@
           "vacation_temp": "Teplota na dovolené",
           "eco_temp": "Eco teplota",
           "window_open_temp": "Teplota při otevřeném okně",
-          "temp_tolerance": "Tolerance teploty",
           "schedule_enabled": "Aktivovat časový plán",
           "sched_wd_morning": "Pracovní den: Komfort od",
           "sched_wd_night": "Pracovní den: Noc od",
@@ -158,12 +338,11 @@
           "sched_we_night": "Noční teplota platí od tohoto času",
           "away_temp": "Použije se automaticky pouze při nakonfigurovaném rozpoznávání přítomnosti (Krok 3). Lze nastavit i ručně přes výběr režimu.",
           "eco_temp": "Použije se, když je výběr režimu ručně nastaven na 'Eco'. Neaktivuje se automaticky.",
-          "window_open_temp": "Cílová teplota při otevřeném okně. Pro termostaty, které nepodporují velmi nízké hodnoty, použijte vyšší hodnotu, například 10 °C.",
-          "temp_tolerance": "Minimální změna vypočítané žádané hodnoty TRV před odesláním nové aktualizace ThermoSmartem. Snižuje zbytečné zápisy do termostatu. 0,5 °C funguje dobře pro většinu místností."
+          "window_open_temp": "Cílová teplota nastavená na TRV při otevřeném okně, pokud tento TRV není nakonfigurován na vypnutí při otevřeném okně (viz nastavení jednotlivých zařízení). U termostatů, které nepodporují velmi nízké hodnoty, použijte vyšší hodnotu, např. 10 °C."
         }
       },
       "presence": {
-        "title": "Přítomnost a učení",
+        "title": "Přítomnost",
         "description": "Kdo je doma? ThermoSmart automaticky přepne do režimu nepřítomnosti, když všichni odejdou.",
         "data": {
           "presence_persons": "Osoby pro detekci přítomnosti",
@@ -311,6 +490,39 @@
       },
       "trv_observations": {
         "name": "Pozorování TRV"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Pouze nastavená teplota (TRV autonomní)",
+        "tpi_boost": "TPI modulace nastavené teploty (vypočtené navýšení)",
+        "direct_valve": "Přímé řízení ventilu (0–100 %)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Převzít ze zóny (Pouze nastavená teplota)",
+        "setpoint": "Pouze nastavená teplota",
+        "tpi_boost": "TPI modulace nastavené teploty",
+        "direct_valve": "Přímé řízení ventilu"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Převzít ze zóny (TPI modulace nastavené teploty)",
+        "setpoint": "Pouze nastavená teplota",
+        "tpi_boost": "TPI modulace nastavené teploty",
+        "direct_valve": "Přímé řízení ventilu"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Převzít ze zóny (Přímé řízení ventilu)",
+        "setpoint": "Pouze nastavená teplota",
+        "tpi_boost": "TPI modulace nastavené teploty",
+        "direct_valve": "Přímé řízení ventilu"
       }
     }
   }

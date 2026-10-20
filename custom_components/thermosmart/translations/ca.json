@@ -14,7 +14,7 @@
         "description": "Configura el selector de mode Estiu (Automàtic / Activat / Desactivat) i l'interruptor de Vacances. No cal termòstat. Tots dos controls s'apliquen a totes les zones simultàniament."
       },
       "add_zone": {
-        "title": "Pas 1 / 4 – Dispositius i sensors",
+        "title": "Pas 1 – Dispositius i sensors",
         "description": "Seleccioneu les TRVs i sensors per a aquesta zona de calefacció. Les entitats de calibratge i els interruptors de quirk es detecten automàticament.",
         "data": {
           "name": "Nom de la zona (p. ex. Sala d'estar)",
@@ -23,19 +23,109 @@
           "humidity_sensors": "Sensors d'humitat interior",
           "window_sensors": "Sensors de finestra (binary_sensor)",
           "window_open_delay": "Calefacció apagada – retard després d'obrir la finestra",
-          "window_close_delay": "Calefacció encesa – retard després de tancar la finestra",
-          "valve_maintenance": "Activar manteniment de vàlvules (diumenge 03:00 – només mode Estiu o Vacances)",
-          "manage_temp_source": "Usar automàticament la temperatura ambient externa per a TRVs compatibles",
-          "calibration_invert": "Invertir offset de calibratge (per a TRVs com ME167 que inverteixen el signe)"
+          "window_close_delay": "Calefacció encesa – retard després de tancar la finestra"
+        }
+      },
+      "control_options": {
+        "title": "Pas 2 – Estratègia de control de la zona",
+        "description": "Trieu una estratègia predeterminada per a la zona. La configuració per dispositiu (pàgines següents) pot substituir aquesta estratègia.\n\nDispositius detectats:\n\n{detected_devices}",
+        "data": {
+          "zone_control_mode": "Mode de control de la zona",
+          "control_interval": "Interval mínim del cicle de control",
+          "temp_tolerance": "Tolerància de temperatura",
+          "ext_temp_threshold": "Llindar d'escriptura de la temperatura externa",
+          "trv_setpoint_debounce": "Retard per als canvis físics de consigna del TRV",
+          "trv_setpoint_settling": "Temps d’estabilització de la consigna del TRV"
         },
         "data_description": {
-          "valve_maintenance": "Evita que les vàlvules s'encallin durant períodes prolongats sense calefacció. ThermoSmart mou ocasionalment les vàlvules automàticament quan el mode Estiu o Vacances està actiu.",
-          "manage_temp_source": "ThermoSmart continua usant sensors de temperatura externs per a la seva pròpia lògica de control. Quan està activat, ThermoSmart també canvia els TRVs compatibles a la seva font de temperatura externa i torna al sensor intern del TRV si els sensors externs queden no disponibles.",
-          "calibration_invert": "Inverteix el signe de l'offset de calibratge per a models TRV específics on la direcció de l'offset difereix del comportament estàndard. Activeu-ho només si el vostre dispositiu ho requereix."
+          "zone_control_mode": "**Només punt de consigna:** ThermoSmart envia la temperatura objectiu simple i el TRV regula la seva vàlvula pel seu compte.\n\n**Modulació del punt de consigna TPI:** ThermoSmart calcula la demanda de calefacció i puja o baixa el punt de consigna enviat al TRV per obrir o tancar la seva vàlvula.\n\n**Control directe de la vàlvula:** ThermoSmart escriu l'obertura de vàlvula calculada (0–100 %) a l'entitat de posició de la vàlvula del TRV i envia la temperatura objectiu simple com a punt de consigna.",
+          "control_interval": "Temps mínim entre cicles de control regulars. Cada cicle recalcula la demanda de calefacció i escriu punts de consigna, posicions de vàlvula i configuracions d'estat als TRVs. Esdeveniments com obrir una finestra o una substitució manual poden provocar abans un cicle addicional. Els intervals més curts donen reaccions més ràpides, però també poden sobrecarregar dispositius o congestionar xarxes, p. ex. Zigbee. A la pràctica, 2-3 minuts combinats amb llindars raonables per als canvis de temperatura, que s'han de superar perquè s'enviïn nous valors al TRV, haurien de ser suficients.",
+          "ext_temp_threshold": "El valor del sensor de temperatura extern s'envia al TRV només després que hagi canviat més d'aquest llindar respecte de l'última actualització. Només té efecte si hi ha un sensor extern configurat i per als TRV amb l'entrada de temperatura externa activada.",
+          "temp_tolerance": "S'envia una nova consigna al TRV només si difereix de la consigna actual del TRV com a mínim d'aquest valor. Valors grans redueixen el trànsit de ràdio; valors petits fan que el TRV segueixi ThermoSmart més de a prop.",
+          "trv_setpoint_debounce": "Espera aquest temps després de l’última actualització de consigna del TRV abans d’aplicar-la com a objectiu de la zona. Això et permet acabar d’ajustar el comandament; només s’utilitza l’últim valor rebut.",
+          "trv_setpoint_settling": "Després que ThermoSmart escrigui al TRV, ignora durant aquest temps les actualitzacions de consigna del dispositiu per no interpretar ecos retardats o valors intermedis com a canvis manuals."
+        }
+      },
+      "device_settings": {
+        "title": "Pas 3 – Configuració de TRV (TRV {index}/{total})",
+        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nAquesta configuració només s'aplica a aquest TRV. A continuació podeu definir la configuració d'estat d'aquest TRV.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Mode de control",
+          "valve_entity": "Entitat de control de la vàlvula",
+          "feed_external_temp": "Enviar la temperatura de l'habitació al TRV",
+          "ext_temp_entity": "Entitat d'entrada de temperatura externa",
+          "calibration_sync": "Escriu el desfasament de calibratge",
+          "calibration_entity": "Entitat del desfasament de calibratge",
+          "calibration_invert": "Invertir el desplaçament de calibratge",
+          "valve_maintenance": "Activar exercici / manteniment de la vàlvula",
+          "window_off": "Apaga quan hi ha una finestra oberta",
+          "accept_setpoint_changes": "Accepta els canvis físics de consigna"
+        },
+        "data_description": {
+          "feed_external_temp": "Envia la temperatura de l'habitació al TRV. Cal seleccionar l'entitat d'entrada de temperatura externa correcta a sota; sense ella no s'envia res.",
+          "valve_maintenance": "Evita que les vàlvules s'encallin durant períodes prolongats sense calefacció. ThermoSmart mou ocasionalment les vàlvules de manera automàtica mentre el mode Estiu o el mode Vacances està actiu.",
+          "calibration_sync": "Corregeix el sensor de temperatura intern del TRV escrivint la diferència amb la temperatura ambient a l'entitat de calibratge següent. Desactiveu-ho per a TRV que usen una font de temperatura externa. Requereix una entitat de calibratge.",
+          "calibration_entity": "Entitat numèrica que conté el desfasament de calibratge local del TRV. Deixeu-la buida per desactivar el calibratge.",
+          "calibration_invert": "Activeu-ho si el TRV aplica el desfasament amb el signe oposat.",
+          "valve_entity": "Entitat numèrica que controla l'obertura de la vàlvula d'aquest TRV. Només cal si el control directe de la vàlvula està activat per a aquest TRV; si no, s'ignora i es pot deixar buida. ThermoSmart escriu 0–100 (%), o 0–1 per a entitats amb \"level\" al nom.",
+          "window_off": "Apaga el dispositiu (mode HVAC apagat) quan hi ha una finestra oberta. Si ho useu, assegureu-vos que el TRV continuï tenint la protecció contra gelades activada quan està apagat (alguns models sí, d'altres no) per evitar que es congeli. Si desactiveu aquest interruptor, el TRV es mantindrà en mode de calefacció, però amb la temperatura objectiu de finestra oberta definida en una de les pàgines següents.",
+          "accept_setpoint_changes": "Si està activat, la consigna canviada en aquest TRV s’adopta com a objectiu de la zona després del retard configurat i s’aplica a tots els TRV. També s’accepten canvis amb una finestra oberta."
+        }
+      },
+      "state_menu": {
+        "title": "Pas 3 – Configuració d'estat del TRV",
+        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nLa configuració d'estat manté entitats escollides d'aquest TRV (select, number o switch) en un valor que definiu. En cada cicle de control o esdeveniment de control, ThermoSmart les comprova i estableix un valor només si difereix. Deixeu la llista buida si no ho necessiteu.\n\n**Configurat actualment:**\n\n{state_rules}\n\nTrieu una acció. Seleccioneu **Fet amb aquest TRV** quan hàgiu acabat.",
+        "menu_options": {
+          "state_add_device": "Afegir una entitat d'aquest TRV",
+          "state_add_any": "Afegir qualsevol altra entitat",
+          "state_remove": "Eliminar configuracions",
+          "state_done": "Fet amb aquest TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Pas 3 – Afegir configuració d'estat (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nSeleccioneu l'entitat que ThermoSmart ha de mantenir en un valor concret. {scope}\n\nEl valor el triareu a la pàgina següent.",
+        "data": {
+          "entity_id": "Entitat"
+        },
+        "data_description": {
+          "entity_id": "Deixeu-ho buit i envieu per tornar sense afegir res."
+        }
+      },
+      "state_add_any": {
+        "title": "Pas 3 – Afegir configuració d'estat (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nSeleccioneu l'entitat que ThermoSmart ha de mantenir en un valor concret. {scope}\n\nEl valor el triareu a la pàgina següent.",
+        "data": {
+          "entity_id": "Entitat"
+        },
+        "data_description": {
+          "entity_id": "Deixeu-ho buit i envieu per tornar sense afegir res."
+        }
+      },
+      "state_value": {
+        "title": "Pas 3 – Valor de la configuració d'estat (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nDefiniu el valor que ThermoSmart imposa per a **{entity}**.\n\nValor actual: {current}",
+        "data": {
+          "value": "Valor a imposar",
+          "cancel": "Cancel·la – no desis aquest ajust"
+        },
+        "data_description": {
+          "value": "Si l'entitat difereix d'aquest valor, ThermoSmart l'estableix en el proper cicle de control o esdeveniment.",
+          "cancel": "Marqueu-ho i envieu per tornar a la llista sense desar."
+        }
+      },
+      "state_remove": {
+        "title": "Pas 3 – Eliminar configuracions d'estat (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nSeleccioneu les configuracions d'estat que ThermoSmart ha de deixar d'imposar per a aquest TRV.",
+        "data": {
+          "remove": "Configuracions a eliminar"
+        },
+        "data_description": {
+          "remove": "Deixeu-ho buit i envieu per tornar sense eliminar res."
         }
       },
       "schedule": {
-        "title": "Pas 2 / 4 – Temperatures i horari",
+        "title": "Pas 4 – Temperatures i horari",
         "description": "Flux diari: Nit → Confort → Nit\n\nQuan totes les persones estan absents, ThermoSmart canvia automàticament a la temperatura d'absència, independentment de l'horari.",
         "data": {
           "comfort_temp": "Temperatura de confort (quan hi ha algú a casa)",
@@ -44,7 +134,6 @@
           "vacation_temp": "Temperatura de vacances (protecció antigelada)",
           "eco_temp": "Temperatura eco (estalvi d'energia, entre nocturna i confort)",
           "window_open_temp": "Temperatura amb finestra oberta",
-          "temp_tolerance": "Tolerancia de temperatura – llindar d'actualització del punt de consigna",
           "schedule_enabled": "Activar horari",
           "sched_wd_morning": "Dia feiner: Confort des de",
           "sched_wd_night": "Dia feiner: Nit des de",
@@ -59,12 +148,11 @@
           "sched_we_night": "La temperatura nocturna s'aplica a partir d'aquesta hora",
           "away_temp": "S'aplica automàticament només si la detecció de presència està configurada (Pas 3). Pot establir-se manualment a través del selector de mode.",
           "eco_temp": "S'utilitza quan el selector de mode s'estableix manualment en 'Eco'. No s'aplica automàticament.",
-          "window_open_temp": "Temperatura objectiu mentre una finestra és oberta. Per a termostats que no admeten valors molt baixos, useu un valor més alt com ara 10 °C.",
-          "temp_tolerance": "Canvi mínim al punt de consigna TRV calculat abans que ThermoSmart enviï una nova actualització. Redueix les escriptures innecessàries al termòstat. 0,5 °C funciona bé per a la majoria d'habitacions."
+          "window_open_temp": "Temperatura objectiu que s'assigna a un TRV mentre hi ha una finestra oberta, tret que aquest TRV estigui configurat per apagar-se (vegeu els ajustos per dispositiu). Per a termòstats que no admeten consignes molt baixes, useu un valor més alt, com 10 °C."
         }
       },
       "presence": {
-        "title": "Pas 3 / 4 – Presència i aprenentatge",
+        "title": "Pas 5 – Presència",
         "description": "Qui és a casa? ThermoSmart canvia automàticament al mode absència quan tothom marxa.",
         "data": {
           "presence_persons": "Persones per a la detecció de presència",
@@ -72,7 +160,7 @@
         }
       },
       "weather": {
-        "title": "Pas 4 / 4 – Meteorologia i sensors exteriors",
+        "title": "Pas 6 – Meteorologia i sensors exteriors",
         "description": "Tots els camps són opcionals – els sensors propis tenen prioritat sobre l'entitat meteorològica. El sistema també funciona sense dades meteorològiques.",
         "data": {
           "weather_entity": "Entitat meteorològica (p. ex. weather.home)",
@@ -105,8 +193,11 @@
     "step": {
       "init": {
         "title": "Configuració",
+        "description": "Trieu quina part de la zona **{zone}** voleu editar. Cada secció es desa per separat.",
         "menu_options": {
           "devices": "Dispositius i sensors",
+          "control_options": "Estratègia de control de la zona (mode per defecte, interval, llindars)",
+          "device_settings": "Configuració per TRV (substitució de mode, entitats, configuració d'estat)",
           "schedule": "Temperatures i horari",
           "presence": "Presència i aprenentatge",
           "weather": "Meteorologia i sensors exteriors"
@@ -122,15 +213,105 @@
           "humidity_sensors": "Sensors d'humitat interior",
           "window_sensors": "Sensors de finestra",
           "window_open_delay": "Calefacció apagada – retard després d'obrir la finestra",
-          "window_close_delay": "Calefacció encesa – retard després de tancar la finestra",
-          "valve_maintenance": "Activar manteniment de vàlvules (només mode Estiu / Vacances)",
-          "manage_temp_source": "Usar automàticament la temperatura ambient externa per a TRVs compatibles",
-          "calibration_invert": "Invertir offset de calibratge (ME167 i similars)"
+          "window_close_delay": "Calefacció encesa – retard després de tancar la finestra"
+        }
+      },
+      "control_options": {
+        "title": "Estratègia de control de la zona",
+        "description": "Zona **{zone}**: trieu una estratègia predeterminada per a la zona. La configuració per dispositiu pot substituir aquesta estratègia.",
+        "data": {
+          "zone_control_mode": "Mode de control de la zona",
+          "control_interval": "Interval mínim del cicle de control",
+          "temp_tolerance": "Tolerància de temperatura",
+          "ext_temp_threshold": "Llindar d'escriptura de la temperatura externa",
+          "trv_setpoint_debounce": "Retard per als canvis físics de consigna del TRV",
+          "trv_setpoint_settling": "Temps d’estabilització de la consigna del TRV"
         },
         "data_description": {
-          "valve_maintenance": "Evita que les vàlvules s'encallin durant períodes prolongats sense calefacció. ThermoSmart mou ocasionalment les vàlvules automàticament quan el mode Estiu o Vacances està actiu.",
-          "manage_temp_source": "ThermoSmart continua usant sensors de temperatura externs per a la seva pròpia lògica de control. Quan està activat, ThermoSmart també canvia els TRVs compatibles a la seva font de temperatura externa i torna al sensor intern del TRV si els sensors externs queden no disponibles.",
-          "calibration_invert": "Inverteix el signe de l'offset de calibratge per a models TRV específics on la direcció de l'offset difereix del comportament estàndard. Activeu-ho només si el vostre dispositiu ho requereix."
+          "zone_control_mode": "**Només punt de consigna:** ThermoSmart envia la temperatura objectiu simple i el TRV regula la seva vàlvula pel seu compte.\n\n**Modulació del punt de consigna TPI:** ThermoSmart calcula la demanda de calefacció i puja o baixa el punt de consigna enviat al TRV per obrir o tancar la seva vàlvula.\n\n**Control directe de la vàlvula:** ThermoSmart escriu l'obertura de vàlvula calculada (0–100 %) a l'entitat de posició de la vàlvula del TRV i envia la temperatura objectiu simple com a punt de consigna.",
+          "control_interval": "Temps mínim entre cicles de control regulars. Cada cicle recalcula la demanda de calefacció i escriu punts de consigna, posicions de vàlvula i configuracions d'estat als TRVs. Esdeveniments com obrir una finestra o una substitució manual poden provocar abans un cicle addicional. Els intervals més curts donen reaccions més ràpides, però també poden sobrecarregar dispositius o congestionar xarxes, p. ex. Zigbee. A la pràctica, 2-3 minuts combinats amb llindars raonables per als canvis de temperatura, que s'han de superar perquè s'enviïn nous valors al TRV, haurien de ser suficients.",
+          "ext_temp_threshold": "El valor del sensor de temperatura extern s'envia al TRV només després que hagi canviat més d'aquest llindar respecte de l'última actualització. Només té efecte si hi ha un sensor extern configurat i per als TRV amb l'entrada de temperatura externa activada.",
+          "temp_tolerance": "S'envia una nova consigna al TRV només si difereix de la consigna actual del TRV com a mínim d'aquest valor. Valors grans redueixen el trànsit de ràdio; valors petits fan que el TRV segueixi ThermoSmart més de a prop.",
+          "trv_setpoint_debounce": "Espera aquest temps després de l’última actualització de consigna del TRV abans d’aplicar-la com a objectiu de la zona. Això et permet acabar d’ajustar el comandament; només s’utilitza l’últim valor rebut.",
+          "trv_setpoint_settling": "Després que ThermoSmart escrigui al TRV, ignora durant aquest temps les actualitzacions de consigna del dispositiu per no interpretar ecos retardats o valors intermedis com a canvis manuals."
+        }
+      },
+      "device_settings": {
+        "title": "Configuració de TRV (TRV {index}/{total})",
+        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nAquesta configuració només s'aplica a aquest TRV. A continuació podeu editar la configuració d'estat d'aquest TRV. No es desa res fins que hàgiu passat pel darrer TRV.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Mode de control",
+          "valve_entity": "Entitat de control de la vàlvula",
+          "feed_external_temp": "Enviar la temperatura de l'habitació al TRV",
+          "ext_temp_entity": "Entitat d'entrada de temperatura externa",
+          "calibration_sync": "Escriu el desfasament de calibratge",
+          "calibration_entity": "Entitat del desfasament de calibratge",
+          "calibration_invert": "Invertir el desplaçament de calibratge",
+          "valve_maintenance": "Activar exercici / manteniment de la vàlvula",
+          "window_off": "Apaga quan hi ha una finestra oberta",
+          "accept_setpoint_changes": "Accepta els canvis físics de consigna"
+        },
+        "data_description": {
+          "feed_external_temp": "Envia la temperatura de l'habitació al TRV. Cal seleccionar l'entitat d'entrada de temperatura externa correcta a sota; sense ella no s'envia res.",
+          "valve_maintenance": "Evita que les vàlvules s'encallin durant períodes prolongats sense calefacció. ThermoSmart mou ocasionalment les vàlvules de manera automàtica mentre el mode Estiu o el mode Vacances està actiu.",
+          "calibration_sync": "Corregeix el sensor de temperatura intern del TRV escrivint la diferència amb la temperatura ambient a l'entitat de calibratge següent. Desactiveu-ho per a TRV que usen una font de temperatura externa. Requereix una entitat de calibratge.",
+          "calibration_entity": "Entitat numèrica que conté el desfasament de calibratge local del TRV. Deixeu-la buida per desactivar el calibratge.",
+          "calibration_invert": "Activeu-ho si el TRV aplica el desfasament amb el signe oposat.",
+          "valve_entity": "Entitat numèrica que controla l'obertura de la vàlvula d'aquest TRV. Només cal si el control directe de la vàlvula està activat per a aquest TRV; si no, s'ignora i es pot deixar buida. ThermoSmart escriu 0–100 (%), o 0–1 per a entitats amb \"level\" al nom.",
+          "window_off": "Apaga el dispositiu (mode HVAC apagat) quan hi ha una finestra oberta. Si ho useu, assegureu-vos que el TRV continuï tenint la protecció contra gelades activada quan està apagat (alguns models sí, d'altres no) per evitar que es congeli. Si desactiveu aquest interruptor, el TRV es mantindrà en mode de calefacció, però amb la temperatura objectiu de finestra oberta definida en una de les pàgines següents.",
+          "accept_setpoint_changes": "Si està activat, la consigna canviada en aquest TRV s’adopta com a objectiu de la zona després del retard configurat i s’aplica a tots els TRV. També s’accepten canvis amb una finestra oberta."
+        }
+      },
+      "state_menu": {
+        "title": "Configuració d'estat del TRV",
+        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nLa configuració d'estat manté entitats escollides d'aquest TRV (select, number o switch) en un valor que definiu. En cada cicle de control o esdeveniment de control, ThermoSmart les comprova i estableix un valor només si difereix. Deixeu la llista buida si no ho necessiteu.\n\n**Configurat actualment:**\n\n{state_rules}\n\nTrieu una acció. Seleccioneu **Fet amb aquest TRV** quan hàgiu acabat; els canvis es desen després del darrer TRV.",
+        "menu_options": {
+          "state_add_device": "Afegir una entitat d'aquest TRV",
+          "state_add_any": "Afegir qualsevol altra entitat",
+          "state_remove": "Eliminar configuracions",
+          "state_done": "Fet amb aquest TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Afegir configuració d'estat (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nSeleccioneu l'entitat que ThermoSmart ha de mantenir en un valor concret. {scope}\n\nEl valor el triareu a la pàgina següent.",
+        "data": {
+          "entity_id": "Entitat"
+        },
+        "data_description": {
+          "entity_id": "Deixeu-ho buit i envieu per tornar sense afegir res."
+        }
+      },
+      "state_add_any": {
+        "title": "Afegir configuració d'estat (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nSeleccioneu l'entitat que ThermoSmart ha de mantenir en un valor concret. {scope}\n\nEl valor el triareu a la pàgina següent.",
+        "data": {
+          "entity_id": "Entitat"
+        },
+        "data_description": {
+          "entity_id": "Deixeu-ho buit i envieu per tornar sense afegir res."
+        }
+      },
+      "state_value": {
+        "title": "Valor de la configuració d'estat (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nDefiniu el valor que ThermoSmart imposa per a **{entity}**.\n\nValor actual: {current}",
+        "data": {
+          "value": "Valor a imposar",
+          "cancel": "Cancel·la – no desis aquest ajust"
+        },
+        "data_description": {
+          "value": "Si l'entitat difereix d'aquest valor, ThermoSmart l'estableix en el proper cicle de control o esdeveniment.",
+          "cancel": "Marqueu-ho i envieu per tornar a la llista sense desar."
+        }
+      },
+      "state_remove": {
+        "title": "Eliminar configuracions d'estat (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nSeleccioneu les configuracions d'estat que ThermoSmart ha de deixar d'imposar per a aquest TRV.",
+        "data": {
+          "remove": "Configuracions a eliminar"
+        },
+        "data_description": {
+          "remove": "Deixeu-ho buit i envieu per tornar sense eliminar res."
         }
       },
       "schedule": {
@@ -143,7 +324,6 @@
           "vacation_temp": "Temperatura de vacances",
           "eco_temp": "Temperatura eco",
           "window_open_temp": "Temperatura amb finestra oberta",
-          "temp_tolerance": "Tolerància de temperatura",
           "schedule_enabled": "Activar horari",
           "sched_wd_morning": "Dia feiner: Confort des de",
           "sched_wd_night": "Dia feiner: Nit des de",
@@ -158,12 +338,11 @@
           "sched_we_night": "La temperatura nocturna s'aplica a partir d'aquesta hora",
           "away_temp": "S'aplica automàticament només si la detecció de presència està configurada (Pas 3). Pot establir-se manualment a través del selector de mode.",
           "eco_temp": "S'utilitza quan el selector de mode s'estableix manualment en 'Eco'. No s'aplica automàticament.",
-          "window_open_temp": "Temperatura objectiu mentre una finestra és oberta. Per a termostats que no admeten valors molt baixos, useu un valor més alt com ara 10 °C.",
-          "temp_tolerance": "Canvi mínim al punt de consigna TRV calculat abans que ThermoSmart enviï una nova actualització. Redueix les escriptures innecessàries al termòstat. 0,5 °C funciona bé per a la majoria d'habitacions."
+          "window_open_temp": "Temperatura objectiu que s'assigna a un TRV mentre hi ha una finestra oberta, tret que aquest TRV estigui configurat per apagar-se (vegeu els ajustos per dispositiu). Per a termòstats que no admeten consignes molt baixes, useu un valor més alt, com 10 °C."
         }
       },
       "presence": {
-        "title": "Presència i aprenentatge",
+        "title": "Presència",
         "description": "Qui és a casa? ThermoSmart canvia automàticament al mode absència quan tothom marxa.",
         "data": {
           "presence_persons": "Persones per a la detecció de presència",
@@ -311,6 +490,39 @@
       },
       "trv_observations": {
         "name": "Observacions TRV"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Només consigna (TRV autònom)",
+        "tpi_boost": "Modulació de consigna TPI (increment calculat)",
+        "direct_valve": "Control directe de la vàlvula (0–100%)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Hereta de la zona (Només consigna)",
+        "setpoint": "Només consigna",
+        "tpi_boost": "Modulació de consigna TPI",
+        "direct_valve": "Control directe de la vàlvula"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Hereta de la zona (Modulació de consigna TPI)",
+        "setpoint": "Només consigna",
+        "tpi_boost": "Modulació de consigna TPI",
+        "direct_valve": "Control directe de la vàlvula"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Hereta de la zona (Control directe de la vàlvula)",
+        "setpoint": "Només consigna",
+        "tpi_boost": "Modulació de consigna TPI",
+        "direct_valve": "Control directe de la vàlvula"
       }
     }
   }

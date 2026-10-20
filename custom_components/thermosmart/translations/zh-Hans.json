@@ -14,7 +14,7 @@
         "description": "配置全局夏季模式选择器（自动 / 开启 / 关闭）和假期开关。无需温控器。两个控制均同时适用于所有区域。"
       },
       "add_zone": {
-        "title": "第 1 步 / 4 – 设备和传感器",
+        "title": "第 1 步 – 设备和传感器",
         "description": "为此供暖区域选择 TRV 和传感器。校准实体和 quirk 开关会自动检测。",
         "data": {
           "name": "区域名称（例如 客厅）",
@@ -23,19 +23,109 @@
           "humidity_sensors": "室内湿度传感器",
           "window_sensors": "窗户传感器（binary_sensor）",
           "window_open_delay": "供暖关闭 – 窗户打开后延迟",
-          "window_close_delay": "供暖开启 – 窗户关闭后延迟",
-          "valve_maintenance": "启用阀门维护（周日 03:00 – 仅夏季或假期模式）",
-          "manage_temp_source": "自动为支持的TRV使用外部室温",
-          "calibration_invert": "反转校准偏移（适用于反转符号的 ME167 等 TRV）"
+          "window_close_delay": "供暖开启 – 窗户关闭后延迟"
+        }
+      },
+      "control_options": {
+        "title": "第 2 步 – 区域控制策略",
+        "description": "选择区域默认值。每个设备的设置（后续页面）可以覆盖此策略。\n\n检测到的设备：\n\n{detected_devices}",
+        "data": {
+          "zone_control_mode": "区域控制模式",
+          "control_interval": "最小控制周期间隔",
+          "temp_tolerance": "温度容差",
+          "ext_temp_threshold": "外部温度写入阈值",
+          "trv_setpoint_debounce": "TRV 手动设定温度变更防抖时间",
+          "trv_setpoint_settling": "TRV 设定温度稳定时间"
         },
         "data_description": {
-          "valve_maintenance": "防止阀门在长时间不加热期间卡死。当夏季模式或假期模式激活时，ThermoSmart会偶尔自动移动阀门。",
-          "manage_temp_source": "ThermoSmart继续使用外部温度传感器进行自身控制逻辑。启用后，ThermoSmart还会将支持的TRV切换到其外部温度源，并在外部传感器不可用时回退到TRV内部传感器。",
-          "calibration_invert": "反转特定TRV型号校准偏移的符号，这些型号的偏移方向与标准行为不同。仅在设备需要时启用。"
+          "zone_control_mode": "**仅设定点：** ThermoSmart 发送普通目标温度，TRV 自行调节其阀门。\n\n**TPI 设定点调制：** ThermoSmart 计算供暖需求，并升高或降低发送给 TRV 的设定点，以打开或关闭其阀门。\n\n**直接阀门控制：** ThermoSmart 将计算出的阀门开度（0–100 %）写入 TRV 的阀门位置实体，并将普通目标作为设定点发送。",
+          "control_interval": "常规控制周期之间的最短时间。每个周期都会重新计算供暖需求，并将设定点、阀门位置和状态设置写入 TRV。打开窗户或手动覆盖等事件可能会提前触发额外的周期。较短的间隔反应更快，但也可能使设备过载或使网络（例如 Zigbee）拥塞。实际上，2–3 分钟再配合合理的温度变化阈值（必须超过该阈值才会向 TRV 发送新值）就足够了。",
+          "ext_temp_threshold": "仅当外部温度传感器的值相对上次更新变化超过此阈值时才会发送给 TRV。仅在配置了外部传感器且 TRV 启用了外部温度输入时有效。",
+          "temp_tolerance": "仅当新的设定温度与 TRV 当前设定温度相差至少此值时才会发送给 TRV。值越大，无线通信越少；值越小，TRV 越紧密地跟随 ThermoSmart。",
+          "trv_setpoint_debounce": "TRV 最后一次更新设定温度后等待此时间，再将其应用为区域目标温度。这样您可以完成旋钮调节；系统只采用最后报告的数值。",
+          "trv_setpoint_settling": "ThermoSmart 写入 TRV 后，在此时间内忽略该 TRV 报告的设定温度，避免将延迟回报或中间值误认为手动更改。"
+        }
+      },
+      "device_settings": {
+        "title": "第 3 步 – TRV 设置 (TRV {index}/{total})",
+        "description": "**区域:** {zone}\n**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n这些设置仅适用于此 TRV。 接下来您可以为此 TRV 定义状态设置。\n\n{preset_info}",
+        "data": {
+          "control_mode": "控制模式",
+          "valve_entity": "阀门控制实体",
+          "feed_external_temp": "向 TRV 提供室温",
+          "ext_temp_entity": "外部温度输入实体",
+          "calibration_sync": "写入校准偏移",
+          "calibration_entity": "校准偏移实体",
+          "calibration_invert": "反转校准偏移",
+          "valve_maintenance": "启用阀门活动 / 维护",
+          "window_off": "窗户打开时关闭",
+          "accept_setpoint_changes": "接受 TRV 手动设定温度变更"
+        },
+        "data_description": {
+          "feed_external_temp": "将室温发送给 TRV。需要在下方选择正确的外部温度输入实体；否则不会发送任何内容。",
+          "valve_maintenance": "防止阀门在长时间不供暖期间卡死。当夏季模式或假期模式激活时，ThermoSmart 会偶尔自动移动阀门。",
+          "calibration_sync": "通过将与室温的差值写入下方的校准实体来校正 TRV 内部温度传感器。使用外部温度源的 TRV 请关闭。需要校准实体。",
+          "calibration_entity": "保存 TRV 本地校准偏移的数值实体。留空则禁用校准。",
+          "calibration_invert": "如果 TRV 以相反符号应用偏移，请启用。",
+          "valve_entity": "控制此 TRV 阀门开度的数值实体。仅在为此 TRV 启用直接阀门控制时需要，否则将被忽略，可留空。ThermoSmart 写入 0–100（%），名称中含 \"level\" 的实体则写入 0–1。",
+          "window_off": "窗户打开时关闭设备（HVAC 模式为关）。使用此选项时，请确保您的 TRV 在关闭状态下仍启用防冻保护（部分型号具备，部分不具备），以防冻结。如果关闭此开关，TRV 将保持制热模式，但窗户打开时会改为设置为后续页面之一中定义的窗户打开目标温度。",
+          "accept_setpoint_changes": "启用后，此 TRV 上更改的设定温度会在指定防抖时间后作为区域目标温度，并应用到所有 TRV。窗口打开时的更改也会被接受。"
+        }
+      },
+      "state_menu": {
+        "title": "第 3 步 – TRV 状态设置",
+        "description": "**区域:** {zone}\n**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n状态设置会将此 TRV 的所选实体（select、number 或 switch）保持在您定义的值。在每个控制周期或控制事件中，ThermoSmart 都会检查它们，并且仅在值不同时才进行设置。如果不需要，请将列表留空。\n\n**当前已配置：**\n\n{state_rules}\n\n请选择操作。完成后选择 **完成此 TRV**。",
+        "menu_options": {
+          "state_add_device": "添加此 TRV 的实体",
+          "state_add_any": "添加任何其他实体",
+          "state_remove": "删除设置",
+          "state_done": "完成此 TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "第 3 步 – 添加状态设置 (TRV {index}/{total})",
+        "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n选择 ThermoSmart 应保持在特定值的实体。{scope}\n\n您将在下一页选择该值。",
+        "data": {
+          "entity_id": "实体"
+        },
+        "data_description": {
+          "entity_id": "留空并提交即可返回而不添加任何内容。"
+        }
+      },
+      "state_add_any": {
+        "title": "第 3 步 – 添加状态设置 (TRV {index}/{total})",
+        "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n选择 ThermoSmart 应保持在特定值的实体。{scope}\n\n您将在下一页选择该值。",
+        "data": {
+          "entity_id": "实体"
+        },
+        "data_description": {
+          "entity_id": "留空并提交即可返回而不添加任何内容。"
+        }
+      },
+      "state_value": {
+        "title": "第 3 步 – 状态设置值 (TRV {index}/{total})",
+        "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n定义 ThermoSmart 为 **{entity}** 强制执行的值。\n\n当前值：{current}",
+        "data": {
+          "value": "要强制执行的值",
+          "cancel": "取消 – 不保存此设置"
+        },
+        "data_description": {
+          "value": "如果实体与此值不同，ThermoSmart 将在下一个控制周期或事件中进行设置。",
+          "cancel": "勾选并提交即可返回列表而不保存。"
+        }
+      },
+      "state_remove": {
+        "title": "第 3 步 – 删除状态设置 (TRV {index}/{total})",
+        "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n选择 ThermoSmart 应停止对此 TRV 强制执行的状态设置。",
+        "data": {
+          "remove": "要删除的设置"
+        },
+        "data_description": {
+          "remove": "留空并提交即可返回而不移除任何内容。"
         }
       },
       "schedule": {
-        "title": "第 2 步 / 4 – 温度和计划",
+        "title": "第 4 步 – 温度和计划",
         "description": "每日流程：夜间 → 舒适 → 夜间\n\n当所有人员离开时，ThermoSmart 会自动切换到离家温度——与计划无关。",
         "data": {
           "comfort_temp": "舒适温度（有人在家时）",
@@ -44,7 +134,6 @@
           "vacation_temp": "假期温度（防冻保护）",
           "eco_temp": "节能温度（节能，介于夜间和舒适之间）",
           "window_open_temp": "开窗温度",
-          "temp_tolerance": "温度容差 – 设定点更新阈值",
           "schedule_enabled": "启用时间计划",
           "sched_wd_morning": "工作日：舒适从",
           "sched_wd_night": "工作日：夜间从",
@@ -59,12 +148,11 @@
           "sched_we_night": "夜间温度从此时间起生效",
           "away_temp": "仅在配置了存在检测时自动应用（步骤 3）。也可通过模式选择器手动设置。",
           "eco_temp": "当模式选择器手动设置为 'Eco' 时使用。不会自动激活。",
-          "window_open_temp": "窗户打开时的目标温度。对于不支持非常低设定点的恒温器，请使用较高值，例如 10 °C。",
-          "temp_tolerance": "在 ThermoSmart 发送新更新之前，计算出的 TRV 设定点的最小变化量。减少对恒温器的不必要写入。0.5 °C 适合大多数房间。"
+          "window_open_temp": "窗户打开时设置在 TRV 上的目标温度，除非该 TRV 被配置为窗户打开时关闭（见各设备设置）。对于不支持极低设定值的恒温器，请使用较高的值，例如 10 °C。"
         }
       },
       "presence": {
-        "title": "第 3 步 / 4 – 在家检测和学习",
+        "title": "第 5 步 – 在家检测",
         "description": "谁在家？当所有人离开时，ThermoSmart 会自动切换到离家模式。",
         "data": {
           "presence_persons": "用于检测在家状态的人员",
@@ -72,7 +160,7 @@
         }
       },
       "weather": {
-        "title": "第 4 步 / 4 – 天气和室外传感器",
+        "title": "第 6 步 – 天气和室外传感器",
         "description": "所有字段均为可选——自有传感器优先于天气实体。系统在没有天气数据的情况下也可运行。",
         "data": {
           "weather_entity": "天气实体（例如 weather.home）",
@@ -105,8 +193,11 @@
     "step": {
       "init": {
         "title": "设置",
+        "description": "选择要编辑区域 **{zone}** 的哪一部分。每个部分单独保存。",
         "menu_options": {
           "devices": "设备和传感器",
+          "control_options": "区域控制策略（默认模式、间隔、阈值）",
+          "device_settings": "每个 TRV 的设置（模式覆盖、实体、状态设置）",
           "schedule": "温度和计划",
           "presence": "在家检测和学习",
           "weather": "天气和室外传感器"
@@ -122,15 +213,105 @@
           "humidity_sensors": "室内湿度传感器",
           "window_sensors": "窗户传感器",
           "window_open_delay": "供暖关闭 – 窗户打开后延迟",
-          "window_close_delay": "供暖开启 – 窗户关闭后延迟",
-          "valve_maintenance": "启用阀门维护（仅夏季 / 假期模式）",
-          "manage_temp_source": "自动为支持的TRV使用外部室温",
-          "calibration_invert": "反转校准偏移（ME167 及类似设备）"
+          "window_close_delay": "供暖开启 – 窗户关闭后延迟"
+        }
+      },
+      "control_options": {
+        "title": "区域控制策略",
+        "description": "区域 **{zone}**：选择区域默认值。每个设备的设置可以覆盖此策略。",
+        "data": {
+          "zone_control_mode": "区域控制模式",
+          "control_interval": "最小控制周期间隔",
+          "temp_tolerance": "温度容差",
+          "ext_temp_threshold": "外部温度写入阈值",
+          "trv_setpoint_debounce": "TRV 手动设定温度变更防抖时间",
+          "trv_setpoint_settling": "TRV 设定温度稳定时间"
         },
         "data_description": {
-          "valve_maintenance": "防止阀门在长时间不加热期间卡死。当夏季模式或假期模式激活时，ThermoSmart会偶尔自动移动阀门。",
-          "manage_temp_source": "ThermoSmart继续使用外部温度传感器进行自身控制逻辑。启用后，ThermoSmart还会将支持的TRV切换到其外部温度源，并在外部传感器不可用时回退到TRV内部传感器。",
-          "calibration_invert": "反转特定TRV型号校准偏移的符号，这些型号的偏移方向与标准行为不同。仅在设备需要时启用。"
+          "zone_control_mode": "**仅设定点：** ThermoSmart 发送普通目标温度，TRV 自行调节其阀门。\n\n**TPI 设定点调制：** ThermoSmart 计算供暖需求，并升高或降低发送给 TRV 的设定点，以打开或关闭其阀门。\n\n**直接阀门控制：** ThermoSmart 将计算出的阀门开度（0–100 %）写入 TRV 的阀门位置实体，并将普通目标作为设定点发送。",
+          "control_interval": "常规控制周期之间的最短时间。每个周期都会重新计算供暖需求，并将设定点、阀门位置和状态设置写入 TRV。打开窗户或手动覆盖等事件可能会提前触发额外的周期。较短的间隔反应更快，但也可能使设备过载或使网络（例如 Zigbee）拥塞。实际上，2–3 分钟再配合合理的温度变化阈值（必须超过该阈值才会向 TRV 发送新值）就足够了。",
+          "ext_temp_threshold": "仅当外部温度传感器的值相对上次更新变化超过此阈值时才会发送给 TRV。仅在配置了外部传感器且 TRV 启用了外部温度输入时有效。",
+          "temp_tolerance": "仅当新的设定温度与 TRV 当前设定温度相差至少此值时才会发送给 TRV。值越大，无线通信越少；值越小，TRV 越紧密地跟随 ThermoSmart。",
+          "trv_setpoint_debounce": "TRV 最后一次更新设定温度后等待此时间，再将其应用为区域目标温度。这样您可以完成旋钮调节；系统只采用最后报告的数值。",
+          "trv_setpoint_settling": "ThermoSmart 写入 TRV 后，在此时间内忽略该 TRV 报告的设定温度，避免将延迟回报或中间值误认为手动更改。"
+        }
+      },
+      "device_settings": {
+        "title": "TRV 设置 (TRV {index}/{total})",
+        "description": "**区域:** {zone}\n**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n这些设置仅适用于此 TRV。 接下来您可以编辑此 TRV 的状态设置。在完成最后一个 TRV 之前不会保存任何内容。\n\n{preset_info}",
+        "data": {
+          "control_mode": "控制模式",
+          "valve_entity": "阀门控制实体",
+          "feed_external_temp": "向 TRV 提供室温",
+          "ext_temp_entity": "外部温度输入实体",
+          "calibration_sync": "写入校准偏移",
+          "calibration_entity": "校准偏移实体",
+          "calibration_invert": "反转校准偏移",
+          "valve_maintenance": "启用阀门活动 / 维护",
+          "window_off": "窗户打开时关闭",
+          "accept_setpoint_changes": "接受 TRV 手动设定温度变更"
+        },
+        "data_description": {
+          "feed_external_temp": "将室温发送给 TRV。需要在下方选择正确的外部温度输入实体；否则不会发送任何内容。",
+          "valve_maintenance": "防止阀门在长时间不供暖期间卡死。当夏季模式或假期模式激活时，ThermoSmart 会偶尔自动移动阀门。",
+          "calibration_sync": "通过将与室温的差值写入下方的校准实体来校正 TRV 内部温度传感器。使用外部温度源的 TRV 请关闭。需要校准实体。",
+          "calibration_entity": "保存 TRV 本地校准偏移的数值实体。留空则禁用校准。",
+          "calibration_invert": "如果 TRV 以相反符号应用偏移，请启用。",
+          "valve_entity": "控制此 TRV 阀门开度的数值实体。仅在为此 TRV 启用直接阀门控制时需要，否则将被忽略，可留空。ThermoSmart 写入 0–100（%），名称中含 \"level\" 的实体则写入 0–1。",
+          "window_off": "窗户打开时关闭设备（HVAC 模式为关）。使用此选项时，请确保您的 TRV 在关闭状态下仍启用防冻保护（部分型号具备，部分不具备），以防冻结。如果关闭此开关，TRV 将保持制热模式，但窗户打开时会改为设置为后续页面之一中定义的窗户打开目标温度。",
+          "accept_setpoint_changes": "启用后，此 TRV 上更改的设定温度会在指定防抖时间后作为区域目标温度，并应用到所有 TRV。窗口打开时的更改也会被接受。"
+        }
+      },
+      "state_menu": {
+        "title": "TRV 状态设置",
+        "description": "**区域:** {zone}\n**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n状态设置会将此 TRV 的所选实体（select、number 或 switch）保持在您定义的值。在每个控制周期或控制事件中，ThermoSmart 都会检查它们，并且仅在值不同时才进行设置。如果不需要，请将列表留空。\n\n**当前已配置：**\n\n{state_rules}\n\n请选择操作。完成后选择 **完成此 TRV**；更改将在最后一个 TRV 之后保存。",
+        "menu_options": {
+          "state_add_device": "添加此 TRV 的实体",
+          "state_add_any": "添加任何其他实体",
+          "state_remove": "删除设置",
+          "state_done": "完成此 TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "添加状态设置 (TRV {index}/{total})",
+        "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n选择 ThermoSmart 应保持在特定值的实体。{scope}\n\n您将在下一页选择该值。",
+        "data": {
+          "entity_id": "实体"
+        },
+        "data_description": {
+          "entity_id": "留空并提交即可返回而不添加任何内容。"
+        }
+      },
+      "state_add_any": {
+        "title": "添加状态设置 (TRV {index}/{total})",
+        "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n选择 ThermoSmart 应保持在特定值的实体。{scope}\n\n您将在下一页选择该值。",
+        "data": {
+          "entity_id": "实体"
+        },
+        "data_description": {
+          "entity_id": "留空并提交即可返回而不添加任何内容。"
+        }
+      },
+      "state_value": {
+        "title": "状态设置值 (TRV {index}/{total})",
+        "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n定义 ThermoSmart 为 **{entity}** 强制执行的值。\n\n当前值：{current}",
+        "data": {
+          "value": "要强制执行的值",
+          "cancel": "取消 – 不保存此设置"
+        },
+        "data_description": {
+          "value": "如果实体与此值不同，ThermoSmart 将在下一个控制周期或事件中进行设置。",
+          "cancel": "勾选并提交即可返回列表而不保存。"
+        }
+      },
+      "state_remove": {
+        "title": "删除状态设置 (TRV {index}/{total})",
+        "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n选择 ThermoSmart 应停止对此 TRV 强制执行的状态设置。",
+        "data": {
+          "remove": "要删除的设置"
+        },
+        "data_description": {
+          "remove": "留空并提交即可返回而不移除任何内容。"
         }
       },
       "schedule": {
@@ -143,7 +324,6 @@
           "vacation_temp": "假期温度",
           "eco_temp": "节能温度",
           "window_open_temp": "开窗温度",
-          "temp_tolerance": "温度容差",
           "schedule_enabled": "启用时间计划",
           "sched_wd_morning": "工作日：舒适从",
           "sched_wd_night": "工作日：夜间从",
@@ -158,12 +338,11 @@
           "sched_we_night": "夜间温度从此时间起生效",
           "away_temp": "仅在配置了存在检测时自动应用（步骤 3）。也可通过模式选择器手动设置。",
           "eco_temp": "当模式选择器手动设置为 'Eco' 时使用。不会自动激活。",
-          "window_open_temp": "窗户打开时的目标温度。对于不支持非常低设定点的恒温器，请使用较高值，例如 10 °C。",
-          "temp_tolerance": "在 ThermoSmart 发送新更新之前，计算出的 TRV 设定点的最小变化量。减少对恒温器的不必要写入。0.5 °C 适合大多数房间。"
+          "window_open_temp": "窗户打开时设置在 TRV 上的目标温度，除非该 TRV 被配置为窗户打开时关闭（见各设备设置）。对于不支持极低设定值的恒温器，请使用较高的值，例如 10 °C。"
         }
       },
       "presence": {
-        "title": "在家检测和学习",
+        "title": "在家检测",
         "description": "谁在家？当所有人离开时，ThermoSmart 会自动切换到离家模式。",
         "data": {
           "presence_persons": "用于检测在家状态的人员",
@@ -311,6 +490,39 @@
       },
       "trv_observations": {
         "name": "TRV 观测值"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "仅设定温度（TRV 自主运行）",
+        "tpi_boost": "TPI 设定温度调制（计算提升）",
+        "direct_valve": "直接阀门控制（0–100%）"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "继承自区域 (仅设定温度)",
+        "setpoint": "仅设定温度",
+        "tpi_boost": "TPI 设定温度调制",
+        "direct_valve": "直接阀门控制"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "继承自区域 (TPI 设定温度调制)",
+        "setpoint": "仅设定温度",
+        "tpi_boost": "TPI 设定温度调制",
+        "direct_valve": "直接阀门控制"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "继承自区域 (直接阀门控制)",
+        "setpoint": "仅设定温度",
+        "tpi_boost": "TPI 设定温度调制",
+        "direct_valve": "直接阀门控制"
       }
     }
   }

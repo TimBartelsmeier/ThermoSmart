@@ -90,6 +90,11 @@ class WindowMixin:
         if current_temp is None:
             return getattr(self, "_slope_window_active", False)
 
+        # Count only fresh slope samples, so the detection depends on elapsed
+        # time and not on how many control cycles ran.
+        if not getattr(self, "_slope_sample_fresh", True):
+            return self._slope_window_active
+
         slope_now = getattr(self, "_indoor_temp_slope", 0.0) or 0.0
 
         # EMA der Slope aktualisieren

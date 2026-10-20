@@ -131,7 +131,12 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
 
     @property
     def target_temperature(self) -> float | None:
-        return self._zone.get("adjusted_target")
+        target = self._zone.get("adjusted_target")
+        if target is None and self._zone.get("window_open"):
+            # adjusted_target is None while a window is open; show a pending override
+            # so the user sees that a (physical or UI) setpoint change was accepted.
+            return self._zone.get("override_temp")
+        return target
 
     @property
     def hvac_mode(self) -> HVACMode:
