@@ -2310,13 +2310,7 @@ class LearningShadowController:
             if not active_control_on:
                 return _blocked(BoostBlockReason.ACTIVE_CONTROL_OFF, release=True)
 
-            # Gate 3: Mixed control zone — adaptive boost blocked conservatively.
-            # A zone mixing setpoint-TRVs and direct-valve-TRVs cannot safely receive
-            # a per-device split; the entire zone is blocked with a clear typed reason.
-            if recommendation.get("zone_control_type") == "mixed":
-                return _blocked(BoostBlockReason.MIXED_CONTROL_TYPES, release=True)
-
-            # Gate 3.5: Pre-dispatch device availability.
+            # Gate 3: Pre-dispatch device availability.
             # If any setpoint TRV was unavailable when the coordinator sampled states
             # before the resolver, boost is blocked for this cycle.  Prevents a partial
             # dispatch where some TRVs received the boosted setpoint and others did not.

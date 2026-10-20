@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import logging
 
-from .capabilities import DeviceProfile
-from .profiles import ALL_PROFILES, GENERIC
+from .capabilities import DevicePreset, DeviceProfile
+from .profiles import ALL_PROFILES, DEVICE_PRESETS, GENERIC
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,3 +85,23 @@ def get_profile(model: str | None, manufacturer: str | None) -> DeviceProfile:
         model, manufacturer,
     )
     return GENERIC
+
+
+def get_preset(model: str | None, manufacturer: str | None) -> DevicePreset:
+    """Return editable configuration defaults for a detected device."""
+    profile = get_profile(model, manufacturer)
+    return DEVICE_PRESETS.get(
+        profile.identifier,
+        DevicePreset(
+            preset_id=profile.identifier,
+            display_name=profile.display_name,
+            recommended_mode="tpi_boost" if profile.is_active else "inherit",
+            calibration_inverted=profile.calibration_inverted,
+            hvac_mode_before_write=profile.hvac_mode_before_write,
+            setpoint_delay_seconds=profile.setpoint_delay_seconds,
+            info_summary=(
+                f"Preset loaded: {profile.display_name}; "
+                "available inputs are auto-detected."
+            ),
+        ),
+    )

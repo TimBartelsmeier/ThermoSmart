@@ -8,7 +8,7 @@ import dataclasses
 
 import pytest
 
-from custom_components.thermosmart.device_profiles import get_profile
+from custom_components.thermosmart.device_profiles import get_preset, get_profile
 from custom_components.thermosmart.device_profiles.capabilities import (
     DeviceProfile,
     SETPOINT_CLIMATE,
@@ -139,6 +139,31 @@ class TestGetProfile:
         from custom_components.thermosmart.device_profiles.registry import _MATCH_TABLE, _BY_ID
         for identifier, _, _ in _MATCH_TABLE:
             assert identifier in _BY_ID, f"Profile '{identifier}' in match table but not in profiles"
+
+
+class TestDevicePresets:
+    def test_sonoff_preset_recommends_tpi_and_external_temperature(self):
+        preset = get_preset("TRVZB", "SONOFF")
+        assert preset.preset_id == "sonoff_trvzb"
+        assert preset.recommended_mode == "tpi_boost"
+        assert preset.feed_external_temp is True
+        assert preset.default_state_settings == [{
+            "entity_pattern": "temperature_sensor",
+            "value": "external",
+        }]
+
+    def test_eurotronic_preset_recommends_direct_valve(self):
+        preset = get_preset("Spirit", "Eurotronic")
+        assert preset.recommended_mode == "direct_valve"
+        assert preset.valve_entity_pattern == "valve_position"
+        assert preset.hvac_mode_before_write == "heat"
+        assert preset.setpoint_delay_seconds == 0.5
+
+    def test_unrecognized_device_gets_generic_preset(self):
+        preset = get_preset("Unrecognized", "Unknown")
+        assert preset.preset_id == "generic"
+        assert preset.recommended_mode == "inherit"
+        assert "auto-detected" in preset.info_summary
 
 
 # ── Profile capability verification ─────────────────────────────────────────

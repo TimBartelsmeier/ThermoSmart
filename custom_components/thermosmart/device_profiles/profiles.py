@@ -7,6 +7,7 @@ corresponding match rule in registry.py — no other files need to change.
 from __future__ import annotations
 
 from .capabilities import (
+    DevicePreset,
     DeviceProfile,
     SETPOINT_CLIMATE,
     SETPOINT_HVAC_FIRST,
@@ -179,6 +180,50 @@ NETATMO = DeviceProfile(
         "enabling Active Control."
     ),
 )
+
+# User-facing recommendations. The profile remains the runtime capability
+# record; these presets only seed editable zone configuration.
+DEVICE_PRESETS: dict[str, DevicePreset] = {
+    "generic": DevicePreset(
+        "generic", "Generic TRV", info_summary="Generic device; available inputs are auto-detected."
+    ),
+    "sonoff_trvzb": DevicePreset(
+        "sonoff_trvzb", "SONOFF TRVZB", recommended_mode="tpi_boost",
+        ext_temp_entity_pattern="external_temperature",
+        feed_external_temp=True,
+        default_state_settings=[{
+            "entity_pattern": "temperature_sensor",
+            "value": "external",
+        }],
+        info_summary="Preset loaded: calibration inversion off, external room temperature enabled; valve opening degree is treated as a limit.",
+    ),
+    "eurotronic_spirit": DevicePreset(
+        "eurotronic_spirit", "Eurotronic Spirit", recommended_mode="direct_valve",
+        valve_entity_pattern="valve_position", hvac_mode_before_write="heat",
+        setpoint_delay_seconds=0.5,
+        info_summary="Preset loaded: direct valve control via valve position; heat mode is selected before setpoint writes.",
+    ),
+    "eurotronic_spzb0001": DevicePreset(
+        "eurotronic_spzb0001", "Eurotronic SPZB0001", recommended_mode="direct_valve",
+        valve_entity_pattern="valve_position", hvac_mode_before_write="heat",
+        setpoint_delay_seconds=0.5,
+        info_summary="Preset loaded: direct valve control via valve position; heat mode is selected before setpoint writes.",
+    ),
+    "avatto_me167": DevicePreset(
+        "avatto_me167", "Avatto ME167", recommended_mode="tpi_boost",
+        calibration_inverted=True,
+        info_summary="Preset loaded: calibration offset inversion enabled.",
+    ),
+    "tuya_ts0601": DevicePreset(
+        "tuya_ts0601", "Tuya TS0601", recommended_mode="tpi_boost",
+        valve_entity_pattern="heating_demand",
+        info_summary="Preset loaded: TPI setpoint modulation; detected heating-demand input can be configured for direct control.",
+    ),
+    "eve_thermo": DevicePreset(
+        "eve_thermo", "Eve Thermo", recommended_mode="tpi_boost",
+        info_summary="Preset loaded: TPI setpoint modulation; external temperature input is not assumed.",
+    ),
+}
 
 # ── Registry of all profiles ─────────────────────────────────────────────────
 

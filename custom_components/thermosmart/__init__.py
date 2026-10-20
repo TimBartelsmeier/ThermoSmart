@@ -35,6 +35,22 @@ from .const import (
     CARD_FILENAME,
     CARD_URL_PATH,
     VERSION,
+    CONF_DEVICE_SETTINGS,
+    CONF_ZONE_CONTROL_MODE,
+    CONF_CONTROL_INTERVAL,
+    CONF_EXT_TEMP_THRESHOLD,
+    CONF_DEV_CONTROL_MODE,
+    CONF_DEV_VALVE_ENTITY,
+    CONF_DEV_EXT_TEMP_ENTITY,
+    CONF_DEV_FEED_EXT_TEMP,
+    CONF_DEV_CALIBRATION_INVERT,
+    CONF_DEV_VALVE_MAINTENANCE,
+    CONF_DEV_STATE_SETTINGS,
+    CONF_MANAGE_TEMP_SOURCE,
+    CONF_CALIBRATION_INVERT,
+    CONTROL_MODE_INHERIT,
+    CONTROL_MODE_DIRECT_VALVE,
+    CONTROL_MODE_TPI_BOOST,
 )
 from .coordinator import ThermoSmartCoordinator
 from .weather_engine import WeatherEngine
@@ -44,6 +60,54 @@ _LOGGER = logging.getLogger(__name__)
 
 ZONE_PLATFORMS = PLATFORMS               # ["climate", "sensor", "switch", "select"]
 SYSTEM_PLATFORMS = ["switch", "select"]  # System-Entry: globale Schalter + Sommer-Select
+
+
+def _migrate_device_settings(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Seed per-device settings for entries created before strategy configuration."""
+    cfg = {**entry.data, **entry.options}
+    if cfg.get("entry_type") == "system" or CONF_DEVICE_SETTINGS in cfg:
+        return
+
+    from .config_flow import _detect_device_settings
+
+    legacy_invert = cfg.get(CONF_CALIBRATION_INVERT)
+    device_settings: dict[str, dict] = {}
+    for climate_id in cfg.get("climate_entities", []):
+        detected = _detect_device_settings(hass, climate_id)
+        setting = dict(detected["settings"])
+        setting[CONF_DEV_CONTROL_MODE] = (
+            CONTROL_MODE_DIRECT_VALVE
+            if setting.get(CONF_DEV_VALVE_ENTITY)
+            else CONTROL_MODE_INHERIT
+        )
+        if setting.get(CONF_DEV_EXT_TEMP_ENTITY):
+            setting[CONF_DEV_FEED_EXT_TEMP] = True
+        if legacy_invert is not None:
+            setting[CONF_DEV_CALIBRATION_INVERT] = legacy_invert
+        setting[CONF_DEV_VALVE_MAINTENANCE] = cfg.get("valve_maintenance", True)
+        if cfg.get(CONF_MANAGE_TEMP_SOURCE) and detected["state_entity"]:
+            setting[CONF_DEV_STATE_SETTINGS] = [{
+                "entity_id": detected["state_entity"],
+                "value": detected["state_value"] or "external",
+            }]
+        else:
+            setting[CONF_DEV_STATE_SETTINGS] = []
+        device_settings[climate_id] = setting
+
+    hass.config_entries.async_update_entry(
+        entry,
+        data={
+            **entry.data,
+            CONF_DEVICE_SETTINGS: device_settings,
+            CONF_ZONE_CONTROL_MODE: CONTROL_MODE_TPI_BOOST,
+            CONF_CONTROL_INTERVAL: 5,
+            CONF_EXT_TEMP_THRESHOLD: 0.5,
+        },
+    )
+    _LOGGER.info(
+        "ThermoSmart '%s': migrated legacy zone settings to per-device configuration",
+        cfg.get("name", entry.entry_id),
+    )
 
 
 def _migrate_old_summer_switch(hass: HomeAssistant) -> None:
@@ -146,6 +210,7 @@ def _validate_sensors(hass: HomeAssistant, cfg: dict) -> None:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
+    _migrate_device_settings(hass, entry)
     cfg = {**entry.data, **entry.options}
 
     # Einmalige Migration pro HA-Session: alte Summer-Switch-Entity entfernen (beta.23)
@@ -300,7 +365,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if cfg.get("entry_type") != "system":
         entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
         if coordinator := entry_data.get("coordinator"):
-            await coordinator._async_restore_temp_source()
             # cancel any in-flight valve-maintenance task (guarded — must never
             # block unload, and a maintenance cycle must never outlive its entry)
             try:

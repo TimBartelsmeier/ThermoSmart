@@ -19,6 +19,15 @@ from .tpi import compute_tpi, duty_to_setpoint
 from .const import (
     DOMAIN,
     DEFAULT_SCAN_INTERVAL,
+    CONF_CONTROL_INTERVAL,
+    CONF_ZONE_CONTROL_MODE,
+    CONF_DEVICE_SETTINGS,
+    CONF_DEV_CONTROL_MODE,
+    CONF_DEV_VALVE_ENTITY,
+    CONTROL_MODE_INHERIT,
+    CONTROL_MODE_DIRECT_VALVE,
+    CONTROL_MODE_SETPOINT,
+    CONTROL_MODE_TPI_BOOST,
     CONF_PRESENCE_PERSONS,
     CONF_HOME_ZONE,
     CONF_VACATION_BOOLEAN,
@@ -59,10 +68,6 @@ from .trv_control import TRVControlMixin, _DispatchStats
 from .maintenance import MaintenanceMixin
 
 _LOGGER = logging.getLogger(__name__)
-
-# valve_opening_degree recovery is retried across the first N coordinator refreshes
-# to handle slow Zigbee2MQTT startup on full HA restart.
-_VALVE_RESET_MAX_ATTEMPTS = 3
 
 # Learning forecast bias application gates
 _FORECAST_BIAS_MIN_TRUST = 0.35        # minimum trust to apply the °C bias correction
@@ -139,7 +144,9 @@ class ThermoSmartCoordinator(
         super().__init__(
             hass, _LOGGER,
             name=f"{DOMAIN}_{entry.entry_id}",
-            update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
+            update_interval=timedelta(minutes=(
+                {**entry.data, **entry.options}.get(CONF_CONTROL_INTERVAL, 5)
+            )),
         )
         self.entry = entry
         self.weather_engine = weather_engine
@@ -203,10 +210,8 @@ class ThermoSmartCoordinator(
         self._auto_calibration_map: dict[str, str] = {}
         self._auto_ext_temp_map: dict[str, str] = {}
         self._auto_valve_map: dict[str, str] = {}
-        self._auto_temp_source_map: dict[str, str] = {}
         self._trv_offline: set[str] = set()
-        self._valve_reset_done: bool = False
-        self._valve_reset_attempts: int = 0
+        self._last_logged_control_modes: tuple[str, ...] | None = None
         # Per-entity consecutive setpoint-dispatch-failure counter (Device
         # Compatibility P1) — reset to 0 on any successful dispatch for that
         # entity; drives a single, rate-limited Support Critical Event after
@@ -218,11 +223,6 @@ class ThermoSmartCoordinator(
 
         # Device profiles — populated by async_detect_device_entities (TRVControlMixin)
         self._device_profiles: dict[str, DeviceProfile] = {}
-
-        # Temperature source management (genutzt von TRVControlMixin)
-        self._temp_source_owned: dict[str, str] = {}   # select_entity_id → "external"
-        self._sensor_unavail_since: datetime | None = None
-        self._temp_source_warn_ts: datetime | None = None
 
         # Sommer (genutzt von SeasonMixin)
         self._outdoor_temp_history: deque = deque(
@@ -757,23 +757,6 @@ class ThermoSmartCoordinator(
             self._last_live_decision = None
             cfg = self.zone_cfg
 
-            # Safety-net for full HA restart: valve_opening_degree recovery is also
-            # called from async_detect_device_entities, but at startup Z2M entities
-            # may not be available yet.  Retry across up to _VALVE_RESET_MAX_ATTEMPTS
-            # refreshes; stop as soon as recovery reports success (all relevant entities
-            # were reachable) or after the attempt limit is exhausted.
-            if not self._valve_reset_done:
-                done = await self._reset_valve_opening_degree()
-                self._valve_reset_attempts += 1
-                if done or self._valve_reset_attempts >= _VALVE_RESET_MAX_ATTEMPTS:
-                    if not done:
-                        _LOGGER.warning(
-                            "ThermoSmart '%s': valve_opening_degree recovery gave up after "
-                            "%d attempts — some TRV entities were still unavailable",
-                            self.zone_name, self._valve_reset_attempts,
-                        )
-                    self._valve_reset_done = True
-
             weather_data = await self.weather_engine.async_get_data()
             self._update_summer_mode(weather_data)
 
@@ -916,19 +899,15 @@ class ThermoSmartCoordinator(
                 else:
                     duty_cycle = 0.0
 
-                has_valve = any(
-                    self._auto_valve_map.get(eid)
-                    for eid in cfg.get("climate_entities", [])
+                zone_mode = cfg.get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
+                boosted_setpoint = duty_to_setpoint(
+                    target, duty_cycle, TPI_MAX_BOOST_CELSIUS
                 )
-
-                if has_valve:
-                    # TRV mit Ventilsteuerung: Setpoint = Ziel (kein Boost nötig)
-                    trv_setpoint = target
-                else:
-                    # TRV ohne Ventilsteuerung: Duty-Cycle → Boost-Setpoint
-                    trv_setpoint = duty_to_setpoint(target, duty_cycle, TPI_MAX_BOOST_CELSIUS)
-
+                trv_setpoint = (
+                    target if zone_mode == CONTROL_MODE_SETPOINT else boosted_setpoint
+                )
                 recommendation["trv_setpoint"] = trv_setpoint
+                recommendation["tpi_boosted_setpoint"] = boosted_setpoint
                 # boost_offset_c / boost_factor: prediction semantics — set below from
                 # _boost_candidate_c (raw Learning proposal, pre-guard) after resolver runs.
                 # applied_boost_offset_c: confirmed dispatch truth — updated post-dispatch.
@@ -938,18 +917,40 @@ class ThermoSmartCoordinator(
                 recommendation["tpi_duty_cycle"] = round(duty_cycle, 1)
                 recommendation["tpi_coef_int"] = round(coef_int, 3)
                 recommendation["tpi_coef_ext"] = round(coef_ext, 4)
-                recommendation["tpi_valve_direct"] = has_valve
-                # Mixed-zone detection: a zone combining setpoint-TRVs and direct-valve-TRVs
-                # cannot safely receive a per-device boost split → boost blocked conservatively.
-                _climate_eids = [e for e in cfg.get("climate_entities", []) if e]
-                _has_valve_ctrl = has_valve
-                _has_setpoint_ctrl = any(
-                    not self._auto_valve_map.get(eid) for eid in _climate_eids)
+                device_settings = cfg.get(CONF_DEVICE_SETTINGS, {})
+                modes_by_device = {}
+                for eid in cfg.get("climate_entities", []):
+                    setting = device_settings.get(eid, {})
+                    device_mode = setting.get(
+                        CONF_DEV_CONTROL_MODE, CONTROL_MODE_INHERIT
+                    )
+                    modes_by_device[eid] = (
+                        device_mode if device_mode != CONTROL_MODE_INHERIT else zone_mode
+                    )
+                effective_modes = set(modes_by_device.values())
+                recommendation["tpi_valve_direct"] = (
+                    bool(effective_modes)
+                    and effective_modes == {CONTROL_MODE_DIRECT_VALVE}
+                )
+                recommendation["tpi_control_entities"] = [
+                    eid for eid, effective_mode in modes_by_device.items()
+                    if effective_mode == CONTROL_MODE_TPI_BOOST
+                ]
                 recommendation["zone_control_type"] = (
-                    "mixed" if (_has_valve_ctrl and _has_setpoint_ctrl) else
-                    "direct_valve" if _has_valve_ctrl else
+                    "mixed" if len(effective_modes) > 1 else
+                    "direct_valve" if effective_modes == {CONTROL_MODE_DIRECT_VALVE} else
                     "setpoint"
                 )
+                if len(effective_modes) > 1:
+                    _modes = tuple(sorted(effective_modes))
+                    if _modes != self._last_logged_control_modes:
+                        _LOGGER.info(
+                            "ThermoSmart '%s': devices use mixed control strategies: %s",
+                            self.zone_name, list(_modes),
+                        )
+                        self._last_logged_control_modes = _modes
+                else:
+                    self._last_logged_control_modes = None
                 # Enrich tpi_coef_diag with duty-level trace for transition audit.
                 # duty_candidate: duty that would result from using candidate coef_int directly.
                 # duty_previous: duty from the previous cycle (for delta/stability verification).
@@ -1012,10 +1013,6 @@ class ThermoSmartCoordinator(
             # – verbessert die TRV-interne Regelung unabhängig von der aktiven Steuerung
             await self._async_write_external_temp(cfg, recommendation)
 
-            # Temperature source select management (external/internal)
-            # Must run after effective_summer is resolved so recommendation["is_summer"] is set.
-            await self._async_manage_temp_source(cfg, recommendation)
-
             # ── Learning Adaptive Boost Control ────────────────────────────
             # resolve_adaptive_boost_control() is the single authority for real boost.
             # Gate order: learning_mode_on → active_control_on
@@ -1023,19 +1020,21 @@ class ThermoSmartCoordinator(
             # Runs BEFORE dispatch so the approved offset flows through device guards and
             # the single setpoint dispatch path.  Never raises into heating.
             _boost_result = None  # AdaptiveBoostControlResult | None; None = not evaluated this cycle
-            if self._learning_shadow is not None and not effective_summer:
-                # Pre-dispatch device availability: if any setpoint TRV is unavailable
-                # right now, block boost for this cycle to prevent partial dispatch.
-                # (Mixed/valve zones are caught by zone_control_type in the resolver.)
+            if (
+                self._learning_shadow is not None
+                and not effective_summer
+                and recommendation.get("tpi_control_entities")
+                and cfg.get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
+                != CONTROL_MODE_SETPOINT
+            ):
+                # Block adaptive boost only when a device that consumes setpoint
+                # modulation is unavailable; direct-valve devices are independent.
                 _setpoint_device_unavailable = False
-                if recommendation.get("zone_control_type") == "setpoint":
-                    for _eid in cfg.get("climate_entities", []):
-                        if not _eid:
-                            continue
-                        _dev_st = self.hass.states.get(_eid)
-                        if _dev_st is None or _dev_st.state in ("unavailable", "unknown"):
-                            _setpoint_device_unavailable = True
-                            break
+                for _eid in recommendation.get("tpi_control_entities", []):
+                    _dev_st = self.hass.states.get(_eid)
+                    if _dev_st is None or _dev_st.state in ("unavailable", "unknown"):
+                        _setpoint_device_unavailable = True
+                        break
                 recommendation["_setpoint_device_unavailable"] = _setpoint_device_unavailable
                 _restore_pending = not self._active_control_initialized
                 try:
@@ -1099,6 +1098,9 @@ class ThermoSmartCoordinator(
             _sp_stats = _DispatchStats()   # setpoint/frost dispatch stats
             _vv_stats = _DispatchStats()   # direct valve dispatch stats
             if self._active_control and not effective_summer:
+                self._state_settings_enforced = set()
+                for _eid in cfg.get("climate_entities", []):
+                    await self._async_enforce_device_state_settings(_eid, cfg)
                 await self._async_apply_quirks(cfg)
                 await self._watchdog_hvac(cfg, recommendation)
                 await self._async_calibrate_trvs(cfg, recommendation)
@@ -1111,6 +1113,9 @@ class ThermoSmartCoordinator(
                     duty = 0.0
                 _vv_stats = await self._async_set_valve_percent(cfg, duty)
             elif self._active_control and effective_summer:
+                self._state_settings_enforced = set()
+                for _eid in cfg.get("climate_entities", []):
+                    await self._async_enforce_device_state_settings(_eid, cfg)
                 await self._async_apply_quirks(cfg)
                 await self._apply_frost_protection(cfg)
                 recommendation["trv_setpoint"] = TEMP_FROST_PROTECTION

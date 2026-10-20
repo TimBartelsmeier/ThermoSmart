@@ -8,7 +8,6 @@ import math
 from homeassistant.components.climate import ClimateEntityFeature
 from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers import device_registry as dr, entity_registry as er
-from homeassistant.util import dt as dt_util
 from homeassistant.util.unit_conversion import TemperatureConverter
 
 from .device_profiles import DeviceProfile, get_profile, VALVE_MAX_LIMIT, SETPOINT_HVAC_FIRST
@@ -17,14 +16,25 @@ from .const import (
     AUTO_QUIRK_PATTERNS,
     AUTO_CALIBRATION_PATTERNS,
     AUTO_EXT_TEMP_PATTERNS,
-    AUTO_TEMP_SOURCE_PATTERNS,
     AUTO_VALVE_PATTERNS,
     CONF_CALIBRATION_ENTITIES,
     CONF_CALIBRATION_INVERT,
-    CONF_MANAGE_TEMP_SOURCE,
     CONF_QUIRK_ENTITIES,
     CONF_WINDOW_OPEN_TEMP,
-    TEMP_SOURCE_SENSOR_GRACE_SECONDS,
+    CONF_DEVICE_SETTINGS,
+    CONF_EXT_TEMP_THRESHOLD,
+    CONF_TEMP_TOLERANCE,
+    CONF_ZONE_CONTROL_MODE,
+    CONF_DEV_CONTROL_MODE,
+    CONF_DEV_VALVE_ENTITY,
+    CONF_DEV_FEED_EXT_TEMP,
+    CONF_DEV_EXT_TEMP_ENTITY,
+    CONF_DEV_CALIBRATION_INVERT,
+    CONF_DEV_STATE_SETTINGS,
+    CONTROL_MODE_INHERIT,
+    CONTROL_MODE_SETPOINT,
+    CONTROL_MODE_TPI_BOOST,
+    CONTROL_MODE_DIRECT_VALVE,
     WINDOW_OPEN_SETPOINT,
     TPI_VALVE_BUMP_PCT,
     TPI_VALVE_BUMP_DELAY,
@@ -230,106 +240,12 @@ class TRVControlMixin:
                 self.zone_name, valve_map,
             )
 
-        # temperature_sensor select entity (SONOFF TRVZB: switches TRV between
-        # internal and external temperature source)
-        temp_source_map: dict[str, str] = {}
-        for device_id, climate_id in device_to_climate.items():
-            for entry in er.async_entries_for_device(ent_reg, device_id):
-                if entry.entity_id.split(".")[0] != "select":
-                    continue
-                eid_lower = entry.entity_id.lower()
-                tk = (getattr(entry, "translation_key", None) or "").lower()
-                name = (getattr(entry, "original_name", None) or "").lower()
-                for pattern in AUTO_TEMP_SOURCE_PATTERNS:
-                    if pattern in eid_lower or pattern in tk or pattern in name:
-                        temp_source_map[climate_id] = entry.entity_id
-                        break
-
-        if temp_source_map:
-            _LOGGER.info(
-                "ThermoSmart '%s': Temperature-Source-Select-Autodetect: %s",
-                self.zone_name, temp_source_map,
-            )
-
         self._device_profiles = profile_map
-        await self._reset_valve_opening_degree()
 
         self._auto_quirk_entities = quirks
         self._auto_calibration_map = cal_map
         self._auto_ext_temp_map = ext_temp_map
         self._auto_valve_map = valve_map
-        self._auto_temp_source_map = temp_source_map
-
-    async def _reset_valve_opening_degree(self) -> bool:
-        """Reset valve_opening_degree to 100% on all managed TRV devices.
-
-        valve_opening_degree is a max-opening limit on SONOFF TRVZB (and similar
-        devices) — not a live valve position.  Previous ThermoSmart versions wrote
-        the TPI duty-cycle to it, which capped heating capacity at the duty-cycle
-        value (e.g. 0% blocked the valve entirely).  Resetting to 100% restores
-        full heating capacity on upgrade.
-
-        Called from async_detect_device_entities (fires immediately on Integration
-        Reload when Zigbee2MQTT entities are already available) and from
-        _async_update_data on the first coordinator refreshes as a safety-net for
-        full HA restart, where Z2M entities are not yet available at setup time.
-
-        Returns:
-            True  — recovery complete or nothing to do (caller should not retry).
-            False — at least one relevant entity was unavailable; caller should
-                    retry on the next refresh cycle.
-        """
-        cfg = self.zone_cfg
-        climate_entities = cfg.get("climate_entities", [])
-        if not climate_entities:
-            return True
-
-        ent_reg = er.async_get(self.hass)
-        device_to_climate: dict[str, str] = {}
-        for entity_id in climate_entities:
-            entry = ent_reg.async_get(entity_id)
-            if entry and entry.device_id:
-                device_to_climate[entry.device_id] = entity_id
-
-        retry_needed = False
-        for device_id in device_to_climate:
-            climate_id = device_to_climate[device_id]
-            _profile = getattr(self, "_device_profiles", {}).get(climate_id)
-            if _profile is not None and _profile.valve_semantics != VALVE_MAX_LIMIT:
-                continue
-            for entry in er.async_entries_for_device(ent_reg, device_id):
-                if entry.entity_id.split(".")[0] != "number":
-                    continue
-                eid_lower = entry.entity_id.lower()
-                tk = (getattr(entry, "translation_key", None) or "").lower()
-                name = (getattr(entry, "original_name", None) or "").lower()
-                if not ("valve_opening_degree" in eid_lower
-                        or "valve_opening_degree" in tk
-                        or "valve_opening_degree" in name):
-                    continue
-                state = self.hass.states.get(entry.entity_id)
-                if state is None or state.state in ("unavailable", "unknown"):
-                    retry_needed = True
-                    continue
-                try:
-                    if float(state.state) < 100.0:
-                        _LOGGER.info(
-                            "ThermoSmart '%s': Resetting %s from %s%% to 100%% "
-                            "(valve_opening_degree is a max-opening limit, not a live "
-                            "position — TPI duty-cycle is no longer written here)",
-                            self.zone_name, entry.entity_id, state.state,
-                        )
-                        self.hass.async_create_task(
-                            self.hass.services.async_call(
-                                "number", "set_value",
-                                {"entity_id": entry.entity_id, "value": 100},
-                                blocking=False,
-                            )
-                        )
-                except (TypeError, ValueError):
-                    pass
-
-        return not retry_needed
 
     # ── TRV-Offline-Tracking ─────────────────────────────────────────
 
@@ -479,21 +395,27 @@ class TRVControlMixin:
                 )
                 continue
 
-            # Skip calibration write when the TRV is confirmed to be using its
-            # external temperature source – the offset is ignored by the firmware
-            # in that mode, so writing it would be a no-op at best.
-            # Only skip on state == "external"; unavailable/unknown means we
-            # cannot be sure, so we fall through and calibrate as normal.
-            _temp_source_map = getattr(self, "_auto_temp_source_map", {})
-            _sel_entity = _temp_source_map.get(climate_id)
-            if _sel_entity:
-                _sel_state = self.hass.states.get(_sel_entity)
-                if _sel_state is not None and _sel_state.state == "external":
-                    _LOGGER.debug(
-                        "ThermoSmart '%s': skipping calibration for %s – temperature_sensor is 'external'",
-                        self.zone_name, climate_id,
-                    )
+            # Temperature-source state is user-configured; avoid calibration
+            # writes when that configured select is actively using external input.
+            device_settings = cfg.get(CONF_DEVICE_SETTINGS, {}).get(climate_id, {})
+            uses_external_source = False
+            for rule in device_settings.get(CONF_DEV_STATE_SETTINGS, []):
+                entity_id = rule.get("entity_id")
+                target = str(rule.get("value", rule.get("target_value", ""))).lower()
+                if not isinstance(entity_id, str) or not entity_id.startswith("select."):
                     continue
+                if target != "external":
+                    continue
+                source_state = self.hass.states.get(entity_id)
+                if source_state is not None and source_state.state == "external":
+                    uses_external_source = True
+                    break
+            if uses_external_source:
+                _LOGGER.debug(
+                    "ThermoSmart '%s': skipping calibration for %s – configured external temperature source is active",
+                    self.zone_name, climate_id,
+                )
+                continue
 
             trv_state = self._get_trv_state(climate_id)
             trv_temp: float | None = None
@@ -521,10 +443,15 @@ class TRVControlMixin:
             #   2. Key absent (old ConfigEntry pre-dating the field) → use profile default.
             #      This is safe: old entries without the key never had user-configured
             #      inversion, so applying the profile default cannot reverse a user setting.
+            _device_cfg = cfg.get(CONF_DEVICE_SETTINGS, {}).get(climate_id, {})
             _invert = (
-                cfg[CONF_CALIBRATION_INVERT]
-                if CONF_CALIBRATION_INVERT in cfg
-                else (_cal_profile.calibration_inverted if _cal_profile is not None else False)
+                _device_cfg[CONF_DEV_CALIBRATION_INVERT]
+                if CONF_DEV_CALIBRATION_INVERT in _device_cfg
+                else (
+                    cfg[CONF_CALIBRATION_INVERT]
+                    if CONF_CALIBRATION_INVERT in cfg
+                    else (_cal_profile.calibration_inverted if _cal_profile is not None else False)
+                )
             )
             if _invert:
                 raw_offset = -raw_offset
@@ -715,6 +642,57 @@ class TRVControlMixin:
 
     # ── Temperatur schreiben ──────────────────────────────────────────
 
+    async def _async_enforce_device_state_settings(self, climate_id: str, cfg: dict) -> None:
+        """Apply configured state rules only when the current value differs."""
+        settings = cfg.get(CONF_DEVICE_SETTINGS, {}).get(climate_id, {})
+        rules = settings.get(CONF_DEV_STATE_SETTINGS, [])
+        enforced = getattr(self, "_state_settings_enforced", set())
+        for rule in rules:
+            entity_id = rule.get("entity_id")
+            target = rule.get("value", rule.get("target_value"))
+            if not entity_id or target in (None, ""):
+                continue
+            rule_key = (climate_id, entity_id, str(target))
+            if rule_key in enforced:
+                continue
+            state = self.hass.states.get(entity_id)
+            if state is None or state.state in ("unknown", "unavailable"):
+                continue
+            domain = entity_id.split(".", 1)[0]
+            if domain == "switch":
+                target_on = str(target).lower() in ("on", "true", "1")
+                if (state.state == "on") == target_on:
+                    enforced.add((climate_id, entity_id, str(target)))
+                    self._state_settings_enforced = enforced
+                    continue
+            elif state.state == str(target):
+                continue
+
+            if domain == "select":
+                service, payload = "select_option", {"option": str(target)}
+            elif domain == "switch":
+                service = "turn_on" if target_on else "turn_off"
+                payload = {}
+            elif domain == "climate":
+                service, payload = "set_hvac_mode", {"hvac_mode": str(target)}
+            else:
+                _LOGGER.warning(
+                    "ThermoSmart '%s': Unsupported state setting entity domain for %s",
+                    self.zone_name, entity_id,
+                )
+                continue
+            try:
+                await self.hass.services.async_call(
+                    domain, service, {"entity_id": entity_id, **payload}, blocking=True,
+                )
+                enforced.add(rule_key)
+                self._state_settings_enforced = enforced
+            except Exception as err:
+                _LOGGER.warning(
+                    "ThermoSmart '%s': Could not apply configured state %s=%s: %s",
+                    self.zone_name, entity_id, target, err,
+                )
+
     async def _apply_temperature(self, cfg: dict, recommendation: dict) -> "_DispatchStats":
         """TRV-Setpoints schreiben oder 5°C bei geöffnetem Fenster setzen.
 
@@ -732,6 +710,7 @@ class TRVControlMixin:
                 # Collect (entity_id, frost_temp, coro) so results can be paired with entities.
                 _frost_pending: list = []
                 for entity_id in cfg.get("climate_entities", []):
+                    await self._async_enforce_device_state_settings(entity_id, cfg)
                     state = self._get_trv_state(entity_id)
                     if state is None:
                         continue
@@ -806,11 +785,14 @@ class TRVControlMixin:
             return stats
 
         trv_setpoint = recommendation.get("trv_setpoint", target)
-        tolerance = cfg.get("temp_tolerance", 0.5)
+        unboosted_target = recommendation.get("effective_target", target)
+        zone_mode = cfg.get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
+        tolerance = cfg.get(CONF_TEMP_TOLERANCE, 0.5)
 
         # Collect gather-path entities so results can be paired with entity IDs and setpoints.
         _sp_pending: list = []  # (entity_id, effective_setpoint, coro)
         for entity_id in cfg.get("climate_entities", []):
+            await self._async_enforce_device_state_settings(entity_id, cfg)
             state = self._get_trv_state(entity_id)
             if state is None:
                 continue
@@ -823,8 +805,19 @@ class TRVControlMixin:
                 continue
             if not self._supports_single_setpoint(entity_id, state):
                 continue
+            device_settings = cfg.get(CONF_DEVICE_SETTINGS, {}).get(entity_id, {})
+            device_mode = device_settings.get(CONF_DEV_CONTROL_MODE, CONTROL_MODE_INHERIT)
+            effective_mode = (
+                device_mode if device_mode != CONTROL_MODE_INHERIT else zone_mode
+            )
+            if effective_mode in (CONTROL_MODE_SETPOINT, CONTROL_MODE_DIRECT_VALVE):
+                requested_setpoint = unboosted_target
+            elif zone_mode == CONTROL_MODE_SETPOINT:
+                requested_setpoint = recommendation.get("tpi_boosted_setpoint", target)
+            else:
+                requested_setpoint = trv_setpoint
             effective_setpoint = self.resolve_device_effective_setpoint(
-                entity_id, state, trv_setpoint, _profile)
+                entity_id, state, requested_setpoint, _profile)
             current_setpoint = to_internal_temperature_c(self.hass, state.attributes.get("temperature"))
             if current_setpoint is not None:
                 if abs(current_setpoint - effective_setpoint) < tolerance:
@@ -925,17 +918,23 @@ class TRVControlMixin:
         but the service call itself is awaited so exceptions are captured in stats.
         """
         stats = _DispatchStats()
-        valve_map = getattr(self, "_auto_valve_map", {})
-        if not valve_map:
-            return stats
-
         target_pct = max(0, min(100, round(duty_cycle)))
+        device_settings = cfg.get(CONF_DEVICE_SETTINGS, {})
+        zone_mode = cfg.get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
 
         for climate_id in cfg.get("climate_entities", []):
-            valve_entity = valve_map.get(climate_id)
+            settings = device_settings.get(climate_id, {})
+            device_mode = settings.get(CONF_DEV_CONTROL_MODE, CONTROL_MODE_INHERIT)
+            effective_mode = device_mode if device_mode != CONTROL_MODE_INHERIT else zone_mode
+            if device_settings and effective_mode != CONTROL_MODE_DIRECT_VALVE:
+                continue
+            valve_entity = settings.get(CONF_DEV_VALVE_ENTITY) or getattr(
+                self, "_auto_valve_map", {}
+            ).get(climate_id)
             if not valve_entity:
                 continue
 
+            await self._async_enforce_device_state_settings(climate_id, cfg)
             state = self.hass.states.get(valve_entity)
             if state is None or state.state in ("unavailable", "unknown"):
                 continue
@@ -1023,15 +1022,16 @@ class TRVControlMixin:
         if room_temp is None:
             return
 
-        ext_map = getattr(self, "_auto_ext_temp_map", {})
-        if not ext_map:
-            return
+        device_settings = cfg.get(CONF_DEVICE_SETTINGS, {})
+        threshold = float(cfg.get(CONF_EXT_TEMP_THRESHOLD, 0.5))
 
         for climate_id in cfg.get("climate_entities", []):
-            _profile = self._device_profiles.get(climate_id)
-            if _profile is not None and not _profile.allow_external_temp_input:
+            settings = device_settings.get(climate_id, {})
+            if device_settings and not settings.get(CONF_DEV_FEED_EXT_TEMP, False):
                 continue
-            ext_entity = ext_map.get(climate_id)
+            ext_entity = settings.get(CONF_DEV_EXT_TEMP_ENTITY) or getattr(
+                self, "_auto_ext_temp_map", {}
+            ).get(climate_id)
             if not ext_entity:
                 continue
 
@@ -1046,7 +1046,7 @@ class TRVControlMixin:
             ext_unit = state.attributes.get("unit_of_measurement")
             current_val = to_internal_temperature_c(self.hass, state.state, unit=ext_unit)
 
-            if current_val is not None and abs(current_val - room_temp) < 0.5:
+            if current_val is not None and abs(current_val - room_temp) < threshold:
                 continue
 
             clamped = round(max(0.0, min(99.9, room_temp)), 1)
@@ -1065,217 +1065,3 @@ class TRVControlMixin:
                     blocking=False,
                 )
             )
-
-    # ── Temperature Source Management (external/internal select) ─────
-
-    async def _async_manage_temp_source(self, cfg: dict, recommendation: dict) -> None:
-        """Switch TRV temperature_sensor select between 'external' and 'internal'.
-
-        Only operates when manage_temp_source is enabled for this zone.  Supported
-        TRVs (e.g. SONOFF TRVZB) expose a select entity that controls whether the
-        TRV firmware uses its built-in sensor ('internal') or an externally-provided
-        value written to external_temperature_input ('external').
-
-        Active control + external sensors available  →  set to 'external'
-        Observation mode or summer mode              →  restore to 'internal' if owned
-        All sensors unavailable > grace period       →  restore to 'internal' if owned
-        Sensor recovery during active control        →  set back to 'external'
-
-        Ownership: ThermoSmart only restores to 'internal' when it was the one that
-        last set the select to 'external'.  Manual changes are detected and ownership
-        is silently abandoned so the user's choice is never overwritten.
-        """
-        if not cfg.get(CONF_MANAGE_TEMP_SOURCE, False):
-            return
-
-        temp_source_map: dict[str, str] = getattr(self, "_auto_temp_source_map", {})
-        if not temp_source_map:
-            return
-
-        temp_sensors = [s for s in cfg.get("temp_sensors", []) if s]
-        if not temp_sensors:
-            return
-
-        ext_map: dict[str, str] = getattr(self, "_auto_ext_temp_map", {})
-        now = self._now_local()
-
-        # Zone-wide sensor availability check
-        sensors_available = any(
-            (st := self.hass.states.get(sid)) is not None
-            and st.state not in ("unavailable", "unknown", "None")
-            for sid in temp_sensors
-        )
-
-        # Effective active state: exclude summer mode (no heating, temp source irrelevant)
-        is_summer = recommendation.get("is_summer", False)
-        effectively_active = self._active_control and not is_summer
-
-        for climate_id in cfg.get("climate_entities", []):
-            select_entity = temp_source_map.get(climate_id)
-            if not select_entity:
-                continue
-
-            _profile = self._device_profiles.get(climate_id)
-            if _profile is not None and not _profile.allow_temp_source_select:
-                _LOGGER.debug(
-                    "ThermoSmart '%s': temp source select skipped for %s – profile '%s' has allow_temp_source_select=False",
-                    self.zone_name, climate_id, _profile.identifier,
-                )
-                continue
-
-            # ── Readiness guards ─────────────────────────────────────
-            climate_state = self.hass.states.get(climate_id)
-            if climate_state is None or climate_state.state in ("unavailable", "unknown"):
-                _LOGGER.debug(
-                    "ThermoSmart '%s': temp source guard – TRV %s unavailable",
-                    self.zone_name, climate_id,
-                )
-                continue
-
-            select_state = self.hass.states.get(select_entity)
-            if select_state is None or select_state.state in ("unavailable", "unknown"):
-                _LOGGER.debug(
-                    "ThermoSmart '%s': temp source guard – select %s unavailable",
-                    self.zone_name, select_entity,
-                )
-                continue
-
-            options = select_state.attributes.get("options", [])
-            if "external" not in options:
-                _LOGGER.debug(
-                    "ThermoSmart '%s': %s has no 'external' option – skipping",
-                    self.zone_name, select_entity,
-                )
-                continue
-
-            ext_entity = ext_map.get(climate_id)
-            if ext_entity:
-                ext_state = self.hass.states.get(ext_entity)
-                if ext_state is None or ext_state.state in ("unavailable", "unknown"):
-                    _LOGGER.debug(
-                        "ThermoSmart '%s': temp source guard – ext_temp entity %s unavailable",
-                        self.zone_name, ext_entity,
-                    )
-                    continue
-
-            current_value = select_state.state
-            owned = self._temp_source_owned.get(select_entity)
-
-            # Detect manual override: user changed a select we thought we owned
-            if owned and current_value != owned:
-                _LOGGER.info(
-                    "ThermoSmart '%s': %s changed to '%s' by user – abandoning ownership",
-                    self.zone_name, select_entity, current_value,
-                )
-                self._temp_source_owned.pop(select_entity, None)
-                owned = None
-
-            # ── Observation / summer mode: restore if owned ──────────
-            if not effectively_active:
-                if owned == "external" and current_value == "external":
-                    if "internal" in options:
-                        await self._set_temp_source(select_entity, "internal", climate_id)
-                    self._temp_source_owned.pop(select_entity, None)
-                continue
-
-            # ── Active control ───────────────────────────────────────
-            if not sensors_available:
-                if self._sensor_unavail_since is None:
-                    self._sensor_unavail_since = now
-                    _LOGGER.warning(
-                        "ThermoSmart '%s': All temp sensors unavailable – "
-                        "starting %ds grace period before switching %s to internal",
-                        self.zone_name, TEMP_SOURCE_SENSOR_GRACE_SECONDS, select_entity,
-                    )
-                elapsed = (now - self._sensor_unavail_since).total_seconds()
-                if elapsed >= TEMP_SOURCE_SENSOR_GRACE_SECONDS:
-                    if owned == "external" and current_value == "external":
-                        if "internal" in options:
-                            _LOGGER.warning(
-                                "ThermoSmart '%s': Grace period elapsed (%.0fs) – "
-                                "switching %s to internal",
-                                self.zone_name, elapsed, select_entity,
-                            )
-                            await self._set_temp_source(select_entity, "internal", climate_id)
-                        self._temp_source_owned.pop(select_entity, None)
-            else:
-                # Sensors back: clear grace period timer, set to external if needed
-                if self._sensor_unavail_since is not None:
-                    _LOGGER.info(
-                        "ThermoSmart '%s': Temp sensors available again",
-                        self.zone_name,
-                    )
-                    self._sensor_unavail_since = None
-
-                if current_value != "external":
-                    await self._set_temp_source(select_entity, "external", climate_id)
-                    self._temp_source_owned[select_entity] = "external"
-
-    async def _set_temp_source(self, select_entity: str, option: str, climate_id: str) -> None:
-        """Write a temperature_sensor select option (fire-and-forget)."""
-        _LOGGER.info(
-            "ThermoSmart '%s': temperature_sensor %s → '%s' (TRV: %s)",
-            self.zone_name, select_entity, option, climate_id,
-        )
-        self.hass.async_create_task(
-            self.hass.services.async_call(
-                "select", "select_option",
-                {"entity_id": select_entity, "option": option},
-                blocking=False,
-            )
-        )
-
-    async def _async_restore_temp_source(self) -> None:
-        """Restore all owned temperature_sensor selects to 'internal' on cleanup.
-
-        Called at entry unload / zone remove.  Best-effort: logs and skips any
-        entity that is unavailable or was already changed by the user.
-        """
-        temp_source_map: dict[str, str] = getattr(self, "_auto_temp_source_map", {})
-        if not temp_source_map:
-            return
-
-        for climate_id, select_entity in temp_source_map.items():
-            if self._temp_source_owned.get(select_entity) != "external":
-                continue
-
-            select_state = self.hass.states.get(select_entity)
-            if select_state is None or select_state.state in ("unavailable", "unknown"):
-                _LOGGER.info(
-                    "ThermoSmart '%s': Cannot restore %s – entity unavailable, skipping",
-                    self.zone_name, select_entity,
-                )
-                continue
-
-            if select_state.state != "external":
-                _LOGGER.info(
-                    "ThermoSmart '%s': %s already at '%s' – skipping restore",
-                    self.zone_name, select_entity, select_state.state,
-                )
-                continue
-
-            options = select_state.attributes.get("options", [])
-            if "internal" not in options:
-                _LOGGER.debug(
-                    "ThermoSmart '%s': %s has no 'internal' option – cannot restore",
-                    self.zone_name, select_entity,
-                )
-                continue
-
-            _LOGGER.info(
-                "ThermoSmart '%s': Restoring %s → internal (cleanup/unload)",
-                self.zone_name, select_entity,
-            )
-            try:
-                await self.hass.services.async_call(
-                    "select", "select_option",
-                    {"entity_id": select_entity, "option": "internal"},
-                    blocking=True,
-                )
-            except Exception as err:
-                _LOGGER.warning(
-                    "ThermoSmart '%s': Failed to restore %s to internal: %s",
-                    self.zone_name, select_entity, err,
-                )
-
-        self._temp_source_owned.clear()

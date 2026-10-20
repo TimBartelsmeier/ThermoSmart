@@ -5,7 +5,7 @@ fields.  Profiles are immutable value objects — frozen dataclasses.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # ── Setpoint write method ────────────────────────────────────────────────────
 
@@ -61,6 +61,28 @@ class DeviceProfile:
     calibration_plausibility_limit: float = 7.0
     minimum_setpoint: float | None = None
     maximum_setpoint: float | None = None
+
+
+@dataclass(frozen=True)
+class DevicePreset:
+    """Configuration recommendations for a detected TRV.
+
+    Presets are presentation/configuration scaffolding; runtime control uses
+    the values copied into a zone's ``device_settings``.
+    """
+
+    preset_id: str
+    display_name: str
+    recommended_mode: str = "inherit"
+    valve_entity_pattern: str | None = None
+    ext_temp_entity_pattern: str | None = None
+    calibration_inverted: bool = False
+    valve_maintenance: bool = True
+    feed_external_temp: bool = False
+    default_state_settings: list[dict[str, str]] = field(default_factory=list)
+    hvac_mode_before_write: str | None = None
+    setpoint_delay_seconds: float = 0.0
+    info_summary: str = ""
 
 
 def device_profile_status(profile: DeviceProfile) -> dict:

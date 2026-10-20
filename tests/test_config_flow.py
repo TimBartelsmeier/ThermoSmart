@@ -16,6 +16,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.thermosmart.config_flow import ThermoSmartConfigFlow
+from custom_components.thermosmart import _migrate_device_settings
 from custom_components.thermosmart.const import (
     DOMAIN,
     CONF_WEATHER_ENTITY,
@@ -31,13 +32,26 @@ from custom_components.thermosmart.const import (
     CONF_VACATION_TEMP,
     CONF_WINDOW_OPEN_TEMP,
     CONF_ECO_TEMP,
-    CONF_VALVE_MAINTENANCE,
     CONF_MANAGE_TEMP_SOURCE,
+    CONF_VALVE_MAINTENANCE,
     CONF_CALIBRATION_INVERT,
     CONF_SCHED_WD_MORNING,
     CONF_SCHED_WD_NIGHT,
     CONF_SCHED_WE_MORNING,
     CONF_SCHED_WE_NIGHT,
+    CONF_ZONE_CONTROL_MODE,
+    CONF_CONTROL_INTERVAL,
+    CONF_EXT_TEMP_THRESHOLD,
+    CONF_DEV_CONTROL_MODE,
+    CONF_DEV_VALVE_ENTITY,
+    CONF_DEV_FEED_EXT_TEMP,
+    CONF_DEV_EXT_TEMP_ENTITY,
+    CONF_DEV_CALIBRATION_INVERT,
+    CONF_DEV_VALVE_MAINTENANCE,
+    CONF_DEV_STATE_SETTINGS,
+    CONTROL_MODE_TPI_BOOST,
+    CONTROL_MODE_INHERIT,
+    CONTROL_MODE_DIRECT_VALVE,
 )
 
 # ── Shared form-step data ─────────────────────────────────────────────────────
@@ -50,9 +64,6 @@ _DEVICES = {
     "window_sensors": [],
     "window_open_delay": 5,
     "window_close_delay": 2,
-    CONF_VALVE_MAINTENANCE: True,
-    CONF_MANAGE_TEMP_SOURCE: False,
-    CONF_CALIBRATION_INVERT: False,
 }
 
 _SCHEDULE = {
@@ -62,12 +73,29 @@ _SCHEDULE = {
     CONF_VACATION_TEMP: 12.0,
     CONF_ECO_TEMP: 18.0,
     CONF_WINDOW_OPEN_TEMP: 12.0,
-    "temp_tolerance": 0.5,
     CONF_SCHEDULE_ENABLED: True,
     CONF_SCHED_WD_MORNING: "06:00:00",
     CONF_SCHED_WD_NIGHT: "22:00:00",
     CONF_SCHED_WE_MORNING: "08:00:00",
     CONF_SCHED_WE_NIGHT: "23:00:00",
+}
+
+_CONTROL = {
+    CONF_ZONE_CONTROL_MODE: CONTROL_MODE_TPI_BOOST,
+    CONF_CONTROL_INTERVAL: 5,
+    "temp_tolerance": 0.5,
+    CONF_EXT_TEMP_THRESHOLD: 0.5,
+}
+
+_DEVICE_SETTINGS = {
+    CONF_DEV_CONTROL_MODE: CONTROL_MODE_INHERIT,
+    CONF_DEV_VALVE_ENTITY: None,
+    CONF_DEV_FEED_EXT_TEMP: False,
+    CONF_DEV_EXT_TEMP_ENTITY: None,
+    CONF_DEV_CALIBRATION_INVERT: False,
+    CONF_DEV_VALVE_MAINTENANCE: True,
+    "state_setting_entity": None,
+    "state_setting_value": "",
 }
 
 _PRESENCE = {
@@ -102,6 +130,8 @@ async def _navigate_to_weather(hass) -> dict:
             result["flow_id"], {"next_step_id": "add_zone"}
         )
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICES)
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], _CONTROL)
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICE_SETTINGS)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _PRESENCE)
     return result
@@ -216,6 +246,12 @@ class TestGlobalSetupOnlyInitial:
                 result["flow_id"], _DEVICES
             )
             result = await hass.config_entries.flow.async_configure(
+                result["flow_id"], _CONTROL
+            )
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"], _DEVICE_SETTINGS
+            )
+            result = await hass.config_entries.flow.async_configure(
                 result["flow_id"], _SCHEDULE
             )
             result = await hass.config_entries.flow.async_configure(
@@ -246,6 +282,10 @@ class TestNoGlobalLearningStep:
             result["flow_id"], {"next_step_id": "add_zone"}
         )
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICES)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], _CONTROL)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], _DEVICE_SETTINGS
+        )
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
 
         assert result["step_id"] == "presence"
@@ -307,10 +347,59 @@ class TestZoneFlowNavigation:
         assert data["comfort_temp"] == 21.0
         assert data["night_temp"] == 18.0
         assert data["away_temp"] == 17.0
+        assert data[CONF_ZONE_CONTROL_MODE] == CONTROL_MODE_TPI_BOOST
+        assert data[CONF_CONTROL_INTERVAL] == 5
+        assert data[CONF_EXT_TEMP_THRESHOLD] == 0.5
+        assert data["device_settings"]["climate.test_trv"][CONF_DEV_CONTROL_MODE] == CONTROL_MODE_INHERIT
         # No global learning on/off question in the setup flow anymore (Config-
         # Flow UX Cleanup) — per-zone learning is controlled at runtime via the
         # "Learning mode" switch entity, not a setup-time config key.
         assert CONF_LEARNING_ENABLED not in data
+
+
+class TestLegacyDeviceSettingsMigration:
+    async def test_legacy_entry_gets_per_device_defaults(self, hass, enable_custom_integrations):
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={
+                "entry_type": "zone",
+                "name": "Living room",
+                "climate_entities": ["climate.trv"],
+                CONF_CALIBRATION_INVERT: True,
+                CONF_VALVE_MAINTENANCE: False,
+                CONF_MANAGE_TEMP_SOURCE: True,
+            },
+        )
+        entry.add_to_hass(hass)
+        detection = {
+            "settings": {
+                CONF_DEV_CONTROL_MODE: CONTROL_MODE_INHERIT,
+                CONF_DEV_VALVE_ENTITY: "number.valve_position",
+                CONF_DEV_FEED_EXT_TEMP: False,
+                CONF_DEV_EXT_TEMP_ENTITY: "number.external_temperature",
+                CONF_DEV_CALIBRATION_INVERT: False,
+                CONF_DEV_VALVE_MAINTENANCE: True,
+            },
+            "state_entity": "select.temperature_sensor",
+            "state_value": "external",
+        }
+        with patch(
+            "custom_components.thermosmart.config_flow._detect_device_settings",
+            return_value=detection,
+        ):
+            _migrate_device_settings(hass, entry)
+
+        settings = entry.data["device_settings"]["climate.trv"]
+        assert entry.data[CONF_ZONE_CONTROL_MODE] == CONTROL_MODE_TPI_BOOST
+        assert entry.data[CONF_CONTROL_INTERVAL] == 5
+        assert entry.data[CONF_EXT_TEMP_THRESHOLD] == 0.5
+        assert settings[CONF_DEV_CONTROL_MODE] == CONTROL_MODE_DIRECT_VALVE
+        assert settings[CONF_DEV_FEED_EXT_TEMP] is True
+        assert settings[CONF_DEV_CALIBRATION_INVERT] is True
+        assert settings[CONF_DEV_VALVE_MAINTENANCE] is False
+        assert settings[CONF_DEV_STATE_SETTINGS] == [{
+            "entity_id": "select.temperature_sensor", "value": "external"
+        }]
 
     async def test_zone_flow_entry_has_no_weather_entity_when_omitted(
         self, hass, enable_custom_integrations
@@ -360,13 +449,13 @@ class TestZoneFlowDeviceValidation:
         assert result["type"] == FlowResultType.FORM
         assert result["errors"].get("climate_entities") == "required"
 
-    async def test_valid_devices_advances_to_schedule(self, hass, enable_custom_integrations):
+    async def test_valid_devices_advances_to_control_options(self, hass, enable_custom_integrations):
         result = await self._to_add_zone(hass)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], _DEVICES
         )
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "schedule"
+        assert result["step_id"] == "control_options"
 
 
 # ── Zone Flow – schedule step validation ──────────────────────────────────────
@@ -379,7 +468,11 @@ class TestZoneFlowScheduleValidation:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"next_step_id": "add_zone"}
         )
-        return await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICES)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICES)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], _CONTROL)
+        return await hass.config_entries.flow.async_configure(
+            result["flow_id"], _DEVICE_SETTINGS
+        )
 
     async def test_night_above_comfort_shows_error(self, hass, enable_custom_integrations):
         result = await self._to_schedule(hass)

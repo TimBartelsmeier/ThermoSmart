@@ -28,7 +28,20 @@ from custom_components.thermosmart.device_profiles.capabilities import (
     DeviceProfile,
     SETPOINT_HVAC_FIRST,
 )
-from custom_components.thermosmart.const import WINDOW_OPEN_SETPOINT
+from custom_components.thermosmart.const import (
+    WINDOW_OPEN_SETPOINT,
+    CONF_DEVICE_SETTINGS,
+    CONF_ZONE_CONTROL_MODE,
+    CONF_EXT_TEMP_THRESHOLD,
+    CONF_DEV_CONTROL_MODE,
+    CONF_DEV_VALVE_ENTITY,
+    CONF_DEV_FEED_EXT_TEMP,
+    CONF_DEV_EXT_TEMP_ENTITY,
+    CONF_DEV_STATE_SETTINGS,
+    CONTROL_MODE_SETPOINT,
+    CONTROL_MODE_TPI_BOOST,
+    CONTROL_MODE_DIRECT_VALVE,
+)
 
 from tests.helpers import make_coordinator, make_state, set_hass_states
 
@@ -524,6 +537,139 @@ class TestApplyTemperatureMultiTRV:
         stats = await coord._apply_temperature(_CFG_TWO, _REC_NORMAL)
         assert stats.status == "fully_succeeded"
         assert stats.targets_succeeded == 2
+
+
+class TestConfigurableControlStrategies:
+    async def test_setpoint_only_ignores_boosted_recommendation(self):
+        coord = _coord_with_svc()
+        set_hass_states(coord, {"climate.trv": _trv_state(setpoint=19.0)})
+        cfg = {
+            **_CFG_ONE,
+            CONF_ZONE_CONTROL_MODE: CONTROL_MODE_SETPOINT,
+        }
+        recommendation = {
+            **_REC_NORMAL,
+            "effective_target": 21.0,
+        }
+
+        await coord._apply_temperature(cfg, recommendation)
+
+        assert coord.hass.services.async_call.call_args[0][2]["temperature"] == 21.0
+
+    async def test_mixed_devices_dispatch_setpoint_and_direct_valve_independently(self):
+        coord = _coord_with_svc()
+        cfg = {
+            "climate_entities": ["climate.direct", "climate.boost"],
+            "temp_tolerance": 0.5,
+            CONF_ZONE_CONTROL_MODE: CONTROL_MODE_TPI_BOOST,
+            CONF_DEVICE_SETTINGS: {
+                "climate.direct": {
+                    CONF_DEV_CONTROL_MODE: CONTROL_MODE_DIRECT_VALVE,
+                    CONF_DEV_VALVE_ENTITY: "number.direct_valve",
+                },
+                "climate.boost": {
+                    CONF_DEV_CONTROL_MODE: CONTROL_MODE_TPI_BOOST,
+                },
+            },
+        }
+        set_hass_states(coord, {
+            "climate.direct": _trv_state(setpoint=19.0),
+            "climate.boost": _trv_state(setpoint=19.0),
+            "number.direct_valve": make_state("0"),
+        })
+
+        await coord._apply_temperature(cfg, {
+            "adjusted_target": 21.0,
+            "effective_target": 21.0,
+            "trv_setpoint": 25.0,
+            "window_open": False,
+        })
+        valve_stats = await coord._async_set_valve_percent(cfg, 60.0)
+
+        setpoint_calls = [
+            call_args for call_args in coord.hass.services.async_call.call_args_list
+            if call_args[0][1] == "set_temperature"
+        ]
+        setpoints = {
+            call_args[0][2]["entity_id"]: call_args[0][2]["temperature"]
+            for call_args in setpoint_calls
+        }
+        assert setpoints == {"climate.direct": 21.0, "climate.boost": 25.0}
+        valve_calls = [
+            call_args for call_args in coord.hass.services.async_call.call_args_list
+            if call_args[0][0] == "number"
+        ]
+        assert len(valve_calls) == 1
+        assert valve_calls[0][0][2] == {
+            "entity_id": "number.direct_valve", "value": 60
+        }
+        assert valve_stats.status == "fully_succeeded"
+
+    async def test_state_setting_runs_only_when_state_differs(self):
+        coord = _coord_with_svc()
+        cfg = {
+            **_CFG_ONE,
+            CONF_DEVICE_SETTINGS: {
+                "climate.trv": {
+                    CONF_DEV_STATE_SETTINGS: [{
+                        "entity_id": "select.temperature_sensor",
+                        "value": "external",
+                    }],
+                },
+            },
+        }
+        set_hass_states(coord, {
+            "climate.trv": _trv_state(setpoint=19.0),
+            "select.temperature_sensor": make_state("external"),
+        })
+
+        await coord._apply_temperature(cfg, _REC_NORMAL)
+        assert [
+            call_args for call_args in coord.hass.services.async_call.call_args_list
+            if call_args[0][0] == "select"
+        ] == []
+
+        coord.hass.services.async_call.reset_mock()
+        set_hass_states(coord, {
+            "climate.trv": _trv_state(setpoint=19.0),
+            "select.temperature_sensor": make_state("internal"),
+        })
+        await coord._apply_temperature(cfg, _REC_NORMAL)
+        select_calls = [
+            call_args for call_args in coord.hass.services.async_call.call_args_list
+            if call_args[0][0] == "select"
+        ]
+        assert len(select_calls) == 1
+        assert select_calls[0][0][1] == "select_option"
+        assert select_calls[0][0][2]["option"] == "external"
+
+    async def test_external_temperature_respects_configured_threshold(self):
+        coord = _coord_with_svc()
+        coord.hass.async_create_task.side_effect = asyncio.create_task
+        cfg = {
+            "climate_entities": ["climate.trv"],
+            CONF_EXT_TEMP_THRESHOLD: 0.5,
+            CONF_DEVICE_SETTINGS: {
+                "climate.trv": {
+                    CONF_DEV_FEED_EXT_TEMP: True,
+                    CONF_DEV_EXT_TEMP_ENTITY: "number.external_temperature",
+                }
+            },
+        }
+        set_hass_states(coord, {
+            "number.external_temperature": make_state("20.0", {
+                "unit_of_measurement": "°C",
+            }),
+        })
+
+        await coord._async_write_external_temp(cfg, {"current_temp": 20.4})
+        assert not coord.hass.services.async_call.called
+
+        await coord._async_write_external_temp(cfg, {"current_temp": 20.5})
+        await asyncio.sleep(0)
+        assert coord.hass.services.async_call.call_args[0][2] == {
+            "entity_id": "number.external_temperature", "value": 20.5
+        }
 
     async def test_two_trvs_both_fail_is_failed(self):
         coord = _coord_with_svc(fail=True)

@@ -14,7 +14,7 @@
         "description": "Sets up the global Summer mode select (Automatic / On / Off) and Vacation switch. No thermostat required. Both controls apply to all zones simultaneously."
       },
       "add_zone": {
-        "title": "Step 1 / 4 – Devices & Sensors",
+        "title": "Step 1 – Devices & Sensors",
         "description": "Select the TRVs and sensors for this heating zone. Calibration entities and quirk switches are detected automatically.",
         "data": {
           "name": "Zone name (e.g. Living Room)",
@@ -23,19 +23,42 @@
           "humidity_sensors": "Indoor humidity sensors",
           "window_sensors": "Window sensors (binary_sensor)",
           "window_open_delay": "Heating off – delay after window opens",
-          "window_close_delay": "Heating on – delay after window closes",
-          "valve_maintenance": "Enable valve maintenance (Sunday 03:00 – Summer & Vacation mode only)",
-          "manage_temp_source": "Automatically use external room temperature for supported TRVs",
-          "calibration_invert": "Invert calibration offset (for TRVs like ME167 that reverse the sign)"
+          "window_close_delay": "Heating on – delay after window closes"
+        }
+      },
+      "control_options": {
+        "title": "Step 2 – Zone Control Strategy",
+        "description": "Detected devices:\n\n{detected_devices}",
+        "data": {
+          "zone_control_mode": "Zone control mode",
+          "control_interval": "Control cycle interval",
+          "temp_tolerance": "Temperature tolerance",
+          "ext_temp_threshold": "External temperature write threshold"
         },
         "data_description": {
-          "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active.",
-          "manage_temp_source": "ThermoSmart continues to use external temperature sensors for its own control logic. When enabled, ThermoSmart also switches supported TRVs to their external temperature source and falls back to the internal TRV sensor if external sensors become unavailable.",
-          "calibration_invert": "Inverts the calibration offset sign for specific TRV models whose offset direction differs from the standard behavior. Only enable this if required by your device."
+          "zone_control_mode": "This is the zone default. Individual TRVs can override it in the next step.",
+          "ext_temp_threshold": "External temperature is written only after the difference reaches this threshold."
+        }
+      },
+      "device_settings": {
+        "title": "Step 3 – TRV Settings",
+        "description": "{device_name}\n\n{preset_info}",
+        "data": {
+          "control_mode": "Control mode",
+          "valve_entity": "Valve control entity",
+          "feed_external_temp": "Feed room temperature to TRV",
+          "ext_temp_entity": "External temperature input entity",
+          "calibration_invert": "Invert calibration offset",
+          "valve_maintenance": "Enable valve exercise / maintenance",
+          "state_setting_entity": "State setting entity",
+          "state_setting_value": "Desired option, state, or HVAC mode"
+        },
+        "data_description": {
+          "state_setting_entity": "Optional select, switch, or climate entity to enforce before TRV control writes."
         }
       },
       "schedule": {
-        "title": "Step 2 / 4 – Temperatures & Schedule",
+        "title": "Step 4 – Temperatures & Schedule",
         "description": "Daily flow: Night → Comfort → Night\n\nWhen all persons are away, ThermoSmart automatically switches to the away temperature – regardless of the schedule.",
         "data": {
           "comfort_temp": "Comfort temperature (when someone is home)",
@@ -44,7 +67,6 @@
           "vacation_temp": "Vacation temperature (frost protection)",
           "eco_temp": "Eco temperature (energy saving, between night and comfort)",
           "window_open_temp": "Window open temperature",
-          "temp_tolerance": "Temperature tolerance – setpoint write threshold",
           "schedule_enabled": "Enable time schedule",
           "sched_wd_morning": "Weekday: Comfort from",
           "sched_wd_night": "Weekday: Night from",
@@ -59,12 +81,11 @@
           "sched_we_night": "Night temperature applies from this time",
           "away_temp": "Only applied automatically when presence detection is configured (Step 3). Can also be set manually via the mode select.",
           "eco_temp": "Used when the mode select is manually set to 'Eco'. Not applied automatically.",
-          "window_open_temp": "Target temperature while a window is open. For thermostats that do not support very low setpoints, use a higher value such as 10 °C.",
-          "temp_tolerance": "Minimum change in the calculated TRV setpoint before ThermoSmart sends a new update. This reduces unnecessary writes to the thermostat. 0.5 °C works well for most rooms."
+          "window_open_temp": "Target temperature while a window is open. For thermostats that do not support very low setpoints, use a higher value such as 10 °C."
         }
       },
       "presence": {
-        "title": "Step 3 / 4 – Presence",
+        "title": "Step 5 – Presence",
         "description": "Who is home? ThermoSmart automatically switches to away mode when everyone leaves.\n\nLeave the person list empty to disable automatic away detection – ThermoSmart will then follow only the schedule.",
         "data": {
           "presence_persons": "Persons for presence detection",
@@ -72,7 +93,7 @@
         }
       },
       "weather": {
-        "title": "Step 4 / 4 – Weather & Outdoor Sensors",
+        "title": "Step 6 – Weather & Outdoor Sensors",
         "description": "All fields optional – own sensors take priority over the weather entity. The system works without weather data too.",
         "data": {
           "weather_entity": "Weather entity (e.g. weather.home)",
@@ -107,6 +128,8 @@
         "title": "Settings",
         "menu_options": {
           "devices": "Devices & Sensors",
+          "control_options": "Zone Control Strategy",
+          "device_settings": "Per-TRV Settings",
           "schedule": "Temperatures & Schedule",
           "presence": "Presence",
           "weather": "Weather & Outdoor Sensors"
@@ -122,15 +145,37 @@
           "humidity_sensors": "Indoor humidity sensors",
           "window_sensors": "Window sensors",
           "window_open_delay": "Heating off – delay after window opens",
-          "window_close_delay": "Heating on – delay after window closes",
-          "valve_maintenance": "Enable valve maintenance (Summer & Vacation mode only)",
-          "manage_temp_source": "Automatically use external room temperature for supported TRVs",
-          "calibration_invert": "Invert calibration offset (ME167 and similar)"
+          "window_close_delay": "Heating on – delay after window closes"
+        }
+      },
+      "control_options": {
+        "title": "Zone Control Strategy",
+        "description": "Choose a zone default. Per-device settings can override this strategy.",
+        "data": {
+          "zone_control_mode": "Zone control mode",
+          "control_interval": "Control cycle interval",
+          "temp_tolerance": "Temperature tolerance",
+          "ext_temp_threshold": "External temperature write threshold"
         },
         "data_description": {
-          "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active.",
-          "manage_temp_source": "ThermoSmart continues to use external temperature sensors for its own control logic. When enabled, ThermoSmart also switches supported TRVs to their external temperature source and falls back to the internal TRV sensor if external sensors become unavailable.",
-          "calibration_invert": "Inverts the calibration offset sign for specific TRV models whose offset direction differs from the standard behavior. Only enable this if required by your device."
+          "ext_temp_threshold": "External temperature is written only after the difference reaches this threshold."
+        }
+      },
+      "device_settings": {
+        "title": "TRV Settings",
+        "description": "{device_name}\n\n{preset_info}",
+        "data": {
+          "control_mode": "Control mode",
+          "valve_entity": "Valve control entity",
+          "feed_external_temp": "Feed room temperature to TRV",
+          "ext_temp_entity": "External temperature input entity",
+          "calibration_invert": "Invert calibration offset",
+          "valve_maintenance": "Enable valve exercise / maintenance",
+          "state_setting_entity": "State setting entity",
+          "state_setting_value": "Desired option, state, or HVAC mode"
+        },
+        "data_description": {
+          "state_setting_entity": "Optional select, switch, or climate entity to enforce before TRV control writes."
         }
       },
       "schedule": {
@@ -143,7 +188,6 @@
           "vacation_temp": "Vacation temperature",
           "eco_temp": "Eco temperature",
           "window_open_temp": "Window open temperature",
-          "temp_tolerance": "Temperature tolerance",
           "schedule_enabled": "Enable time schedule",
           "sched_wd_morning": "Weekday: Comfort from",
           "sched_wd_night": "Weekday: Night from",
@@ -158,8 +202,7 @@
           "sched_we_night": "Night temperature applies from this time",
           "away_temp": "Only applied automatically when presence detection is configured. Can also be set manually via the mode select.",
           "eco_temp": "Used when the mode select is manually set to 'Eco'. Not applied automatically.",
-          "window_open_temp": "Target temperature while a window is open. For thermostats that do not support very low setpoints, use a higher value such as 10 °C.",
-          "temp_tolerance": "Minimum change in the calculated TRV setpoint before ThermoSmart sends a new update. This reduces unnecessary writes to the thermostat. 0.5 °C works well for most rooms."
+          "window_open_temp": "Target temperature while a window is open. For thermostats that do not support very low setpoints, use a higher value such as 10 °C."
         }
       },
       "presence": {

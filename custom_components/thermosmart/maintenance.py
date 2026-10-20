@@ -7,6 +7,8 @@ import logging
 
 from .const import (
     CONF_VALVE_MAINTENANCE,
+    CONF_DEVICE_SETTINGS,
+    CONF_DEV_VALVE_MAINTENANCE,
     VALVE_MAINTENANCE_HOUR,
     VALVE_MAINTENANCE_WEEKDAY,
     VALVE_MAINTENANCE_BOOST_TEMP,
@@ -87,6 +89,10 @@ class MaintenanceMixin:
             """
             payloads = []
             for eid in climate_entities:
+                if not cfg.get(CONF_DEVICE_SETTINGS, {}).get(eid, {}).get(
+                    CONF_DEV_VALVE_MAINTENANCE, True
+                ):
+                    continue
                 state = self.hass.states.get(eid)
                 if state is None or state.state in ("unavailable", "unknown"):
                     continue

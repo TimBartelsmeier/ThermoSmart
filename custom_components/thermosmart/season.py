@@ -63,6 +63,7 @@ class SeasonMixin:
         task_ids: list[str] = []
 
         for entity_id in cfg.get("climate_entities", []):
+            await self._async_enforce_device_state_settings(entity_id, cfg)
             state = self.hass.states.get(entity_id)
             if not state or state.state in ("unavailable", "unknown"):
                 continue

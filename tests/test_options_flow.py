@@ -76,11 +76,10 @@ _BASE_DATA = {
 _STEP_DEVICES = {k: _BASE_DATA[k] for k in [
     "name", "climate_entities", "temp_sensors", "humidity_sensors",
     "window_sensors", "window_open_delay", "window_close_delay",
-    CONF_VALVE_MAINTENANCE, CONF_MANAGE_TEMP_SOURCE, CONF_CALIBRATION_INVERT,
 ]}
 _STEP_SCHEDULE = {k: _BASE_DATA[k] for k in [
     "comfort_temp", "night_temp", "away_temp", CONF_VACATION_TEMP, CONF_ECO_TEMP,
-    CONF_WINDOW_OPEN_TEMP, "temp_tolerance", CONF_SCHEDULE_ENABLED,
+    CONF_WINDOW_OPEN_TEMP, CONF_SCHEDULE_ENABLED,
     CONF_SCHED_WD_MORNING, CONF_SCHED_WD_NIGHT, CONF_SCHED_WE_MORNING, CONF_SCHED_WE_NIGHT,
 ]}
 _STEP_PRESENCE = {k: _BASE_DATA[k] for k in [
@@ -143,13 +142,16 @@ class TestOptionsHub:
         assert result["type"] == FlowResultType.MENU
         assert result["step_id"] == "init"
 
-    async def test_hub_menu_has_four_sections(self, hass, enable_custom_integrations):
-        """Hub menu exposes all four sections."""
+    async def test_hub_menu_exposes_control_and_device_sections(self, hass, enable_custom_integrations):
+        """Hub menu exposes zone-level and per-TRV control settings."""
         entry = _zone_entry()
         entry.add_to_hass(hass)
 
         result = await _open_hub(hass, entry)
-        for section in ("devices", "schedule", "presence", "weather"):
+        for section in (
+            "devices", "control_options", "device_settings",
+            "schedule", "presence", "weather",
+        ):
             assert section in result["menu_options"], f"section '{section}' missing"
 
     async def test_hub_devices_section_shows_form(self, hass, enable_custom_integrations):
