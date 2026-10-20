@@ -135,3 +135,5 @@ uv run python -m pytest
 Event timing, preheat state, and schedule application must use one canonical
 calculation. Otherwise the new debug entities could hide inconsistent control
 behavior instead of exposing it.
+
+Ensure edge cases are handled properly (for example: multiple schedule events close to each other with the pre-heating potentially overlapping the previous event; manual changes, opened windows, drops in temperature, etc. in between calculation of pre-heating start and actual start; ...)
