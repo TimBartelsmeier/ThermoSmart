@@ -250,6 +250,91 @@ class TestUnknownUnavailableWindowSensor:
 
         assert coord._check_window_open(cfg, current_temp=19.0) is False
 
+    @pytest.mark.parametrize("bad_state", ["unknown", "unavailable"])
+    def test_startup_unknown_or_unavailable_clears_stale_close_delay(self, bad_state):
+        clock = FakeClock(_T0)
+        coord = _make(clock)
+        coord._window_close_at[_SENSOR] = _T0
+        set_hass_states(coord, {
+            _SENSOR: _state_with_last_changed(bad_state, _T0),
+            "sensor.test_temp": make_state("19.0"),
+        })
+
+        assert coord._check_window_open(coord.zone_cfg, current_temp=19.0) is False
+        assert _SENSOR not in coord._window_close_at
+
+    @pytest.mark.parametrize("bad_state", ["unknown", "unavailable"])
+    def test_unknown_or_unavailable_event_does_not_start_close_delay(self, bad_state):
+        clock = FakeClock(_T0)
+        coord = _make(clock)
+        cb = _wire_window_listener(coord)
+        set_hass_states(coord, {_SENSOR: make_state(bad_state), "sensor.test_temp": make_state("19.0")})
+
+        cb(_event("on", bad_state))
+
+        assert coord._window_open_at == {}
+        assert coord._window_close_at == {}
+
+    def test_restart_state_sequence_clears_window_open_hold(self):
+        """Transient startup states must not keep a previously open window active."""
+        clock = FakeClock(_T0)
+        coord = _make(clock)
+        cb = _wire_window_listener(coord)
+        cfg = coord.zone_cfg
+
+        set_hass_states(coord, {
+            _SENSOR: make_state("on"),
+            "sensor.test_temp": make_state("19.0"),
+        })
+        cb(_event("off", "on"))
+        clock.set_utc(clock.now_utc() + timedelta(minutes=5))
+        assert coord._check_window_open(cfg, current_temp=19.0) is True
+
+        for old_state, new_state in (
+            ("on", "unavailable"),
+            ("unavailable", "unknown"),
+            ("unknown", "off"),
+        ):
+            changed_at = clock.now_utc()
+            set_hass_states(coord, {
+                _SENSOR: _state_with_last_changed(new_state, changed_at),
+                "sensor.test_temp": make_state("19.0"),
+            })
+            cb(_event(old_state, new_state))
+            assert coord._check_window_open(cfg, current_temp=19.0) is False
+
+    def test_restart_state_sequence_without_events_stays_closed(self):
+        """Polling must handle startup transitions even before listeners run."""
+        clock = FakeClock(_T0)
+        coord = _make(clock)
+        cfg = coord.zone_cfg
+
+        for state in ("unavailable", "unknown", "off"):
+            set_hass_states(coord, {
+                _SENSOR: _state_with_last_changed(state, clock.now_utc()),
+                "sensor.test_temp": make_state("19.0"),
+            })
+            assert coord._check_window_open(cfg, current_temp=19.0) is False
+
+        # A second refresh must not reconstruct a close delay from the
+        # final startup state's recent last_changed timestamp.
+        clock.set_utc(clock.now_utc() + timedelta(seconds=30))
+        assert coord._check_window_open(cfg, current_temp=19.0) is False
+
+    def test_missing_sensor_during_startup_does_not_recover_close_delay(self):
+        clock = FakeClock(_T0)
+        coord = _make(clock)
+        cfg = coord.zone_cfg
+
+        set_hass_states(coord, {"sensor.test_temp": make_state("19.0")})
+        assert coord._check_window_open(cfg, current_temp=19.0) is False
+
+        set_hass_states(coord, {
+            _SENSOR: _state_with_last_changed("off", clock.now_utc()),
+            "sensor.test_temp": make_state("19.0"),
+        })
+        assert coord._check_window_open(cfg, current_temp=19.0) is False
+
 
 class TestRestartDuringDelay:
     """Simulates a coordinator restart/reload (fresh in-memory dicts) while a

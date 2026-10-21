@@ -160,6 +160,10 @@ class ThermoSmartCoordinator(
         self._window_open_at: dict[str, datetime] = {}
         self._window_close_at: dict[str, datetime] = {}
         self._window_open_temp: dict[str, float] = {}
+        # Sensors can pass through unavailable/unknown during HA startup.
+        # Suppress last_changed-based close recovery for the following off
+        # state because no valid open -> closed transition was observed.
+        self._window_skip_close_recovery: set[str] = set()
         # Cancel functions for scheduled delay-expiry refreshes (one slot per sensor)
         self._window_delay_cancel: dict[str, Callable[[], None]] = {}
 
@@ -510,6 +514,7 @@ class ThermoSmartCoordinator(
 
                 if entity_id in window_sensors:
                     if new.state == "on":
+                        self._window_skip_close_recovery.discard(entity_id)
                         self._window_open_at[entity_id] = now
                         # Cancel any pending timer (leftover close-delay or open-delay)
                         _cancel = self._window_delay_cancel.pop(entity_id, None)
@@ -532,11 +537,14 @@ class ThermoSmartCoordinator(
                         self._window_delay_cancel[entity_id] = async_call_later(
                             self.hass, open_delay_secs, _open_delay_expired
                         )
-                    else:
+                    elif new.state == "off":
                         # Cancel any pending open-delay timer (sensor closed before delay elapsed)
                         _cancel = self._window_delay_cancel.pop(entity_id, None)
                         if _cancel is not None:
                             _cancel()
+                        # Keep this marker until the next coordinator refresh,
+                        # where it prevents treating the fresh off timestamp as
+                        # a recovered close-delay transition.
                         if entity_id in self._window_open_at:
                             opened_at = self._window_open_at[entity_id]
                             open_delay_td = timedelta(minutes=cfg.get("window_open_delay", 5))
@@ -564,6 +572,16 @@ class ThermoSmartCoordinator(
                             # serves the schedule lookup via async_get_base_target().
                             self._window_open_temp.pop(entity_id, None)
                         self._window_open_at.pop(entity_id, None)
+                    else:
+                        # unavailable/unknown during HA startup is not a valid
+                        # close transition and must not start or retain close_delay.
+                        _cancel = self._window_delay_cancel.pop(entity_id, None)
+                        if _cancel is not None:
+                            _cancel()
+                        self._window_open_at.pop(entity_id, None)
+                        self._window_close_at.pop(entity_id, None)
+                        self._window_open_temp.pop(entity_id, None)
+                        self._window_skip_close_recovery.add(entity_id)
 
                 _LOGGER.info(
                     "ThermoSmart '%s': %s geändert (%s → %s) – Sofort-Update",
