@@ -665,11 +665,24 @@ class TRVControlMixin:
                     enforced.add((climate_id, entity_id, str(target)))
                     self._state_settings_enforced = enforced
                     continue
+            elif domain == "number":
+                try:
+                    target_num = float(target)
+                    if abs(float(state.state) - target_num) < 1e-6:
+                        continue
+                except ValueError:
+                    _LOGGER.warning(
+                        "ThermoSmart '%s': Invalid numeric state setting %s=%s",
+                        self.zone_name, entity_id, target,
+                    )
+                    continue
             elif state.state == str(target):
                 continue
 
             if domain == "select":
                 service, payload = "select_option", {"option": str(target)}
+            elif domain == "number":
+                service, payload = "set_value", {"value": target_num}
             elif domain == "switch":
                 service = "turn_on" if target_on else "turn_off"
                 payload = {}

@@ -219,28 +219,27 @@ def _schema_control_options(d: dict) -> vol.Schema:
     })
 
 
-def _schema_device_settings(detected: dict) -> vol.Schema:
+_MODE_LABELS = {
+    CONTROL_MODE_SETPOINT: "Setpoint only",
+    CONTROL_MODE_TPI_BOOST: "TPI setpoint modulation",
+    CONTROL_MODE_DIRECT_VALVE: "Direct valve control",
+}
+
+_STATE_DOMAINS = ["select", "number", "switch"]
+_FALLBACK_HVAC_MODES = ["off", "heat", "auto", "heat_cool", "cool"]
+
+
+def _schema_device_settings(detected: dict, zone_mode: str) -> vol.Schema:
     settings = detected["settings"]
-    state_rules = settings.get(CONF_DEV_STATE_SETTINGS)
-    default_state_entity = (
-        state_rules[0].get("entity_id") if state_rules
-        else None if CONF_DEV_STATE_SETTINGS in settings
-        else detected["state_entity"]
-    )
-    default_state_value = (
-        state_rules[0].get("value", state_rules[0].get("target_value", ""))
-        if state_rules else
-        "" if CONF_DEV_STATE_SETTINGS in settings
-        else detected["state_value"] or ""
-    )
+    inherited = _MODE_LABELS.get(zone_mode, _MODE_LABELS[CONTROL_MODE_TPI_BOOST])
     return vol.Schema({
         vol.Required(CONF_DEV_CONTROL_MODE, default=settings.get(
             CONF_DEV_CONTROL_MODE, CONTROL_MODE_INHERIT
         )): _entity_options([
-            (CONTROL_MODE_INHERIT, "Inherit from zone"),
-            (CONTROL_MODE_SETPOINT, "Setpoint only"),
-            (CONTROL_MODE_TPI_BOOST, "TPI setpoint modulation"),
-            (CONTROL_MODE_DIRECT_VALVE, "Direct valve control"),
+            (CONTROL_MODE_INHERIT, f"Inherit from zone ({inherited})"),
+            (CONTROL_MODE_SETPOINT, _MODE_LABELS[CONTROL_MODE_SETPOINT]),
+            (CONTROL_MODE_TPI_BOOST, _MODE_LABELS[CONTROL_MODE_TPI_BOOST]),
+            (CONTROL_MODE_DIRECT_VALVE, _MODE_LABELS[CONTROL_MODE_DIRECT_VALVE]),
         ]),
         vol.Optional(CONF_DEV_VALVE_ENTITY, default=settings.get(CONF_DEV_VALVE_ENTITY) or None):
             _NullableEntitySelector(selector.EntitySelectorConfig(domain="number")),
@@ -256,15 +255,54 @@ def _schema_device_settings(detected: dict) -> vol.Schema:
         vol.Required(CONF_DEV_VALVE_MAINTENANCE, default=settings.get(
             CONF_DEV_VALVE_MAINTENANCE, True
         )): selector.BooleanSelector(),
-        vol.Optional("state_setting_entity", default=default_state_entity or None):
-            _NullableEntitySelector(selector.EntitySelectorConfig(
-                domain=["select", "switch", "climate"]
-            )),
-        vol.Optional("state_setting_value", default=default_state_value):
-            selector.TextSelector(selector.TextSelectorConfig(
-                type=selector.TextSelectorType.TEXT
-            )),
     })
+
+
+def _friendly_name(hass, entity_id: str) -> str:
+    state = hass.states.get(entity_id)
+    return state.attributes.get("friendly_name", entity_id) if state else entity_id
+
+
+def _describe_state_rules(hass, climate_id: str, rules: list[dict]) -> str:
+    if not rules:
+        return "_No state settings configured._"
+    lines = []
+    for rule in rules:
+        entity_id = rule.get("entity_id", "")
+        value = rule.get("value", rule.get("target_value", ""))
+        if entity_id == climate_id:
+            lines.append(f"- HVAC mode = **{value}**")
+        else:
+            lines.append(f"- {_friendly_name(hass, entity_id)} (`{entity_id}`) = **{value}**")
+    return "\n".join(lines)
+
+
+def _state_value_selector(domain: str, state) -> tuple[object, object]:
+    """Build a value selector mirroring HA's own control for the entity."""
+    attrs = state.attributes if state else {}
+    current = state.state if state and state.state not in ("unknown", "unavailable") else None
+    if domain == "switch":
+        return selector.BooleanSelector(), current == "on" if current else None
+    if domain == "number":
+        config: dict = {"mode": selector.NumberSelectorMode.BOX,
+                        "step": attrs.get("step") or "any"}
+        if attrs.get("min") is not None:
+            config["min"] = float(attrs["min"])
+        if attrs.get("max") is not None:
+            config["max"] = float(attrs["max"])
+        if attrs.get("unit_of_measurement"):
+            config["unit_of_measurement"] = attrs["unit_of_measurement"]
+        try:
+            default = float(current) if current is not None else None
+        except ValueError:
+            default = None
+        return selector.NumberSelector(selector.NumberSelectorConfig(**config)), default
+    options = list(attrs.get("options") or [])
+    if options:
+        return _entity_options([(o, o) for o in options]), (
+            current if current in options else None
+        )
+    return selector.TextSelector(), current
 
 
 def _detect_device_settings(hass, climate_id: str) -> dict:
@@ -373,9 +411,228 @@ def _schema_weather(d: dict) -> vol.Schema:
     })
 
 
+class _DeviceSettingsMixin:
+    """Sequential per-TRV settings plus the state-settings sub-flow.
+
+    Host flows provide the zone context via the ``_ds_*`` hooks.
+    """
+
+    _device_index: int = 0
+    _pending: dict | None = None
+    _rules: list | None = None
+    _rule_entity: str | None = None
+
+    def _ds_entities(self) -> list[str]:
+        raise NotImplementedError
+
+    def _ds_all_settings(self) -> dict:
+        raise NotImplementedError
+
+    def _ds_zone_mode(self) -> str:
+        raise NotImplementedError
+
+    async def _ds_finished(self):
+        raise NotImplementedError
+
+    def _ds_detected(self, eid: str) -> dict:
+        detected = _detect_device_settings(self.hass, eid)
+        detected["settings"] = {
+            **detected["settings"], **self._ds_all_settings().get(eid, {}),
+        }
+        return detected
+
+    def _ds_device_entity_ids(self, climate_id: str) -> list[str]:
+        entity_reg = er.async_get(self.hass)
+        entry = entity_reg.async_get(climate_id)
+        if not entry or not entry.device_id:
+            return []
+        return [
+            e.entity_id for e in er.async_entries_for_device(entity_reg, entry.device_id)
+            if e.entity_id.split(".", 1)[0] in _STATE_DOMAINS
+        ]
+
+    def _ds_current_eid(self) -> str:
+        return self._ds_entities()[self._device_index]
+
+    def _ds_placeholders(self, eid: str) -> dict:
+        return {
+            "device_name": f"{_friendly_name(self.hass, eid)} ({eid})",
+            "index": str(self._device_index + 1),
+            "total": str(len(self._ds_entities())),
+        }
+
+    async def async_step_device_settings(self, user_input: dict | None = None):
+        entities = self._ds_entities()
+        if not entities:
+            return await self._ds_finished()
+        eid = entities[self._device_index]
+        detected = self._ds_detected(eid)
+        if user_input is not None:
+            self._pending = dict(user_input)
+            self._rules = [
+                dict(rule) for rule in detected["settings"].get(CONF_DEV_STATE_SETTINGS, [])
+            ]
+            return await self.async_step_state_menu()
+
+        mode = self._ds_zone_mode()
+        warning = (
+            "\n\n⚠️ **Warning:** Zone control mode is set to direct valve control, "
+            "but no valve position entity was found for this device. Direct valve "
+            "control may fail or fall back."
+            if mode == CONTROL_MODE_DIRECT_VALVE
+            and not detected["settings"].get(CONF_DEV_VALVE_ENTITY)
+            else ""
+        )
+        device = detected["device"]
+        header = (
+            f"Device identified as {device.manufacturer or ''} {device.model or ''}. "
+            f"A device preset was loaded.\n\n{detected['preset'].info_summary}"
+            if device and detected["preset"].preset_id != "generic"
+            else "Generic device. Available inputs are auto-detected."
+        )
+        return self.async_show_form(
+            step_id="device_settings",
+            data_schema=_schema_device_settings(detected, mode),
+            description_placeholders={
+                **self._ds_placeholders(eid), "preset_info": header + warning,
+            },
+        )
+
+    # ── State settings sub-flow ──────────────────────────────────────
+
+    def _set_rule(self, entity_id: str, value) -> None:
+        self._rules = [r for r in (self._rules or []) if r.get("entity_id") != entity_id]
+        self._rules.append({"entity_id": entity_id, "value": value})
+
+    async def async_step_state_menu(self, user_input: dict | None = None):
+        eid = self._ds_current_eid()
+        options = ["state_add_device", "state_add_any", "state_hvac"]
+        if self._rules:
+            options.append("state_remove")
+        options.append("state_done")
+        return self.async_show_menu(
+            step_id="state_menu",
+            menu_options=options,
+            description_placeholders={
+                **self._ds_placeholders(eid),
+                "state_rules": _describe_state_rules(self.hass, eid, self._rules or []),
+            },
+        )
+
+    async def _state_pick(self, step_id: str, user_input: dict | None, restrict: bool):
+        eid = self._ds_current_eid()
+        if user_input is not None:
+            self._rule_entity = user_input["entity_id"]
+            return await self.async_step_state_value()
+        config: dict = {"domain": _STATE_DOMAINS}
+        candidates = [
+            c for c in self._ds_device_entity_ids(eid)
+        ] if restrict else []
+        if candidates:
+            config["include_entities"] = candidates
+        scope = (
+            "Showing entities of this TRV's device."
+            if candidates else
+            "Showing all select, number and switch entities."
+        )
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=vol.Schema({
+                vol.Required("entity_id"): selector.EntitySelector(
+                    selector.EntitySelectorConfig(**config)
+                ),
+            }),
+            description_placeholders={**self._ds_placeholders(eid), "scope": scope},
+        )
+
+    async def async_step_state_add_device(self, user_input: dict | None = None):
+        return await self._state_pick("state_add_device", user_input, True)
+
+    async def async_step_state_add_any(self, user_input: dict | None = None):
+        return await self._state_pick("state_add_any", user_input, False)
+
+    async def async_step_state_value(self, user_input: dict | None = None):
+        entity_id = self._rule_entity
+        domain = entity_id.split(".", 1)[0]
+        if user_input is not None:
+            value = user_input["value"]
+            if domain == "switch":
+                value = "on" if value else "off"
+            elif domain == "number":
+                value = float(value)
+            else:
+                value = str(value)
+            self._set_rule(entity_id, value)
+            return await self.async_step_state_menu()
+        state = self.hass.states.get(entity_id)
+        value_selector, default = _state_value_selector(domain, state)
+        key = vol.Required("value") if default is None else vol.Required("value", default=default)
+        return self.async_show_form(
+            step_id="state_value",
+            data_schema=vol.Schema({key: value_selector}),
+            description_placeholders={
+                "entity": f"{_friendly_name(self.hass, entity_id)} ({entity_id})",
+                "current": state.state if state else "unavailable",
+            },
+        )
+
+    async def async_step_state_hvac(self, user_input: dict | None = None):
+        eid = self._ds_current_eid()
+        if user_input is not None:
+            self._set_rule(eid, user_input["hvac_mode"])
+            return await self.async_step_state_menu()
+        state = self.hass.states.get(eid)
+        modes = list(state.attributes.get("hvac_modes") or []) if state else []
+        modes = modes or _FALLBACK_HVAC_MODES
+        existing = next((r["value"] for r in (self._rules or []) if r.get("entity_id") == eid), None)
+        current = state.state if state else None
+        default = existing or (current if current in modes else None)
+        key = vol.Required("hvac_mode") if default is None else vol.Required("hvac_mode", default=default)
+        return self.async_show_form(
+            step_id="state_hvac",
+            data_schema=vol.Schema({key: _entity_options([(m, m) for m in modes])}),
+            description_placeholders=self._ds_placeholders(eid),
+        )
+
+    async def async_step_state_remove(self, user_input: dict | None = None):
+        eid = self._ds_current_eid()
+        if user_input is not None:
+            gone = set(user_input.get("remove", []))
+            self._rules = [r for r in (self._rules or []) if r.get("entity_id") not in gone]
+            return await self.async_step_state_menu()
+        labels = []
+        for rule in self._rules or []:
+            entity_id = rule["entity_id"]
+            name = "HVAC mode" if entity_id == eid else _friendly_name(self.hass, entity_id)
+            labels.append((entity_id, f"{name} = {rule['value']}"))
+        return self.async_show_form(
+            step_id="state_remove",
+            data_schema=vol.Schema({
+                vol.Required("remove"): selector.SelectSelector(selector.SelectSelectorConfig(
+                    options=[{"value": v, "label": l} for v, l in labels],
+                    multiple=True, mode=selector.SelectSelectorMode.LIST,
+                )),
+            }),
+            description_placeholders=self._ds_placeholders(eid),
+        )
+
+    async def async_step_state_done(self, user_input: dict | None = None):
+        eid = self._ds_current_eid()
+        settings = dict(self._pending or {})
+        settings[CONF_DEV_STATE_SETTINGS] = list(self._rules or [])
+        self._ds_all_settings()[eid] = settings
+        self._device_index += 1
+        self._pending = None
+        self._rules = None
+        if self._device_index >= len(self._ds_entities()):
+            self._device_index = 0
+            return await self._ds_finished()
+        return await self.async_step_device_settings()
+
+
 # ── Config Flow (Ersteinrichtung) ────────────────────────────────────────────
 
-class ThermoSmartConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class ThermoSmartConfigFlow(_DeviceSettingsMixin, config_entries.ConfigFlow, domain=DOMAIN):
     """Einrichtung: Entweder ThermoSmart System (globale Schalter) oder eine Heizzone."""
 
     VERSION = 1
@@ -456,55 +713,17 @@ class ThermoSmartConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={"detected_devices": summary},
         )
 
-    async def async_step_device_settings(self, user_input: dict | None = None):
-        climate_entities = self._data.get("climate_entities", [])
-        if not climate_entities:
-            return await self.async_step_schedule()
-        index = getattr(self, "_device_index", 0)
-        if user_input is not None:
-            eid = climate_entities[index]
-            settings = dict(user_input)
-            state_entity = settings.pop("state_setting_entity", None)
-            state_value = settings.pop("state_setting_value", "")
-            settings[CONF_DEV_STATE_SETTINGS] = (
-                [{"entity_id": state_entity, "value": state_value}]
-                if state_entity and state_value else []
-            )
-            all_settings = self._data.setdefault(CONF_DEVICE_SETTINGS, {})
-            all_settings[eid] = settings
-            index += 1
-            self._device_index = index
-            if index >= len(climate_entities):
-                self._device_index = 0
-                return await self.async_step_schedule()
+    def _ds_entities(self) -> list[str]:
+        return self._data.get("climate_entities", [])
 
-        eid = climate_entities[index]
-        detected = _detect_device_settings(self.hass, eid)
-        existing = self._data.get(CONF_DEVICE_SETTINGS, {}).get(eid, {})
-        detected["settings"] = {**detected["settings"], **existing}
-        mode = self._data.get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
-        warning = (
-            "\n\n⚠️ **Warning:** Zone control mode is set to direct valve control, "
-            "but no valve position entity was found for this device. Direct valve "
-            "control may fail or fall back."
-            if mode == CONTROL_MODE_DIRECT_VALVE and not detected["settings"].get(CONF_DEV_VALVE_ENTITY)
-            else ""
-        )
-        device = detected["device"]
-        header = (
-            f"Device identified as {device.manufacturer or ''} {device.model or ''}. "
-            f"A device preset was loaded.\n\n{detected['preset'].info_summary}"
-            if device and detected["preset"].preset_id != "generic"
-            else "Generic device. Available inputs are auto-detected."
-        )
-        return self.async_show_form(
-            step_id="device_settings",
-            data_schema=_schema_device_settings(detected),
-            description_placeholders={
-                "device_name": eid,
-                "preset_info": header + warning,
-            },
-        )
+    def _ds_all_settings(self) -> dict:
+        return self._data.setdefault(CONF_DEVICE_SETTINGS, {})
+
+    def _ds_zone_mode(self) -> str:
+        return self._data.get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
+
+    async def _ds_finished(self):
+        return await self.async_step_schedule()
 
     async def async_step_schedule(self, user_input: dict | None = None):
         errors: dict[str, str] = {}
@@ -581,7 +800,7 @@ class ThermoSmartSystemOptionsFlow(config_entries.OptionsFlow):
 
 # ── Options Flow (Zone bearbeiten) ───────────────────────────────────────────
 
-class ThermoSmartOptionsFlow(config_entries.OptionsFlow):
+class ThermoSmartOptionsFlow(_DeviceSettingsMixin, config_entries.OptionsFlow):
     """Options Hub: users pick a section and edit only that section.
 
     Each section handler saves a partial update merged with all current fields,
@@ -634,56 +853,21 @@ class ThermoSmartOptionsFlow(config_entries.OptionsFlow):
             data_schema=_schema_control_options(current),
         )
 
-    async def async_step_device_settings(self, user_input: dict | None = None):
-        current = self._current()
-        climate_entities = current.get("climate_entities", [])
-        if not climate_entities:
-            return self.async_abort(reason="required")
-        index = getattr(self, "_device_index", 0)
-        settings_by_device = dict(current.get(CONF_DEVICE_SETTINGS, {}))
-        if user_input is not None:
-            eid = climate_entities[index]
-            settings = dict(user_input)
-            state_entity = settings.pop("state_setting_entity", None)
-            state_value = settings.pop("state_setting_value", "")
-            settings[CONF_DEV_STATE_SETTINGS] = (
-                [{"entity_id": state_entity, "value": state_value}]
-                if state_entity and state_value else []
-            )
-            settings_by_device[eid] = settings
-            index += 1
-            self._device_index = index
-            if index >= len(climate_entities):
-                self._device_index = 0
-                return self.async_create_entry(
-                    title="", data={**current, CONF_DEVICE_SETTINGS: settings_by_device}
-                )
+    def _ds_entities(self) -> list[str]:
+        return self._current().get("climate_entities", [])
 
-        eid = climate_entities[index]
-        detected = _detect_device_settings(self.hass, eid)
-        detected["settings"] = {
-            **detected["settings"],
-            **settings_by_device.get(eid, {}),
-        }
-        mode = current.get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
-        warning = (
-            "\n\n⚠️ **Warning:** Zone control mode is set to direct valve control, "
-            "but no valve position entity was found for this device. Direct valve "
-            "control may fail or fall back."
-            if mode == CONTROL_MODE_DIRECT_VALVE and not detected["settings"].get(CONF_DEV_VALVE_ENTITY)
-            else ""
-        )
-        device = detected["device"]
-        header = (
-            f"Device identified as {device.manufacturer or ''} {device.model or ''}. "
-            f"A device preset was loaded.\n\n{detected['preset'].info_summary}"
-            if device and detected["preset"].preset_id != "generic"
-            else "Generic device. Available inputs are auto-detected."
-        )
-        return self.async_show_form(
-            step_id="device_settings",
-            data_schema=_schema_device_settings(detected),
-            description_placeholders={"device_name": eid, "preset_info": header + warning},
+    def _ds_all_settings(self) -> dict:
+        if getattr(self, "_settings_cache", None) is None:
+            self._settings_cache = dict(self._current().get(CONF_DEVICE_SETTINGS, {}))
+        return self._settings_cache
+
+    def _ds_zone_mode(self) -> str:
+        return self._current().get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
+
+    async def _ds_finished(self):
+        return self.async_create_entry(
+            title="",
+            data={**self._current(), CONF_DEVICE_SETTINGS: self._ds_all_settings()},
         )
 
     async def async_step_schedule(self, user_input: dict | None = None):

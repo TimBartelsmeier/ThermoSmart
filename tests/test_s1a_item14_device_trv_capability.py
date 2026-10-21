@@ -934,3 +934,31 @@ class TestPerDeviceState:
         stats = await coord._async_set_valve_percent(_CFG_TWO, 60.0)
         assert stats.targets_total == 2
         assert stats.targets_succeeded == 2
+
+
+class TestNumberStateSetting:
+    async def test_number_state_setting_uses_set_value_only_when_different(self):
+        coord = _coord_with_svc()
+        cfg = {
+            **_CFG_ONE,
+            CONF_DEVICE_SETTINGS: {
+                "climate.trv": {
+                    CONF_DEV_STATE_SETTINGS: [{"entity_id": "number.limit", "value": 60.0}],
+                },
+            },
+        }
+        set_hass_states(coord, {
+            "climate.trv": _trv_state(setpoint=19.0),
+            "number.limit": make_state("60"),
+        })
+        await coord._async_enforce_device_state_settings("climate.trv", cfg)
+        assert not [c for c in coord.hass.services.async_call.call_args_list if c[0][0] == "number"]
+
+        set_hass_states(coord, {
+            "climate.trv": _trv_state(setpoint=19.0),
+            "number.limit": make_state("40"),
+        })
+        await coord._async_enforce_device_state_settings("climate.trv", cfg)
+        calls = [c for c in coord.hass.services.async_call.call_args_list if c[0][0] == "number"]
+        assert calls[0][0][1] == "set_value"
+        assert calls[0][0][2] == {"entity_id": "number.limit", "value": 60.0}

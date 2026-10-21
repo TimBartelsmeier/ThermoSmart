@@ -94,8 +94,6 @@ _DEVICE_SETTINGS = {
     CONF_DEV_EXT_TEMP_ENTITY: None,
     CONF_DEV_CALIBRATION_INVERT: False,
     CONF_DEV_VALVE_MAINTENANCE: True,
-    "state_setting_entity": None,
-    "state_setting_value": "",
 }
 
 _PRESENCE = {
@@ -132,6 +130,10 @@ async def _navigate_to_weather(hass) -> dict:
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICES)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _CONTROL)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICE_SETTINGS)
+    assert result["step_id"] == "state_menu"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "state_done"}
+    )
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _PRESENCE)
     return result
@@ -252,6 +254,9 @@ class TestGlobalSetupOnlyInitial:
                 result["flow_id"], _DEVICE_SETTINGS
             )
             result = await hass.config_entries.flow.async_configure(
+                result["flow_id"], {"next_step_id": "state_done"}
+            )
+            result = await hass.config_entries.flow.async_configure(
                 result["flow_id"], _SCHEDULE
             )
             result = await hass.config_entries.flow.async_configure(
@@ -285,6 +290,9 @@ class TestNoGlobalLearningStep:
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _CONTROL)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], _DEVICE_SETTINGS
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "state_done"}
         )
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
 
@@ -470,8 +478,11 @@ class TestZoneFlowScheduleValidation:
         )
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _DEVICES)
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _CONTROL)
-        return await hass.config_entries.flow.async_configure(
+        result = await hass.config_entries.flow.async_configure(
             result["flow_id"], _DEVICE_SETTINGS
+        )
+        return await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "state_done"}
         )
 
     async def test_night_above_comfort_shows_error(self, hass, enable_custom_integrations):
@@ -573,3 +584,90 @@ class TestZoneFlowWeatherDefaults:
         assert result["type"] == FlowResultType.CREATE_ENTRY
         assert result["data"][CONF_WEATHER_ENTITY] == "weather.home"
         assert result["data"].get(CONF_OUTDOOR_TEMP_SENSOR) == "sensor.outdoor_temp"
+
+
+# ── State settings sub-flow ───────────────────────────────────────────────────
+
+class TestStateSettingsSubFlow:
+    async def _to_state_menu(self, hass):
+        hass.states.async_set(
+            "climate.test_trv", "heat",
+            {"hvac_modes": ["off", "heat", "auto"], "friendly_name": "Test TRV"},
+        )
+        hass.states.async_set(
+            "select.mode", "internal", {"options": ["internal", "external"]}
+        )
+        hass.states.async_set(
+            "number.limit", "40",
+            {"min": 20, "max": 100, "step": 5, "unit_of_measurement": "%"},
+        )
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        if result["type"] == FlowResultType.MENU:
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"], {"next_step_id": "add_zone"}
+            )
+        flow_id = result["flow_id"]
+        await hass.config_entries.flow.async_configure(flow_id, _DEVICES)
+        await hass.config_entries.flow.async_configure(flow_id, _CONTROL)
+        form = await hass.config_entries.flow.async_configure(flow_id, _DEVICE_SETTINGS)
+        return flow_id, form
+
+    async def test_generic_device_has_no_default_state_settings_and_title_counter(
+        self, hass, enable_custom_integrations
+    ):
+        flow_id, menu = await self._to_state_menu(hass)
+        assert menu["step_id"] == "state_menu"
+        assert "No state settings" in menu["description_placeholders"]["state_rules"]
+        assert menu["description_placeholders"]["index"] == "1"
+        assert menu["description_placeholders"]["total"] == "1"
+
+    async def test_select_number_and_hvac_rules_are_saved(
+        self, hass, enable_custom_integrations
+    ):
+        flow_id, _ = await self._to_state_menu(hass)
+        flow = hass.config_entries.flow
+
+        form = await flow.async_configure(flow_id, {"next_step_id": "state_add_any"})
+        form = await flow.async_configure(flow_id, {"entity_id": "select.mode"})
+        assert form["step_id"] == "state_value"
+        key = next(iter(form["data_schema"].schema))
+        assert key.default() == "internal"
+        await flow.async_configure(flow_id, {"value": "external"})
+
+        await flow.async_configure(flow_id, {"next_step_id": "state_add_any"})
+        form = await flow.async_configure(flow_id, {"entity_id": "number.limit"})
+        number_sel = next(iter(form["data_schema"].schema.values()))
+        assert number_sel.config["min"] == 20 and number_sel.config["max"] == 100
+        assert number_sel.config["unit_of_measurement"] == "%"
+        assert next(iter(form["data_schema"].schema)).default() == 40.0
+        await flow.async_configure(flow_id, {"value": 60})
+
+        form = await flow.async_configure(flow_id, {"next_step_id": "state_hvac"})
+        assert next(iter(form["data_schema"].schema)).default() == "heat"
+        await flow.async_configure(flow_id, {"hvac_mode": "heat"})
+
+        await flow.async_configure(flow_id, {"next_step_id": "state_done"})
+        await flow.async_configure(flow_id, _SCHEDULE)
+        await flow.async_configure(flow_id, _PRESENCE)
+        with patch(_PATCH, return_value=True):
+            result = await flow.async_configure(flow_id, _WEATHER_NONE)
+            await hass.async_block_till_done()
+
+        rules = result["data"]["device_settings"]["climate.test_trv"]["state_settings"]
+        assert rules == [
+            {"entity_id": "select.mode", "value": "external"},
+            {"entity_id": "number.limit", "value": 60.0},
+            {"entity_id": "climate.test_trv", "value": "heat"},
+        ]
+
+    async def test_remove_rule(self, hass, enable_custom_integrations):
+        flow_id, _ = await self._to_state_menu(hass)
+        flow = hass.config_entries.flow
+        await flow.async_configure(flow_id, {"next_step_id": "state_hvac"})
+        menu = await flow.async_configure(flow_id, {"hvac_mode": "auto"})
+        assert "state_remove" in menu["menu_options"]
+        await flow.async_configure(flow_id, {"next_step_id": "state_remove"})
+        menu = await flow.async_configure(flow_id, {"remove": ["climate.test_trv"]})
+        assert "state_remove" not in menu["menu_options"]

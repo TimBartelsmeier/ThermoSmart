@@ -28,20 +28,21 @@
       },
       "control_options": {
         "title": "Step 2 – Zone Control Strategy",
-        "description": "Detected devices:\n\n{detected_devices}",
+        "description": "Choose a zone default. Per-device settings (next pages) can override this strategy.\n\nDetected devices:\n\n{detected_devices}",
         "data": {
           "zone_control_mode": "Zone control mode",
-          "control_interval": "Control cycle interval",
+          "control_interval": "Minimum control cycle interval",
           "temp_tolerance": "Temperature tolerance",
           "ext_temp_threshold": "External temperature write threshold"
         },
         "data_description": {
-          "zone_control_mode": "This is the zone default. Individual TRVs can override it in the next step.",
-          "ext_temp_threshold": "External temperature is written only after the difference reaches this threshold."
+          "zone_control_mode": "**Setpoint only:** ThermoSmart sends the plain target temperature and the TRV regulates its valve on its own.\n\n**TPI setpoint modulation:** ThermoSmart calculates the heating demand and raises or lowers the setpoint sent to the TRV to open or close its valve.\n\n**Direct valve control:** ThermoSmart writes the calculated valve opening (0–100 %) to the TRV's valve position entity and sends the plain target as setpoint.",
+          "control_interval": "Minimum time between regular control cycles. Each cycle recalculates the heating demand and writes setpoints, valve positions and state settings to the TRVs. Events such as opening a window or a manual override can trigger an extra cycle sooner. Shorter intervals cause faster reactions but may also overload devices or congest networks, e.g. Zigbee. In practice, 2-3 minutes combined with reasonable thresholds for temperature changes, which must be cleared for new values to be sent to the TRV, should be fine.",
+          "ext_temp_threshold": "External temperature is written only after the difference reaches this threshold, and must be enabled for each TRV that should receive the update."
         }
       },
       "device_settings": {
-        "title": "Step 3 – TRV Settings",
+        "title": "Step 3 – TRV Settings (TRV {index}/{total})",
         "description": "{device_name}\n\n{preset_info}",
         "data": {
           "control_mode": "Control mode",
@@ -49,13 +50,48 @@
           "feed_external_temp": "Feed room temperature to TRV",
           "ext_temp_entity": "External temperature input entity",
           "calibration_invert": "Invert calibration offset",
-          "valve_maintenance": "Enable valve exercise / maintenance",
-          "state_setting_entity": "State setting entity",
-          "state_setting_value": "Desired option, state, or HVAC mode"
+          "valve_maintenance": "Enable valve exercise / maintenance"
         },
         "data_description": {
-          "state_setting_entity": "Optional select, switch, or climate entity to enforce before TRV control writes."
+          "feed_external_temp": "Sends the room temperature to the TRV. Requires selecting the correct external temperature input entity below; nothing is sent without it.",
+          "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active."
         }
+      },
+      "state_menu": {
+        "title": "TRV State Settings ({index}/{total})",
+        "description": "{device_name}\n\nState settings make sure that selected entities (e.g. a select, number or switch of this TRV) and the HVAC mode have a specific value. On every control cycle or control event, ThermoSmart checks them and only sets a value if it differs.\n\nCurrently configured:\n\n{state_rules}",
+        "menu_options": {
+          "state_add_device": "Add entity of this TRV",
+          "state_add_any": "Add any other entity",
+          "state_hvac": "Set required HVAC mode",
+          "state_remove": "Remove settings",
+          "state_done": "Save and continue"
+        }
+      },
+      "state_add_device": {
+        "title": "Add State Setting",
+        "description": "{scope}",
+        "data": { "entity_id": "Entity" }
+      },
+      "state_add_any": {
+        "title": "Add State Setting",
+        "description": "{scope}",
+        "data": { "entity_id": "Entity" }
+      },
+      "state_value": {
+        "title": "Desired Value",
+        "description": "{entity}\n\nCurrent value: {current}",
+        "data": { "value": "Value to enforce" }
+      },
+      "state_hvac": {
+        "title": "Required HVAC Mode",
+        "description": "{device_name}\n\nThe HVAC mode ThermoSmart makes sure this TRV is in.",
+        "data": { "hvac_mode": "HVAC mode" }
+      },
+      "state_remove": {
+        "title": "Remove State Settings",
+        "description": "{device_name}",
+        "data": { "remove": "Settings to remove" }
       },
       "schedule": {
         "title": "Step 4 – Temperatures & Schedule",
@@ -153,16 +189,18 @@
         "description": "Choose a zone default. Per-device settings can override this strategy.",
         "data": {
           "zone_control_mode": "Zone control mode",
-          "control_interval": "Control cycle interval",
+          "control_interval": "Minimum control cycle interval",
           "temp_tolerance": "Temperature tolerance",
           "ext_temp_threshold": "External temperature write threshold"
         },
         "data_description": {
-          "ext_temp_threshold": "External temperature is written only after the difference reaches this threshold."
+          "zone_control_mode": "**Setpoint only:** ThermoSmart sends the plain target temperature and the TRV regulates its valve on its own.\n\n**TPI setpoint modulation:** ThermoSmart calculates the heating demand and raises or lowers the setpoint sent to the TRV to open or close its valve.\n\n**Direct valve control:** ThermoSmart writes the calculated valve opening (0–100 %) to the TRV's valve position entity and sends the plain target as setpoint.",
+          "control_interval": "Minimum time between regular control cycles. Each cycle recalculates the heating demand and writes setpoints, valve positions and state settings to the TRVs. Events such as opening a window or a manual override can trigger an extra cycle sooner. Shorter intervals cause faster reactions but may also overload devices or congest networks, e.g. Zigbee. In practice, 2-3 minutes combined with reasonable thresholds for temperature changes, which must be cleared for new values to be sent to the TRV, should be fine.",
+          "ext_temp_threshold": "External temperature is written only after the difference reaches this threshold, and must be enabled for each TRV that should receive the update."
         }
       },
       "device_settings": {
-        "title": "TRV Settings",
+        "title": "TRV Settings (TRV {index}/{total})",
         "description": "{device_name}\n\n{preset_info}",
         "data": {
           "control_mode": "Control mode",
@@ -170,13 +208,48 @@
           "feed_external_temp": "Feed room temperature to TRV",
           "ext_temp_entity": "External temperature input entity",
           "calibration_invert": "Invert calibration offset",
-          "valve_maintenance": "Enable valve exercise / maintenance",
-          "state_setting_entity": "State setting entity",
-          "state_setting_value": "Desired option, state, or HVAC mode"
+          "valve_maintenance": "Enable valve exercise / maintenance"
         },
         "data_description": {
-          "state_setting_entity": "Optional select, switch, or climate entity to enforce before TRV control writes."
+          "feed_external_temp": "Sends the room temperature to the TRV. Requires selecting the correct external temperature input entity below; nothing is sent without it.",
+          "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active."
         }
+      },
+      "state_menu": {
+        "title": "TRV State Settings ({index}/{total})",
+        "description": "{device_name}\n\nState settings make sure that selected entities (e.g. a select, number or switch of this TRV) and the HVAC mode have a specific value. On every control cycle or control event, ThermoSmart checks them and only sets a value if it differs.\n\nCurrently configured:\n\n{state_rules}",
+        "menu_options": {
+          "state_add_device": "Add entity of this TRV",
+          "state_add_any": "Add any other entity",
+          "state_hvac": "Set required HVAC mode",
+          "state_remove": "Remove settings",
+          "state_done": "Save and continue"
+        }
+      },
+      "state_add_device": {
+        "title": "Add State Setting",
+        "description": "{scope}",
+        "data": { "entity_id": "Entity" }
+      },
+      "state_add_any": {
+        "title": "Add State Setting",
+        "description": "{scope}",
+        "data": { "entity_id": "Entity" }
+      },
+      "state_value": {
+        "title": "Desired Value",
+        "description": "{entity}\n\nCurrent value: {current}",
+        "data": { "value": "Value to enforce" }
+      },
+      "state_hvac": {
+        "title": "Required HVAC Mode",
+        "description": "{device_name}\n\nThe HVAC mode ThermoSmart makes sure this TRV is in.",
+        "data": { "hvac_mode": "HVAC mode" }
+      },
+      "state_remove": {
+        "title": "Remove State Settings",
+        "description": "{device_name}",
+        "data": { "remove": "Settings to remove" }
       },
       "schedule": {
         "title": "Temperatures & Schedule",
