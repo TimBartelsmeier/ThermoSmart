@@ -1,3 +1,33 @@
+Fork of [Mikasmarthome/ThermoSmart](https://github.com/Mikasmarthome/ThermoSmart) for some things I want to change. As far as possible, I try to develop fixes/features in individual branches which I can pull request back to upstream later on.
+
+The `develop` branch will frequently have the latest changes merged in so that I can test multiple things simultaneously. Because `develop` is set as the default branch, HACS will pull from it - I therefore do not recommend to add this repository to HACS in it's current state, as things might be buggy at the moment.
+
+Planned changes:
+- Ability to have setpoint temperature follow changes on the physical TRV (and, if multiple thermostats in the room, propagate to the other thermostats) [not started]
+- More flexible scheduling [started, branch `feature/flexible-scheduling`]
+  - User can define "events" (day of week, time of day, target temperature or preset) at which the target is changed
+  - Presets are simply temperature targets - no "auto" preset required anymore
+  - Pre-heating can be enabled or disabled for individual events
+  - Works fine on my system with the feature described above. Left to do:
+    - handle away mode, weather corrections
+    - identify/test edge cases
+    - maybe: UI instead of YAML for setting schedule
+- Improved control strategy selection [started, branch `feature/improved-control-modes`]
+  - Main goal: more flexibility / customization of the "control strategy", i.e. how the setpoint is "translated" to the TRV
+    - Control mode: direct valve control, TPI with a boosted setpoint (both as they exist in the upstream); new: Setpoint only (coordinator does not control TRV itself, simply pushes the target temperature and lets the TRV handle it)
+    - Allow the user to select which entity for direct valve control, temperature input, etc. so more TRV models can be used without explicit support
+    - Presets for specific models
+- "Minimal" card without dial or graph
+
+Housekeeping to do:
+- check that (all) translation files are consistent with implemented features/changes
+
+Done:
+- Fix: card not loading reliably (branch `fix/missing-card-component`, pull request to upstream submitted)
+- Fix: after HA restart, loads as "Window Open" (branch `fix/window-open-after-restart`, pull request not yet submitted)
+
+---
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/Mikasmarthome/ThermoSmart/main/custom_components/thermosmart/brand/logo.png" alt="ThermoSmart" width="256"/>
 </p>
@@ -49,7 +79,7 @@ The card updates together with the integration — there is no separate version 
 
 ## Screenshots
 
-![Three ThermoSmart heating zones displayed in a Lovelace dashboard — each zone shows a temperature ring with current and target temperature, active mode indicator, outdoor temperature, humidity, and mode buttons for Auto, Eco, Night, Comfort, Away and Vacation](brand/screenshots/dashboard-zones.jpeg)
+![Three ThermoSmart heating zones displayed in a Lovelace dashboard — each zone shows a temperature ring with current and target temperature, active preset, outdoor temperature, humidity, and preset buttons for Eco, Night, Comfort, Away and Vacation](brand/screenshots/dashboard-zones.jpeg)
 
 *Three heating zones managed by ThermoSmart. The temperature ring shows current and target temperature at a glance. Mode buttons, outdoor conditions, and a history graph (Actual / Target / Outdoor) are visible per zone. Screenshot uses the bundled ThermoSmart Card, described above.*
 
@@ -82,11 +112,76 @@ Add **ThermoSmart System** first (Summer mode select + Vacation switch), then ad
 | Step | Fields |
 |---|---|
 | **1 – Devices** | Zone name · TRVs · Temperature sensors *(optional)* · Humidity sensors · Window / door sensors · Window delays · Valve maintenance · Calibration invert |
-| **2 – Temperatures** | Comfort · Night · Away · Vacation · Eco · Tolerance · Weekday/weekend schedule times |
-| **3 – Presence** | Person entities · Home zone · Learning on/off |
+| **2 – Temperatures** | Comfort · Night · Away · Vacation · Eco · Tolerance |
+| **3 – Presence** | Person entities · Home zone |
 | **4 – Weather** | Weather entity · Outdoor temp/humidity · Wind speed · Solar radiation · Precipitation |
 
 > **External temperature sensors are optional.** Since v1.0.3, ThermoSmart automatically uses the TRV's built-in temperature sensor as fallback when no external sensor is configured. Adding a dedicated room sensor improves accuracy, but is not required to get started.
+
+### Flexible schedules
+
+Schedules are configured in `/config/thermosmart_schedules.yaml`. The key under
+`zones` uses a normalized slug of the zone name entered during setup. For
+example, `Living Room` becomes `living_room`; the setup form shows the exact
+expected key during setup. ThermoSmart adds missing zone blocks automatically,
+with an empty `events` list, and sorts zone keys. Existing zone blocks and
+orphaned blocks are retained. A schedule entry is a
+setpoint change, not a time slot:
+the most recent event in the repeating week remains active until the next event.
+
+If two zone names normalize to the same key, both zones use the schedule under
+that key. Setup displays a warning before the zone is created. It also warns
+when a schedule block already exists for a key that is not currently associated
+with an active zone.
+
+```yaml
+zones:
+  living_room:
+    name: "Living Room"
+    events:
+      - days: [mon, tue, wed, thu, fri]
+        time: "06:00"
+        target: comfort
+        preheat: false
+      - days: [mon, tue, wed, thu, fri]
+        time: "12:00"
+        target: 20
+        preheat: false
+      - days: [mon, tue, wed, thu, fri, sat, sun]
+        time: "22:00"
+        target: night
+        preheat: false
+```
+
+`days` accepts `mon` through `sun`, `time` is local `HH:MM`, and `target` is a
+number from 4 to 35°C or one of `comfort`, `night`/`sleep`, `eco`, `away`, or
+`vacation`. Duplicate day/time entries are allowed; the last configured entry
+wins. The The `preheat` flag enables automatic pre-heating for that event when its target
+is higher than the currently active scheduled target. It works for both numeric
+targets and named presets. The calculated lead time is exposed through
+`sensor.*_preheat_minutes`; the next event and planned pre-heating start are
+exposed through the dedicated timestamp sensors listed below.
+
+Scheduling can be paused temporarily with the zone's **Scheduling Disabled
+Until** date/time entity, which provides Home Assistant's native date/time
+picker. When the selected time has passed, scheduling resumes automatically.
+The **Scheduling Enabled** switch is the persistent on/off control; turning it
+off takes precedence over the date/time entity.
+
+When upgrading an existing installation, ThermoSmart migrates old
+weekday/weekend schedule times into this file and removes the obsolete schedule
+fields from the zone config entry, including the former `schedule_enabled`
+toggle. The Comfort and Night temperature settings remain because they also
+define those presets. If migration cannot write the file, the old config is
+left intact and an actionable error is logged.
+
+Presets and schedule events have separate responsibilities. Selecting a preset
+temperature changes the target immediately; it does not enable or disable the
+schedule. A schedule event changes the target when that event becomes active,
+using either a numeric temperature or one of the named temperature presets.
+There is no `auto` preset: scheduling is controlled only by the schedule events,
+the **Scheduling Enabled** switch, and the **Scheduling Disabled Until**
+date/time entity.
 
 ---
 
@@ -96,13 +191,17 @@ Add **ThermoSmart System** first (Summer mode select + Vacation switch), then ad
 | Entity | Description |
 |---|---|
 | `climate.thermosmart_*` | Virtual thermostat — target/current temp, HVAC mode, presets |
-| `select.*_mode` | Heating mode: Auto / Comfort / Eco / Night / Away / Vacation |
+| `select.*_mode` | Preset temperature: Comfort / Eco / Night / Away / Vacation |
 | `switch.*_active_control` | Active Control on/off |
 | `switch.*_learning` | Learning algorithm on/off |
+| `switch.*_scheduling_enabled` | Execute scheduled setpoint changes |
+| `datetime.*_schedule_disabled_until` | Temporarily pause scheduled changes until a selected date and time |
 | `sensor.*_status` | Zone status |
 | `sensor.*_confidence` | Learning progress 0–100 % |
 | `sensor.*_adjusted_target` | Configured target temperature (schedule or mode) |
 | `sensor.*_preheat_minutes` | Calculated preheat lead time in minutes |
+| `sensor.*_next_schedule_event` | Next scheduled event timestamp and target details |
+| `sensor.*_preheat_start` | Planned preheat start timestamp and current preheat state |
 
 Additional diagnostic sensors (disabled by default): TRV setpoint · TPI duty-cycle · Weather offset · Temperature slope · Heat loss · Heating power · Outcome score · Solar gain · TRV observations · Window cooling rate · EMA temperature
 
