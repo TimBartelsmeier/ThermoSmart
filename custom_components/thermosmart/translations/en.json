@@ -43,7 +43,7 @@
       },
       "device_settings": {
         "title": "Step 3 – TRV Settings (TRV {index}/{total})",
-        "description": "{device_name}\n\n{preset_info}",
+        "description": "**Zone:** {zone}\n**TRV {index} of {total}:** {device_name}\n\nThese settings apply to this TRV only. Next you can define state settings for this TRV.\n\n{preset_info}",
         "data": {
           "control_mode": "Control mode",
           "valve_entity": "Valve control entity",
@@ -58,39 +58,40 @@
         }
       },
       "state_menu": {
-        "title": "TRV State Settings ({index}/{total})",
-        "description": "{device_name}\n\nState settings make sure that selected entities (e.g. a select, number or switch of this TRV) and the HVAC mode have a specific value. On every control cycle or control event, ThermoSmart checks them and only sets a value if it differs.\n\nCurrently configured:\n\n{state_rules}",
+        "title": "Step 3 – TRV State Settings (TRV {index}/{total})",
+        "description": "**Zone:** {zone}\n**TRV {index} of {total}:** {device_name}\n\nState settings keep chosen entities of this TRV (select, number or switch) and its HVAC mode at a value you define. On every control cycle or control event ThermoSmart checks them and sets a value only if it differs. Leave the list empty if you don't need this.\n\n**Currently configured:**\n\n{state_rules}\n\nChoose an action. Select **Done with this TRV** when finished.",
         "menu_options": {
-          "state_add_device": "Add entity of this TRV",
+          "state_add_device": "Add an entity of this TRV",
           "state_add_any": "Add any other entity",
           "state_hvac": "Set required HVAC mode",
           "state_remove": "Remove settings",
-          "state_done": "Save and continue"
+          "state_done": "Done with this TRV"
         }
       },
       "state_add_device": {
-        "title": "Add State Setting",
-        "description": "{scope}",
+        "title": "Step 3 – Add State Setting (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the entity ThermoSmart should keep at a specific value. {scope}\n\nYou choose the value on the next page.",
         "data": { "entity_id": "Entity" }
       },
       "state_add_any": {
-        "title": "Add State Setting",
-        "description": "{scope}",
+        "title": "Step 3 – Add State Setting (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the entity ThermoSmart should keep at a specific value. {scope}\n\nYou choose the value on the next page.",
         "data": { "entity_id": "Entity" }
       },
       "state_value": {
-        "title": "Desired Value",
-        "description": "{entity}\n\nCurrent value: {current}",
-        "data": { "value": "Value to enforce" }
+        "title": "Step 3 – State Setting Value (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nDefine the value ThermoSmart enforces for **{entity}**.\n\nCurrent value: {current}",
+        "data": { "value": "Value to enforce" },
+        "data_description": { "value": "If the entity differs from this value, ThermoSmart sets it on the next control cycle or event." }
       },
       "state_hvac": {
-        "title": "Required HVAC Mode",
-        "description": "{device_name}\n\nThe HVAC mode ThermoSmart makes sure this TRV is in.",
+        "title": "Step 3 – Required HVAC Mode (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nDefine the HVAC mode this TRV must be in. If it differs, ThermoSmart switches it on the next control cycle or event.",
         "data": { "hvac_mode": "HVAC mode" }
       },
       "state_remove": {
-        "title": "Remove State Settings",
-        "description": "{device_name}",
+        "title": "Step 3 – Remove State Settings (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the state settings ThermoSmart should stop enforcing for this TRV.",
         "data": { "remove": "Settings to remove" }
       },
       "schedule": {
@@ -162,10 +163,11 @@
     "step": {
       "init": {
         "title": "Settings",
+        "description": "Choose which part of zone **{zone}** to edit. Each section is saved on its own.",
         "menu_options": {
           "devices": "Devices & Sensors",
-          "control_options": "Zone Control Strategy",
-          "device_settings": "Per-TRV Settings",
+          "control_options": "Zone Control Strategy (default mode, interval, thresholds)",
+          "device_settings": "Per-TRV Settings (mode override, entities, state settings)",
           "schedule": "Temperatures & Schedule",
           "presence": "Presence",
           "weather": "Weather & Outdoor Sensors"
@@ -186,7 +188,7 @@
       },
       "control_options": {
         "title": "Zone Control Strategy",
-        "description": "Choose a zone default. Per-device settings can override this strategy.",
+        "description": "Zone **{zone}**: choose a zone default. Per-device settings can override this strategy.",
         "data": {
           "zone_control_mode": "Zone control mode",
           "control_interval": "Minimum control cycle interval",
@@ -201,7 +203,7 @@
       },
       "device_settings": {
         "title": "TRV Settings (TRV {index}/{total})",
-        "description": "{device_name}\n\n{preset_info}",
+        "description": "**Zone:** {zone}\n**TRV {index} of {total}:** {device_name}\n\nThese settings apply to this TRV only. Next you can edit state settings for this TRV. Nothing is saved until you have gone through the last TRV.\n\n{preset_info}",
         "data": {
           "control_mode": "Control mode",
           "valve_entity": "Valve control entity",
@@ -216,39 +218,40 @@
         }
       },
       "state_menu": {
-        "title": "TRV State Settings ({index}/{total})",
-        "description": "{device_name}\n\nState settings make sure that selected entities (e.g. a select, number or switch of this TRV) and the HVAC mode have a specific value. On every control cycle or control event, ThermoSmart checks them and only sets a value if it differs.\n\nCurrently configured:\n\n{state_rules}",
+        "title": "TRV State Settings (TRV {index}/{total})",
+        "description": "**Zone:** {zone}\n**TRV {index} of {total}:** {device_name}\n\nState settings keep chosen entities of this TRV (select, number or switch) and its HVAC mode at a value you define. On every control cycle or control event ThermoSmart checks them and sets a value only if it differs. Leave the list empty if you don't need this.\n\n**Currently configured:**\n\n{state_rules}\n\nChoose an action. Select **Done with this TRV** when finished; changes are saved after the last TRV.",
         "menu_options": {
-          "state_add_device": "Add entity of this TRV",
+          "state_add_device": "Add an entity of this TRV",
           "state_add_any": "Add any other entity",
           "state_hvac": "Set required HVAC mode",
           "state_remove": "Remove settings",
-          "state_done": "Save and continue"
+          "state_done": "Done with this TRV"
         }
       },
       "state_add_device": {
-        "title": "Add State Setting",
-        "description": "{scope}",
+        "title": "Add State Setting (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the entity ThermoSmart should keep at a specific value. {scope}\n\nYou choose the value on the next page.",
         "data": { "entity_id": "Entity" }
       },
       "state_add_any": {
-        "title": "Add State Setting",
-        "description": "{scope}",
+        "title": "Add State Setting (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the entity ThermoSmart should keep at a specific value. {scope}\n\nYou choose the value on the next page.",
         "data": { "entity_id": "Entity" }
       },
       "state_value": {
-        "title": "Desired Value",
-        "description": "{entity}\n\nCurrent value: {current}",
-        "data": { "value": "Value to enforce" }
+        "title": "State Setting Value (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nDefine the value ThermoSmart enforces for **{entity}**.\n\nCurrent value: {current}",
+        "data": { "value": "Value to enforce" },
+        "data_description": { "value": "If the entity differs from this value, ThermoSmart sets it on the next control cycle or event." }
       },
       "state_hvac": {
-        "title": "Required HVAC Mode",
-        "description": "{device_name}\n\nThe HVAC mode ThermoSmart makes sure this TRV is in.",
+        "title": "Required HVAC Mode (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nDefine the HVAC mode this TRV must be in. If it differs, ThermoSmart switches it on the next control cycle or event.",
         "data": { "hvac_mode": "HVAC mode" }
       },
       "state_remove": {
-        "title": "Remove State Settings",
-        "description": "{device_name}",
+        "title": "Remove State Settings (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the state settings ThermoSmart should stop enforcing for this TRV.",
         "data": { "remove": "Settings to remove" }
       },
       "schedule": {

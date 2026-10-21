@@ -454,8 +454,12 @@ class _DeviceSettingsMixin:
     def _ds_current_eid(self) -> str:
         return self._ds_entities()[self._device_index]
 
+    def _ds_zone_name(self) -> str:
+        raise NotImplementedError
+
     def _ds_placeholders(self, eid: str) -> dict:
         return {
+            "zone": self._ds_zone_name(),
             "device_name": f"{_friendly_name(self.hass, eid)} ({eid})",
             "index": str(self._device_index + 1),
             "total": str(len(self._ds_entities())),
@@ -571,6 +575,7 @@ class _DeviceSettingsMixin:
             step_id="state_value",
             data_schema=vol.Schema({key: value_selector}),
             description_placeholders={
+                **self._ds_placeholders(self._ds_current_eid()),
                 "entity": f"{_friendly_name(self.hass, entity_id)} ({entity_id})",
                 "current": state.state if state else "unavailable",
             },
@@ -713,6 +718,9 @@ class ThermoSmartConfigFlow(_DeviceSettingsMixin, config_entries.ConfigFlow, dom
             description_placeholders={"detected_devices": summary},
         )
 
+    def _ds_zone_name(self) -> str:
+        return self._data.get("name", "")
+
     def _ds_entities(self) -> list[str]:
         return self._data.get("climate_entities", [])
 
@@ -814,6 +822,7 @@ class ThermoSmartOptionsFlow(_DeviceSettingsMixin, config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict | None = None):
         return self.async_show_menu(
             step_id="init",
+            description_placeholders={"zone": self._ds_zone_name()},
             menu_options=[
                 "devices", "control_options", "device_settings",
                 "schedule", "presence", "weather",
@@ -851,7 +860,11 @@ class ThermoSmartOptionsFlow(_DeviceSettingsMixin, config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="control_options",
             data_schema=_schema_control_options(current),
+            description_placeholders={"zone": self._ds_zone_name()},
         )
+
+    def _ds_zone_name(self) -> str:
+        return self._current().get("name", "")
 
     def _ds_entities(self) -> list[str]:
         return self._current().get("climate_entities", [])
