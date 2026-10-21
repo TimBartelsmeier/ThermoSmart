@@ -192,7 +192,6 @@ class TestProfileCapabilities:
     def test_eve_thermo_is_read_only_no_calibration(self):
         assert EVE_THERMO.valve_semantics == VALVE_READ_ONLY
         assert EVE_THERMO.allow_external_temp_input is False
-        assert EVE_THERMO.allow_temp_source_select is False
         assert EVE_THERMO.calibration_sync is False
 
     def test_avatto_has_inverted_calibration(self):

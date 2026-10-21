@@ -49,21 +49,25 @@
           "valve_entity": "阀门控制实体",
           "feed_external_temp": "向 TRV 提供室温",
           "ext_temp_entity": "外部温度输入实体",
+          "calibration_sync": "写入校准偏移",
+          "calibration_entity": "校准偏移实体",
           "calibration_invert": "反转校准偏移",
           "valve_maintenance": "启用阀门活动 / 维护"
         },
         "data_description": {
           "feed_external_temp": "将室温发送给 TRV。需要在下方选择正确的外部温度输入实体；否则不会发送任何内容。",
-          "valve_maintenance": "防止阀门在长时间不供暖期间卡死。当夏季模式或假期模式激活时，ThermoSmart 会偶尔自动移动阀门。"
+          "valve_maintenance": "防止阀门在长时间不供暖期间卡死。当夏季模式或假期模式激活时，ThermoSmart 会偶尔自动移动阀门。",
+          "calibration_sync": "通过将与室温的差值写入下方的校准实体来校正 TRV 内部温度传感器。使用外部温度源的 TRV 请关闭。需要校准实体。",
+          "calibration_entity": "保存 TRV 本地校准偏移的数值实体。留空则禁用校准。",
+          "calibration_invert": "如果 TRV 以相反符号应用偏移，请启用。"
         }
       },
       "state_menu": {
         "title": "第 3 步 – TRV 状态设置 (TRV {index}/{total})",
-        "description": "**区域:** {zone}\n**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n状态设置会将此 TRV 的所选实体（select、number 或 switch）及其 HVAC 模式保持在您定义的值。在每个控制周期或控制事件中，ThermoSmart 都会检查它们，并且仅在值不同时才进行设置。如果不需要，请将列表留空。\n\n**当前已配置：**\n\n{state_rules}\n\n请选择操作。完成后选择 **完成此 TRV**。",
+        "description": "**区域:** {zone}\n**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n状态设置会将此 TRV 的所选实体（select、number 或 switch）保持在您定义的值。在每个控制周期或控制事件中，ThermoSmart 都会检查它们，并且仅在值不同时才进行设置。如果不需要，请将列表留空。\n\n**当前已配置：**\n\n{state_rules}\n\n请选择操作。完成后选择 **完成此 TRV**。",
         "menu_options": {
           "state_add_device": "添加此 TRV 的实体",
           "state_add_any": "添加任何其他实体",
-          "state_hvac": "设置所需的 HVAC 模式",
           "state_remove": "删除设置",
           "state_done": "完成此 TRV"
         }
@@ -90,13 +94,6 @@
         },
         "data_description": {
           "value": "如果实体与此值不同，ThermoSmart 将在下一个控制周期或事件中进行设置。"
-        }
-      },
-      "state_hvac": {
-        "title": "第 3 步 – 所需的 HVAC 模式 (TRV {index}/{total})",
-        "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n定义此 TRV 必须处于的 HVAC 模式。如果不同，ThermoSmart 将在下一个控制周期或事件中切换。",
-        "data": {
-          "hvac_mode": "HVAC 模式"
         }
       },
       "state_remove": {
@@ -221,21 +218,25 @@
           "valve_entity": "阀门控制实体",
           "feed_external_temp": "向 TRV 提供室温",
           "ext_temp_entity": "外部温度输入实体",
+          "calibration_sync": "写入校准偏移",
+          "calibration_entity": "校准偏移实体",
           "calibration_invert": "反转校准偏移",
           "valve_maintenance": "启用阀门活动 / 维护"
         },
         "data_description": {
           "feed_external_temp": "将室温发送给 TRV。需要在下方选择正确的外部温度输入实体；否则不会发送任何内容。",
-          "valve_maintenance": "防止阀门在长时间不供暖期间卡死。当夏季模式或假期模式激活时，ThermoSmart 会偶尔自动移动阀门。"
+          "valve_maintenance": "防止阀门在长时间不供暖期间卡死。当夏季模式或假期模式激活时，ThermoSmart 会偶尔自动移动阀门。",
+          "calibration_sync": "通过将与室温的差值写入下方的校准实体来校正 TRV 内部温度传感器。使用外部温度源的 TRV 请关闭。需要校准实体。",
+          "calibration_entity": "保存 TRV 本地校准偏移的数值实体。留空则禁用校准。",
+          "calibration_invert": "如果 TRV 以相反符号应用偏移，请启用。"
         }
       },
       "state_menu": {
         "title": "TRV 状态设置 (TRV {index}/{total})",
-        "description": "**区域:** {zone}\n**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n状态设置会将此 TRV 的所选实体（select、number 或 switch）及其 HVAC 模式保持在您定义的值。在每个控制周期或控制事件中，ThermoSmart 都会检查它们，并且仅在值不同时才进行设置。如果不需要，请将列表留空。\n\n**当前已配置：**\n\n{state_rules}\n\n请选择操作。完成后选择 **完成此 TRV**；更改将在最后一个 TRV 之后保存。",
+        "description": "**区域:** {zone}\n**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n状态设置会将此 TRV 的所选实体（select、number 或 switch）保持在您定义的值。在每个控制周期或控制事件中，ThermoSmart 都会检查它们，并且仅在值不同时才进行设置。如果不需要，请将列表留空。\n\n**当前已配置：**\n\n{state_rules}\n\n请选择操作。完成后选择 **完成此 TRV**；更改将在最后一个 TRV 之后保存。",
         "menu_options": {
           "state_add_device": "添加此 TRV 的实体",
           "state_add_any": "添加任何其他实体",
-          "state_hvac": "设置所需的 HVAC 模式",
           "state_remove": "删除设置",
           "state_done": "完成此 TRV"
         }
@@ -262,13 +263,6 @@
         },
         "data_description": {
           "value": "如果实体与此值不同，ThermoSmart 将在下一个控制周期或事件中进行设置。"
-        }
-      },
-      "state_hvac": {
-        "title": "所需的 HVAC 模式 (TRV {index}/{total})",
-        "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n定义此 TRV 必须处于的 HVAC 模式。如果不同，ThermoSmart 将在下一个控制周期或事件中切换。",
-        "data": {
-          "hvac_mode": "HVAC 模式"
         }
       },
       "state_remove": {
@@ -454,6 +448,39 @@
       },
       "trv_observations": {
         "name": "TRV 观测值"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "仅设定温度（TRV 自主运行）",
+        "tpi_boost": "TPI 设定温度调制（计算提升）",
+        "direct_valve": "直接阀门控制（0–100%）"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "继承自区域 (仅设定温度)",
+        "setpoint": "仅设定温度",
+        "tpi_boost": "TPI 设定温度调制",
+        "direct_valve": "直接阀门控制"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "继承自区域 (TPI 设定温度调制)",
+        "setpoint": "仅设定温度",
+        "tpi_boost": "TPI 设定温度调制",
+        "direct_valve": "直接阀门控制"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "继承自区域 (直接阀门控制)",
+        "setpoint": "仅设定温度",
+        "tpi_boost": "TPI 设定温度调制",
+        "direct_valve": "直接阀门控制"
       }
     }
   }

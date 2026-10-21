@@ -6,7 +6,6 @@ import contextlib
 import logging
 
 from .const import (
-    CONF_VALVE_MAINTENANCE,
     CONF_DEVICE_SETTINGS,
     CONF_DEV_VALVE_MAINTENANCE,
     VALVE_MAINTENANCE_HOUR,
@@ -38,8 +37,6 @@ class MaintenanceMixin:
         climate.set_temperature Service Call ausgelöst, unabhängig von
         Sommer-/Urlaubsmodus.
         """
-        if not cfg.get(CONF_VALVE_MAINTENANCE, True):
-            return
         if self._maintenance_running:
             return
         if not self._active_control:

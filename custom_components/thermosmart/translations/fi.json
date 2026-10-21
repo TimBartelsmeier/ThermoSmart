@@ -49,21 +49,25 @@
           "valve_entity": "Venttiilin ohjausentiteetti",
           "feed_external_temp": "Syötä huoneen lämpötila TRV:lle",
           "ext_temp_entity": "Ulkoisen lämpötilan syöttöentiteetti",
+          "calibration_sync": "Kirjoita kalibrointipoikkeama",
+          "calibration_entity": "Kalibrointipoikkeaman entiteetti",
           "calibration_invert": "Käännä kalibrointipoikkeama",
           "valve_maintenance": "Ota venttiilin liikutus / huolto käyttöön"
         },
         "data_description": {
           "feed_external_temp": "Lähettää huoneen lämpötilan TRV:lle. Edellyttää oikean ulkoisen lämpötilan syöttöentiteetin valitsemista alla; ilman sitä mitään ei lähetetä.",
-          "valve_maintenance": "Estää venttiilien jumiutumisen pitkien lämmittämättömien jaksojen aikana. ThermoSmart liikuttaa venttiileitä ajoittain automaattisesti, kun kesätila tai lomatila on käytössä."
+          "valve_maintenance": "Estää venttiilien jumiutumisen pitkien lämmittämättömien jaksojen aikana. ThermoSmart liikuttaa venttiileitä ajoittain automaattisesti, kun kesätila tai lomatila on käytössä.",
+          "calibration_sync": "Korjaa TRV:n sisäistä lämpötila-anturia kirjoittamalla huoneen lämpötilan ero alla olevaan kalibrointientiteettiin. Poista käytöstä TRV:illä, jotka käyttävät ulkoista lämpötilalähdettä. Vaatii kalibrointientiteetin.",
+          "calibration_entity": "Numeroentiteetti, joka sisältää TRV:n paikallisen kalibrointipoikkeaman. Jätä tyhjäksi poistaaksesi kalibroinnin käytöstä.",
+          "calibration_invert": "Ota käyttöön, jos TRV soveltaa poikkeamaa vastakkaisella etumerkillä."
         }
       },
       "state_menu": {
         "title": "Vaihe 3 – TRV:n tila-asetukset (TRV {index}/{total})",
-        "description": "**Vyöhyke:** {zone}\n**TRV {index}/{total}:** {device_name}\n\nTila-asetukset pitävät tämän TRV:n valitut entiteetit (select, number tai switch) ja sen HVAC-tilan määrittämässäsi arvossa. Jokaisella ohjausjaksolla tai ohjaustapahtumassa ThermoSmart tarkistaa ne ja asettaa arvon vain, jos se poikkeaa. Jätä luettelo tyhjäksi, jos et tarvitse tätä.\n\n**Tällä hetkellä määritetty:**\n\n{state_rules}\n\nValitse toiminto. Valitse **Valmis tämän TRV:n osalta**, kun olet valmis.",
+        "description": "**Vyöhyke:** {zone}\n**TRV {index}/{total}:** {device_name}\n\nTila-asetukset pitävät tämän TRV:n valitut entiteetit (select, number tai switch) määrittämässäsi arvossa. Jokaisella ohjausjaksolla tai ohjaustapahtumassa ThermoSmart tarkistaa ne ja asettaa arvon vain, jos se poikkeaa. Jätä luettelo tyhjäksi, jos et tarvitse tätä.\n\n**Tällä hetkellä määritetty:**\n\n{state_rules}\n\nValitse toiminto. Valitse **Valmis tämän TRV:n osalta**, kun olet valmis.",
         "menu_options": {
           "state_add_device": "Lisää tämän TRV:n entiteetti",
           "state_add_any": "Lisää tämän TRV:n entiteetti",
-          "state_hvac": "Aseta vaadittu HVAC-tila",
           "state_remove": "Poista asetuksia",
           "state_done": "Valmis tämän TRV:n osalta"
         }
@@ -90,13 +94,6 @@
         },
         "data_description": {
           "value": "Jos entiteetti poikkeaa tästä arvosta, ThermoSmart asettaa sen seuraavalla ohjausjaksolla tai tapahtumassa."
-        }
-      },
-      "state_hvac": {
-        "title": "Vaihe 3 – Vaadittu HVAC-tila (TRV {index}/{total})",
-        "description": "**TRV {index}/{total}:** {device_name}\n\nMääritä HVAC-tila, jossa tämän TRV:n tulee olla. Jos se poikkeaa, ThermoSmart vaihtaa sen seuraavalla ohjausjaksolla tai tapahtumassa.",
-        "data": {
-          "hvac_mode": "HVAC-tila"
         }
       },
       "state_remove": {
@@ -221,21 +218,25 @@
           "valve_entity": "Venttiilin ohjausentiteetti",
           "feed_external_temp": "Syötä huoneen lämpötila TRV:lle",
           "ext_temp_entity": "Ulkoisen lämpötilan syöttöentiteetti",
+          "calibration_sync": "Kirjoita kalibrointipoikkeama",
+          "calibration_entity": "Kalibrointipoikkeaman entiteetti",
           "calibration_invert": "Käännä kalibrointipoikkeama",
           "valve_maintenance": "Ota venttiilin liikutus / huolto käyttöön"
         },
         "data_description": {
           "feed_external_temp": "Lähettää huoneen lämpötilan TRV:lle. Edellyttää oikean ulkoisen lämpötilan syöttöentiteetin valitsemista alla; ilman sitä mitään ei lähetetä.",
-          "valve_maintenance": "Estää venttiilien jumiutumisen pitkien lämmittämättömien jaksojen aikana. ThermoSmart liikuttaa venttiileitä ajoittain automaattisesti, kun kesätila tai lomatila on käytössä."
+          "valve_maintenance": "Estää venttiilien jumiutumisen pitkien lämmittämättömien jaksojen aikana. ThermoSmart liikuttaa venttiileitä ajoittain automaattisesti, kun kesätila tai lomatila on käytössä.",
+          "calibration_sync": "Korjaa TRV:n sisäistä lämpötila-anturia kirjoittamalla huoneen lämpötilan ero alla olevaan kalibrointientiteettiin. Poista käytöstä TRV:illä, jotka käyttävät ulkoista lämpötilalähdettä. Vaatii kalibrointientiteetin.",
+          "calibration_entity": "Numeroentiteetti, joka sisältää TRV:n paikallisen kalibrointipoikkeaman. Jätä tyhjäksi poistaaksesi kalibroinnin käytöstä.",
+          "calibration_invert": "Ota käyttöön, jos TRV soveltaa poikkeamaa vastakkaisella etumerkillä."
         }
       },
       "state_menu": {
         "title": "TRV:n tila-asetukset (TRV {index}/{total})",
-        "description": "**Vyöhyke:** {zone}\n**TRV {index}/{total}:** {device_name}\n\nTila-asetukset pitävät tämän TRV:n valitut entiteetit (select, number tai switch) ja sen HVAC-tilan määrittämässäsi arvossa. Jokaisella ohjausjaksolla tai ohjaustapahtumassa ThermoSmart tarkistaa ne ja asettaa arvon vain, jos se poikkeaa. Jätä luettelo tyhjäksi, jos et tarvitse tätä.\n\n**Tällä hetkellä määritetty:**\n\n{state_rules}\n\nValitse toiminto. Valitse **Valmis tämän TRV:n osalta**, kun olet valmis; muutokset tallennetaan viimeisen TRV:n jälkeen.",
+        "description": "**Vyöhyke:** {zone}\n**TRV {index}/{total}:** {device_name}\n\nTila-asetukset pitävät tämän TRV:n valitut entiteetit (select, number tai switch) määrittämässäsi arvossa. Jokaisella ohjausjaksolla tai ohjaustapahtumassa ThermoSmart tarkistaa ne ja asettaa arvon vain, jos se poikkeaa. Jätä luettelo tyhjäksi, jos et tarvitse tätä.\n\n**Tällä hetkellä määritetty:**\n\n{state_rules}\n\nValitse toiminto. Valitse **Valmis tämän TRV:n osalta**, kun olet valmis; muutokset tallennetaan viimeisen TRV:n jälkeen.",
         "menu_options": {
           "state_add_device": "Lisää tämän TRV:n entiteetti",
           "state_add_any": "Lisää tämän TRV:n entiteetti",
-          "state_hvac": "Aseta vaadittu HVAC-tila",
           "state_remove": "Poista asetuksia",
           "state_done": "Valmis tämän TRV:n osalta"
         }
@@ -262,13 +263,6 @@
         },
         "data_description": {
           "value": "Jos entiteetti poikkeaa tästä arvosta, ThermoSmart asettaa sen seuraavalla ohjausjaksolla tai tapahtumassa."
-        }
-      },
-      "state_hvac": {
-        "title": "Vaadittu HVAC-tila (TRV {index}/{total})",
-        "description": "**TRV {index}/{total}:** {device_name}\n\nMääritä HVAC-tila, jossa tämän TRV:n tulee olla. Jos se poikkeaa, ThermoSmart vaihtaa sen seuraavalla ohjausjaksolla tai tapahtumassa.",
-        "data": {
-          "hvac_mode": "HVAC-tila"
         }
       },
       "state_remove": {
@@ -454,6 +448,39 @@
       },
       "trv_observations": {
         "name": "TRV-havainnot"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Vain tavoitelämpötila (TRV itsenäinen)",
+        "tpi_boost": "TPI-tavoitelämpötilan moduloint (laskettu tehostus)",
+        "direct_valve": "Venttiilin suora ohjaus (0–100 %)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Peri vyöhykkeeltä (Vain tavoitelämpötila)",
+        "setpoint": "Vain tavoitelämpötila",
+        "tpi_boost": "TPI-tavoitelämpötilan moduloint",
+        "direct_valve": "Venttiilin suora ohjaus"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Peri vyöhykkeeltä (TPI-tavoitelämpötilan moduloint)",
+        "setpoint": "Vain tavoitelämpötila",
+        "tpi_boost": "TPI-tavoitelämpötilan moduloint",
+        "direct_valve": "Venttiilin suora ohjaus"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Peri vyöhykkeeltä (Venttiilin suora ohjaus)",
+        "setpoint": "Vain tavoitelämpötila",
+        "tpi_boost": "TPI-tavoitelämpötilan moduloint",
+        "direct_valve": "Venttiilin suora ohjaus"
       }
     }
   }

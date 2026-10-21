@@ -56,7 +56,6 @@ class DeviceProfile:
     hvac_watchdog: bool = True
     valve_bump_on_close: bool = True
     allow_external_temp_input: bool = True
-    allow_temp_source_select: bool = True
     calibration_sync: bool = True
     calibration_plausibility_limit: float = 7.0
     minimum_setpoint: float | None = None
@@ -79,6 +78,8 @@ class DevicePreset:
     calibration_inverted: bool = False
     valve_maintenance: bool = True
     feed_external_temp: bool = False
+    calibration_sync: bool = True
+    quirk_entity_patterns: tuple[str, ...] = ()
     default_state_settings: list[dict[str, str]] = field(default_factory=list)
     hvac_mode_before_write: str | None = None
     setpoint_delay_seconds: float = 0.0

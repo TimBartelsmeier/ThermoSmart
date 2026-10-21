@@ -49,21 +49,25 @@
           "valve_entity": "Valve control entity",
           "feed_external_temp": "Feed room temperature to TRV",
           "ext_temp_entity": "External temperature input entity",
+          "calibration_sync": "Write calibration offset",
+          "calibration_entity": "Calibration offset entity",
           "calibration_invert": "Invert calibration offset",
           "valve_maintenance": "Enable valve exercise / maintenance"
         },
         "data_description": {
           "feed_external_temp": "Sends the room temperature to the TRV. Requires selecting the correct external temperature input entity below; nothing is sent without it.",
-          "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active."
+          "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active.",
+          "calibration_sync": "Corrects the TRV's internal temperature sensor by writing the difference to the room temperature into the calibration entity below. Turn off for TRVs that use an external temperature source. Requires a calibration entity.",
+          "calibration_entity": "Number entity that holds the TRV's local temperature calibration offset. Leave empty to disable calibration.",
+          "calibration_invert": "Enable if the TRV applies the calibration offset with the opposite sign."
         }
       },
       "state_menu": {
         "title": "Step 3 – TRV State Settings (TRV {index}/{total})",
-        "description": "**Zone:** {zone}\n**TRV {index} of {total}:** {device_name}\n\nState settings keep chosen entities of this TRV (select, number or switch) and its HVAC mode at a value you define. On every control cycle or control event ThermoSmart checks them and sets a value only if it differs. Leave the list empty if you don't need this.\n\n**Currently configured:**\n\n{state_rules}\n\nChoose an action. Select **Done with this TRV** when finished.",
+        "description": "**Zone:** {zone}\n**TRV {index} of {total}:** {device_name}\n\nState settings keep chosen entities of this TRV (select, number or switch) at a value you define. On every control cycle or control event ThermoSmart checks them and sets a value only if it differs. Leave the list empty if you don't need this.\n\n**Currently configured:**\n\n{state_rules}\n\nChoose an action. Select **Done with this TRV** when finished.",
         "menu_options": {
           "state_add_device": "Add an entity of this TRV",
           "state_add_any": "Add any other entity",
-          "state_hvac": "Set required HVAC mode",
           "state_remove": "Remove settings",
           "state_done": "Done with this TRV"
         }
@@ -71,28 +75,33 @@
       "state_add_device": {
         "title": "Step 3 – Add State Setting (TRV {index}/{total})",
         "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the entity ThermoSmart should keep at a specific value. {scope}\n\nYou choose the value on the next page.",
-        "data": { "entity_id": "Entity" }
+        "data": {
+          "entity_id": "Entity"
+        }
       },
       "state_add_any": {
         "title": "Step 3 – Add State Setting (TRV {index}/{total})",
         "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the entity ThermoSmart should keep at a specific value. {scope}\n\nYou choose the value on the next page.",
-        "data": { "entity_id": "Entity" }
+        "data": {
+          "entity_id": "Entity"
+        }
       },
       "state_value": {
         "title": "Step 3 – State Setting Value (TRV {index}/{total})",
         "description": "**TRV {index} of {total}:** {device_name}\n\nDefine the value ThermoSmart enforces for **{entity}**.\n\nCurrent value: {current}",
-        "data": { "value": "Value to enforce" },
-        "data_description": { "value": "If the entity differs from this value, ThermoSmart sets it on the next control cycle or event." }
-      },
-      "state_hvac": {
-        "title": "Step 3 – Required HVAC Mode (TRV {index}/{total})",
-        "description": "**TRV {index} of {total}:** {device_name}\n\nDefine the HVAC mode this TRV must be in. If it differs, ThermoSmart switches it on the next control cycle or event.",
-        "data": { "hvac_mode": "HVAC mode" }
+        "data": {
+          "value": "Value to enforce"
+        },
+        "data_description": {
+          "value": "If the entity differs from this value, ThermoSmart sets it on the next control cycle or event."
+        }
       },
       "state_remove": {
         "title": "Step 3 – Remove State Settings (TRV {index}/{total})",
         "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the state settings ThermoSmart should stop enforcing for this TRV.",
-        "data": { "remove": "Settings to remove" }
+        "data": {
+          "remove": "Settings to remove"
+        }
       },
       "schedule": {
         "title": "Step 4 – Temperatures & Schedule",
@@ -209,21 +218,25 @@
           "valve_entity": "Valve control entity",
           "feed_external_temp": "Feed room temperature to TRV",
           "ext_temp_entity": "External temperature input entity",
+          "calibration_sync": "Write calibration offset",
+          "calibration_entity": "Calibration offset entity",
           "calibration_invert": "Invert calibration offset",
           "valve_maintenance": "Enable valve exercise / maintenance"
         },
         "data_description": {
           "feed_external_temp": "Sends the room temperature to the TRV. Requires selecting the correct external temperature input entity below; nothing is sent without it.",
-          "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active."
+          "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active.",
+          "calibration_sync": "Corrects the TRV's internal temperature sensor by writing the difference to the room temperature into the calibration entity below. Turn off for TRVs that use an external temperature source. Requires a calibration entity.",
+          "calibration_entity": "Number entity that holds the TRV's local temperature calibration offset. Leave empty to disable calibration.",
+          "calibration_invert": "Enable if the TRV applies the calibration offset with the opposite sign."
         }
       },
       "state_menu": {
         "title": "TRV State Settings (TRV {index}/{total})",
-        "description": "**Zone:** {zone}\n**TRV {index} of {total}:** {device_name}\n\nState settings keep chosen entities of this TRV (select, number or switch) and its HVAC mode at a value you define. On every control cycle or control event ThermoSmart checks them and sets a value only if it differs. Leave the list empty if you don't need this.\n\n**Currently configured:**\n\n{state_rules}\n\nChoose an action. Select **Done with this TRV** when finished; changes are saved after the last TRV.",
+        "description": "**Zone:** {zone}\n**TRV {index} of {total}:** {device_name}\n\nState settings keep chosen entities of this TRV (select, number or switch) at a value you define. On every control cycle or control event ThermoSmart checks them and sets a value only if it differs. Leave the list empty if you don't need this.\n\n**Currently configured:**\n\n{state_rules}\n\nChoose an action. Select **Done with this TRV** when finished; changes are saved after the last TRV.",
         "menu_options": {
           "state_add_device": "Add an entity of this TRV",
           "state_add_any": "Add any other entity",
-          "state_hvac": "Set required HVAC mode",
           "state_remove": "Remove settings",
           "state_done": "Done with this TRV"
         }
@@ -231,28 +244,33 @@
       "state_add_device": {
         "title": "Add State Setting (TRV {index}/{total})",
         "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the entity ThermoSmart should keep at a specific value. {scope}\n\nYou choose the value on the next page.",
-        "data": { "entity_id": "Entity" }
+        "data": {
+          "entity_id": "Entity"
+        }
       },
       "state_add_any": {
         "title": "Add State Setting (TRV {index}/{total})",
         "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the entity ThermoSmart should keep at a specific value. {scope}\n\nYou choose the value on the next page.",
-        "data": { "entity_id": "Entity" }
+        "data": {
+          "entity_id": "Entity"
+        }
       },
       "state_value": {
         "title": "State Setting Value (TRV {index}/{total})",
         "description": "**TRV {index} of {total}:** {device_name}\n\nDefine the value ThermoSmart enforces for **{entity}**.\n\nCurrent value: {current}",
-        "data": { "value": "Value to enforce" },
-        "data_description": { "value": "If the entity differs from this value, ThermoSmart sets it on the next control cycle or event." }
-      },
-      "state_hvac": {
-        "title": "Required HVAC Mode (TRV {index}/{total})",
-        "description": "**TRV {index} of {total}:** {device_name}\n\nDefine the HVAC mode this TRV must be in. If it differs, ThermoSmart switches it on the next control cycle or event.",
-        "data": { "hvac_mode": "HVAC mode" }
+        "data": {
+          "value": "Value to enforce"
+        },
+        "data_description": {
+          "value": "If the entity differs from this value, ThermoSmart sets it on the next control cycle or event."
+        }
       },
       "state_remove": {
         "title": "Remove State Settings (TRV {index}/{total})",
         "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the state settings ThermoSmart should stop enforcing for this TRV.",
-        "data": { "remove": "Settings to remove" }
+        "data": {
+          "remove": "Settings to remove"
+        }
       },
       "schedule": {
         "title": "Temperatures & Schedule",
@@ -430,6 +448,39 @@
       },
       "trv_observations": {
         "name": "TRV observations"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Setpoint only (TRV autonomous)",
+        "tpi_boost": "TPI setpoint modulation (calculated boost)",
+        "direct_valve": "Direct valve control (0–100%)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Inherit from zone (Setpoint only)",
+        "setpoint": "Setpoint only",
+        "tpi_boost": "TPI setpoint modulation",
+        "direct_valve": "Direct valve control"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Inherit from zone (TPI setpoint modulation)",
+        "setpoint": "Setpoint only",
+        "tpi_boost": "TPI setpoint modulation",
+        "direct_valve": "Direct valve control"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Inherit from zone (Direct valve control)",
+        "setpoint": "Setpoint only",
+        "tpi_boost": "TPI setpoint modulation",
+        "direct_valve": "Direct valve control"
       }
     }
   }

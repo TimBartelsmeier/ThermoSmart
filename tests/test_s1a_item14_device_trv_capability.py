@@ -9,7 +9,7 @@ Tests the TRV control dispatch layer directly:
   - _async_set_valve_percent direct valve dispatch (duty, no-op, fractional, failure)
   - DeviceProfile effects (is_active, minimum/maximum_setpoint, setpoint_method)
   - _last_written_setpoints semantics (success-only update, clean after failure)
-  - _trv_offline / _auto_valve_map / _device_profiles initial state at restart
+  - _trv_offline / _device_profiles initial state at restart
   - _boost_active tracking when trv_setpoint > adjusted_target
 
 Item 13 covers dispatch gating (active_control / summer).  This file covers
@@ -779,18 +779,28 @@ class TestConfigurableControlStrategies:
         assert not coord.hass.services.async_call.called
 
 
+def _with_valves(cfg, valves):
+    """cfg copy where each mapped TRV runs in direct-valve mode on its valve entity."""
+    return {**cfg, "device_settings": {
+        c: {"control_mode": "direct_valve", "valve_entity": v} for c, v in valves.items()
+    }}
+
+
+_VALVE_CFG = _with_valves(_CFG_ONE, {"climate.trv": "number.valve"})
+_VALVES_TWO = _with_valves(_CFG_TWO, {"climate.trv1": "number.valve1", "climate.trv2": "number.valve2"})
+
+
 # ── §6 _async_set_valve_percent ───────────────────────────────────────────────
 
 class TestAsyncSetValvePercent:
     def _coord_valve(self, *, valve_state: str = "50", fail: bool = False):
         coord = _coord_with_svc(fail=fail)
-        coord._auto_valve_map = {"climate.trv": "number.valve"}
         set_hass_states(coord, {"number.valve": make_state(valve_state)})
         return coord
 
     async def test_success_calls_set_value_with_correct_duty(self):
         coord = self._coord_valve(valve_state="50")
-        stats = await coord._async_set_valve_percent(_CFG_ONE, 75.0)
+        stats = await coord._async_set_valve_percent(_VALVE_CFG, 75.0)
         assert stats.status == "fully_succeeded"
         args = coord.hass.services.async_call.call_args
         assert args[0][0] == "number"
@@ -799,63 +809,57 @@ class TestAsyncSetValvePercent:
 
     async def test_empty_valve_map_returns_not_attempted(self):
         coord = _coord_with_svc()
-        coord._auto_valve_map = {}
-        stats = await coord._async_set_valve_percent(_CFG_ONE, 75.0)
+        stats = await coord._async_set_valve_percent(_VALVE_CFG, 75.0)
         assert stats.status == "not_attempted"
         assert not coord.hass.services.async_call.called
 
     async def test_noop_when_valve_already_at_target(self):
         coord = self._coord_valve(valve_state="75")
-        stats = await coord._async_set_valve_percent(_CFG_ONE, 75.0)
+        stats = await coord._async_set_valve_percent(_VALVE_CFG, 75.0)
         assert stats.status == "not_attempted"
         assert not coord.hass.services.async_call.called
 
     async def test_unavailable_valve_entity_is_skipped(self):
         coord = _coord_with_svc()
-        coord._auto_valve_map = {"climate.trv": "number.valve"}
         set_hass_states(coord, {"number.valve": make_state("unavailable")})
-        stats = await coord._async_set_valve_percent(_CFG_ONE, 75.0)
+        stats = await coord._async_set_valve_percent(_VALVE_CFG, 75.0)
         assert not coord.hass.services.async_call.called
 
     async def test_fractional_scale_for_level_entities(self):
         """Entities with 'level' in their name use 0.0-1.0 range."""
         coord = _coord_with_svc()
-        coord._auto_valve_map = {"climate.trv": "number.valve_level"}
         set_hass_states(coord, {"number.valve_level": make_state("0.5")})
-        await coord._async_set_valve_percent(_CFG_ONE, 75.0)
+        await coord._async_set_valve_percent(
+            _with_valves(_CFG_ONE, {"climate.trv": "number.valve_level"}), 75.0)
         args = coord.hass.services.async_call.call_args
         assert args[0][2]["value"] == pytest.approx(0.75)
 
     async def test_service_failure_recorded_in_stats(self):
         coord = self._coord_valve(valve_state="50", fail=True)
-        stats = await coord._async_set_valve_percent(_CFG_ONE, 75.0)
+        stats = await coord._async_set_valve_percent(_VALVE_CFG, 75.0)
         assert stats.targets_failed >= 1
 
     async def test_duty_at_zero_sends_zero(self):
         coord = self._coord_valve(valve_state="50")
-        await coord._async_set_valve_percent(_CFG_ONE, 0.0)
+        await coord._async_set_valve_percent(_VALVE_CFG, 0.0)
         args = coord.hass.services.async_call.call_args
         assert args[0][2]["value"] == pytest.approx(0.0)
 
     async def test_duty_at_one_hundred_sends_one_hundred(self):
         coord = self._coord_valve(valve_state="50")
-        await coord._async_set_valve_percent(_CFG_ONE, 100.0)
+        await coord._async_set_valve_percent(_VALVE_CFG, 100.0)
         args = coord.hass.services.async_call.call_args
         assert args[0][2]["value"] == pytest.approx(100.0)
 
     async def test_no_valve_map_entry_for_climate_entity_skips(self):
         coord = _coord_with_svc()
-        coord._auto_valve_map = {"climate.other": "number.valve"}  # different key
         set_hass_states(coord, {"number.valve": make_state("50")})
-        stats = await coord._async_set_valve_percent(_CFG_ONE, 75.0)
+        stats = await coord._async_set_valve_percent(
+            _with_valves(_CFG_ONE, {"climate.other": "number.valve"}), 75.0)
         assert not coord.hass.services.async_call.called
 
     async def test_two_valves_both_succeed(self):
         coord = _coord_with_svc()
-        coord._auto_valve_map = {
-            "climate.trv1": "number.valve1",
-            "climate.trv2": "number.valve2",
-        }
         set_hass_states(
             coord,
             {
@@ -863,7 +867,7 @@ class TestAsyncSetValvePercent:
                 "number.valve2": make_state("30"),
             },
         )
-        stats = await coord._async_set_valve_percent(_CFG_TWO, 75.0)
+        stats = await coord._async_set_valve_percent(_VALVES_TWO, 75.0)
         assert stats.targets_succeeded == 2
 
 
@@ -877,10 +881,6 @@ class TestPerDeviceState:
     def test_trv_offline_set_is_empty_at_startup(self):
         coord = make_coordinator()
         assert coord._trv_offline == set()
-
-    def test_auto_valve_map_is_empty_at_startup(self):
-        coord = make_coordinator()
-        assert coord._auto_valve_map == {}
 
     def test_device_profiles_is_empty_at_startup(self):
         coord = make_coordinator()
@@ -923,15 +923,11 @@ class TestPerDeviceState:
 
     async def test_valve_percent_stats_reflect_two_successful_writes(self):
         coord = _coord_with_svc()
-        coord._auto_valve_map = {
-            "climate.trv1": "number.valve1",
-            "climate.trv2": "number.valve2",
-        }
         set_hass_states(
             coord,
             {"number.valve1": make_state("10"), "number.valve2": make_state("20")},
         )
-        stats = await coord._async_set_valve_percent(_CFG_TWO, 60.0)
+        stats = await coord._async_set_valve_percent(_VALVES_TWO, 60.0)
         assert stats.targets_total == 2
         assert stats.targets_succeeded == 2
 

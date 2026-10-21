@@ -49,21 +49,25 @@
           "valve_entity": "Entitate de control al ventilului",
           "feed_external_temp": "Trimite temperatura camerei către TRV",
           "ext_temp_entity": "Entitate de intrare pentru temperatura externă",
+          "calibration_sync": "Scrie decalajul de calibrare",
+          "calibration_entity": "Entitate decalaj de calibrare",
           "calibration_invert": "Inversează offsetul de calibrare",
           "valve_maintenance": "Activare exercitare / întreținere valve"
         },
         "data_description": {
           "feed_external_temp": "Trimite temperatura camerei către TRV. Necesită selectarea entității corecte de intrare pentru temperatura externă de mai jos; fără ea nu se trimite nimic.",
-          "valve_maintenance": "Previne blocarea ventilelor în perioadele prelungite fără încălzire. ThermoSmart mișcă ocazional ventilele automat cât timp modul Vară sau modul Vacanță este activ."
+          "valve_maintenance": "Previne blocarea ventilelor în perioadele prelungite fără încălzire. ThermoSmart mișcă ocazional ventilele automat cât timp modul Vară sau modul Vacanță este activ.",
+          "calibration_sync": "Corectează senzorul intern de temperatură al TRV scriind diferența față de temperatura camerei în entitatea de calibrare de mai jos. Dezactivați pentru TRV care folosesc o sursă externă de temperatură. Necesită o entitate de calibrare.",
+          "calibration_entity": "Entitate numerică ce conține decalajul de calibrare local al TRV. Lăsați gol pentru a dezactiva calibrarea.",
+          "calibration_invert": "Activați dacă TRV aplică decalajul cu semn opus."
         }
       },
       "state_menu": {
         "title": "Pasul 3 – Setări de stare TRV (TRV {index}/{total})",
-        "description": "**Zonă:** {zone}\n**TRV {index} din {total}:** {device_name}\n\nSetările de stare mențin entitățile alese ale acestui TRV (select, number sau switch) și modul său HVAC la o valoare definită de dvs. La fiecare ciclu sau eveniment de control, ThermoSmart le verifică și setează o valoare doar dacă diferă. Lăsați lista goală dacă nu aveți nevoie de asta.\n\n**Configurat în prezent:**\n\n{state_rules}\n\nAlegeți o acțiune. Selectați **Gata cu acest TRV** când ați terminat.",
+        "description": "**Zonă:** {zone}\n**TRV {index} din {total}:** {device_name}\n\nSetările de stare mențin entitățile alese ale acestui TRV (select, number sau switch) la o valoare definită de dvs. La fiecare ciclu sau eveniment de control, ThermoSmart le verifică și setează o valoare doar dacă diferă. Lăsați lista goală dacă nu aveți nevoie de asta.\n\n**Configurat în prezent:**\n\n{state_rules}\n\nAlegeți o acțiune. Selectați **Gata cu acest TRV** când ați terminat.",
         "menu_options": {
           "state_add_device": "Adaugă o entitate a acestui TRV",
           "state_add_any": "Adaugă orice altă entitate",
-          "state_hvac": "Setează modul HVAC necesar",
           "state_remove": "Elimină setări",
           "state_done": "Gata cu acest TRV"
         }
@@ -90,13 +94,6 @@
         },
         "data_description": {
           "value": "Dacă entitatea diferă de această valoare, ThermoSmart o setează la următorul ciclu sau eveniment de control."
-        }
-      },
-      "state_hvac": {
-        "title": "Pasul 3 – Mod HVAC necesar (TRV {index}/{total})",
-        "description": "**TRV {index} din {total}:** {device_name}\n\nDefiniți modul HVAC în care trebuie să se afle acest TRV. Dacă diferă, ThermoSmart îl comută la următorul ciclu sau eveniment de control.",
-        "data": {
-          "hvac_mode": "Mod HVAC"
         }
       },
       "state_remove": {
@@ -221,21 +218,25 @@
           "valve_entity": "Entitate de control al ventilului",
           "feed_external_temp": "Trimite temperatura camerei către TRV",
           "ext_temp_entity": "Entitate de intrare pentru temperatura externă",
+          "calibration_sync": "Scrie decalajul de calibrare",
+          "calibration_entity": "Entitate decalaj de calibrare",
           "calibration_invert": "Inversează offsetul de calibrare",
           "valve_maintenance": "Activare exercitare / întreținere valve"
         },
         "data_description": {
           "feed_external_temp": "Trimite temperatura camerei către TRV. Necesită selectarea entității corecte de intrare pentru temperatura externă de mai jos; fără ea nu se trimite nimic.",
-          "valve_maintenance": "Previne blocarea ventilelor în perioadele prelungite fără încălzire. ThermoSmart mișcă ocazional ventilele automat cât timp modul Vară sau modul Vacanță este activ."
+          "valve_maintenance": "Previne blocarea ventilelor în perioadele prelungite fără încălzire. ThermoSmart mișcă ocazional ventilele automat cât timp modul Vară sau modul Vacanță este activ.",
+          "calibration_sync": "Corectează senzorul intern de temperatură al TRV scriind diferența față de temperatura camerei în entitatea de calibrare de mai jos. Dezactivați pentru TRV care folosesc o sursă externă de temperatură. Necesită o entitate de calibrare.",
+          "calibration_entity": "Entitate numerică ce conține decalajul de calibrare local al TRV. Lăsați gol pentru a dezactiva calibrarea.",
+          "calibration_invert": "Activați dacă TRV aplică decalajul cu semn opus."
         }
       },
       "state_menu": {
         "title": "Setări de stare TRV (TRV {index}/{total})",
-        "description": "**Zonă:** {zone}\n**TRV {index} din {total}:** {device_name}\n\nSetările de stare mențin entitățile alese ale acestui TRV (select, number sau switch) și modul său HVAC la o valoare definită de dvs. La fiecare ciclu sau eveniment de control, ThermoSmart le verifică și setează o valoare doar dacă diferă. Lăsați lista goală dacă nu aveți nevoie de asta.\n\n**Configurat în prezent:**\n\n{state_rules}\n\nAlegeți o acțiune. Selectați **Gata cu acest TRV** când ați terminat; modificările sunt salvate după ultimul TRV.",
+        "description": "**Zonă:** {zone}\n**TRV {index} din {total}:** {device_name}\n\nSetările de stare mențin entitățile alese ale acestui TRV (select, number sau switch) la o valoare definită de dvs. La fiecare ciclu sau eveniment de control, ThermoSmart le verifică și setează o valoare doar dacă diferă. Lăsați lista goală dacă nu aveți nevoie de asta.\n\n**Configurat în prezent:**\n\n{state_rules}\n\nAlegeți o acțiune. Selectați **Gata cu acest TRV** când ați terminat; modificările sunt salvate după ultimul TRV.",
         "menu_options": {
           "state_add_device": "Adaugă o entitate a acestui TRV",
           "state_add_any": "Adaugă orice altă entitate",
-          "state_hvac": "Setează modul HVAC necesar",
           "state_remove": "Elimină setări",
           "state_done": "Gata cu acest TRV"
         }
@@ -262,13 +263,6 @@
         },
         "data_description": {
           "value": "Dacă entitatea diferă de această valoare, ThermoSmart o setează la următorul ciclu sau eveniment de control."
-        }
-      },
-      "state_hvac": {
-        "title": "Mod HVAC necesar (TRV {index}/{total})",
-        "description": "**TRV {index} din {total}:** {device_name}\n\nDefiniți modul HVAC în care trebuie să se afle acest TRV. Dacă diferă, ThermoSmart îl comută la următorul ciclu sau eveniment de control.",
-        "data": {
-          "hvac_mode": "Mod HVAC"
         }
       },
       "state_remove": {
@@ -454,6 +448,39 @@
       },
       "trv_observations": {
         "name": "Observații TRV"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Doar temperatură țintă (TRV autonom)",
+        "tpi_boost": "Modulare TPI a temperaturii țintă (creștere calculată)",
+        "direct_valve": "Control direct al supapei (0–100%)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Moștenește din zonă (Doar temperatură țintă)",
+        "setpoint": "Doar temperatură țintă",
+        "tpi_boost": "Modulare TPI a temperaturii țintă",
+        "direct_valve": "Control direct al supapei"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Moștenește din zonă (Modulare TPI a temperaturii țintă)",
+        "setpoint": "Doar temperatură țintă",
+        "tpi_boost": "Modulare TPI a temperaturii țintă",
+        "direct_valve": "Control direct al supapei"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Moștenește din zonă (Control direct al supapei)",
+        "setpoint": "Doar temperatură țintă",
+        "tpi_boost": "Modulare TPI a temperaturii țintă",
+        "direct_valve": "Control direct al supapei"
       }
     }
   }

@@ -206,10 +206,6 @@ class ThermoSmartCoordinator(
 
         # Kalibrierung (genutzt von TRVControlMixin)
         self._calibration_offsets: dict[str, float] = {}
-        self._auto_quirk_entities: list[str] = []
-        self._auto_calibration_map: dict[str, str] = {}
-        self._auto_ext_temp_map: dict[str, str] = {}
-        self._auto_valve_map: dict[str, str] = {}
         self._trv_offline: set[str] = set()
         self._last_logged_control_modes: tuple[str, ...] | None = None
         # Per-entity consecutive setpoint-dispatch-failure counter (Device
@@ -226,7 +222,9 @@ class ThermoSmartCoordinator(
 
         # Sommer (genutzt von SeasonMixin)
         self._outdoor_temp_history: deque = deque(
-            maxlen=int(SEASON_HOURS * 3600 / DEFAULT_SCAN_INTERVAL)
+            maxlen=max(3, int(
+                SEASON_HOURS * 3600 / self.update_interval.total_seconds()
+            ))
         )
         self._is_summer: bool = False
         self._indoor_safety_active: bool = False
@@ -936,6 +934,10 @@ class ThermoSmartCoordinator(
                     eid for eid, effective_mode in modes_by_device.items()
                     if effective_mode == CONTROL_MODE_TPI_BOOST
                 ]
+                if not recommendation["tpi_control_entities"]:
+                    # No device consumes a boosted setpoint: don't advertise one
+                    # (display, boost-active tracking, learning baseline).
+                    recommendation["trv_setpoint"] = target
                 recommendation["zone_control_type"] = (
                     "mixed" if len(effective_modes) > 1 else
                     "direct_valve" if effective_modes == {CONTROL_MODE_DIRECT_VALVE} else
@@ -1101,7 +1103,6 @@ class ThermoSmartCoordinator(
                 self._state_settings_enforced = set()
                 for _eid in cfg.get("climate_entities", []):
                     await self._async_enforce_device_state_settings(_eid, cfg)
-                await self._async_apply_quirks(cfg)
                 await self._watchdog_hvac(cfg, recommendation)
                 await self._async_calibrate_trvs(cfg, recommendation)
                 _sp_stats = await self._apply_temperature(cfg, recommendation)
@@ -1116,7 +1117,6 @@ class ThermoSmartCoordinator(
                 self._state_settings_enforced = set()
                 for _eid in cfg.get("climate_entities", []):
                     await self._async_enforce_device_state_settings(_eid, cfg)
-                await self._async_apply_quirks(cfg)
                 await self._apply_frost_protection(cfg)
                 recommendation["trv_setpoint"] = TEMP_FROST_PROTECTION
 

@@ -49,21 +49,25 @@
           "valve_entity": "Encja sterowania zaworem",
           "feed_external_temp": "Przekazuj temperaturę pomieszczenia do TRV",
           "ext_temp_entity": "Encja wejściowa temperatury zewnętrznej",
+          "calibration_sync": "Zapisuj offset kalibracji",
+          "calibration_entity": "Encja offsetu kalibracji",
           "calibration_invert": "Odwróć offset kalibracji",
           "valve_maintenance": "Włącz ćwiczenie / konserwację zaworu"
         },
         "data_description": {
           "feed_external_temp": "Wysyła temperaturę pomieszczenia do TRV. Wymaga wybrania poniżej właściwej encji wejściowej temperatury zewnętrznej; bez niej nic nie jest wysyłane.",
-          "valve_maintenance": "Zapobiega zacięciu się zaworów podczas długich okresów bez ogrzewania. ThermoSmart od czasu do czasu automatycznie porusza zaworami, gdy aktywny jest tryb Lato lub Urlop."
+          "valve_maintenance": "Zapobiega zacięciu się zaworów podczas długich okresów bez ogrzewania. ThermoSmart od czasu do czasu automatycznie porusza zaworami, gdy aktywny jest tryb Lato lub Urlop.",
+          "calibration_sync": "Koryguje wewnętrzny czujnik temperatury TRV, zapisując różnicę względem temperatury pomieszczenia w poniższej encji kalibracji. Wyłącz dla TRV używających zewnętrznego źródła temperatury. Wymaga encji kalibracji.",
+          "calibration_entity": "Encja numeryczna zawierająca lokalny offset kalibracji TRV. Pozostaw puste, aby wyłączyć kalibrację.",
+          "calibration_invert": "Włącz, jeśli TRV stosuje offset z przeciwnym znakiem."
         }
       },
       "state_menu": {
         "title": "Krok 3 – Ustawienia stanu TRV (TRV {index}/{total})",
-        "description": "**Strefa:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nUstawienia stanu utrzymują wybrane encje tego TRV (select, number lub switch) oraz jego tryb HVAC na zdefiniowanej przez Ciebie wartości. W każdym cyklu lub zdarzeniu sterowania ThermoSmart je sprawdza i ustawia wartość tylko wtedy, gdy się różni. Pozostaw listę pustą, jeśli tego nie potrzebujesz.\n\n**Aktualnie skonfigurowane:**\n\n{state_rules}\n\nWybierz działanie. Wybierz **Zakończ dla tego TRV** po zakończeniu.",
+        "description": "**Strefa:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nUstawienia stanu utrzymują wybrane encje tego TRV (select, number lub switch) na zdefiniowanej przez Ciebie wartości. W każdym cyklu lub zdarzeniu sterowania ThermoSmart je sprawdza i ustawia wartość tylko wtedy, gdy się różni. Pozostaw listę pustą, jeśli tego nie potrzebujesz.\n\n**Aktualnie skonfigurowane:**\n\n{state_rules}\n\nWybierz działanie. Wybierz **Zakończ dla tego TRV** po zakończeniu.",
         "menu_options": {
           "state_add_device": "Dodaj encję tego TRV",
           "state_add_any": "Dodaj dowolną inną encję",
-          "state_hvac": "Ustaw wymagany tryb HVAC",
           "state_remove": "Usuń ustawienia",
           "state_done": "Zakończ dla tego TRV"
         }
@@ -90,13 +94,6 @@
         },
         "data_description": {
           "value": "Jeśli encja różni się od tej wartości, ThermoSmart ustawi ją w następnym cyklu lub zdarzeniu sterowania."
-        }
-      },
-      "state_hvac": {
-        "title": "Krok 3 – Wymagany tryb HVAC (TRV {index}/{total})",
-        "description": "**TRV {index} z {total}:** {device_name}\n\nOkreśl tryb HVAC, w którym ten TRV musi się znajdować. Jeśli się różni, ThermoSmart przełączy go w następnym cyklu lub zdarzeniu sterowania.",
-        "data": {
-          "hvac_mode": "Tryb HVAC"
         }
       },
       "state_remove": {
@@ -221,21 +218,25 @@
           "valve_entity": "Encja sterowania zaworem",
           "feed_external_temp": "Przekazuj temperaturę pomieszczenia do TRV",
           "ext_temp_entity": "Encja wejściowa temperatury zewnętrznej",
+          "calibration_sync": "Zapisuj offset kalibracji",
+          "calibration_entity": "Encja offsetu kalibracji",
           "calibration_invert": "Odwróć offset kalibracji",
           "valve_maintenance": "Włącz ćwiczenie / konserwację zaworu"
         },
         "data_description": {
           "feed_external_temp": "Wysyła temperaturę pomieszczenia do TRV. Wymaga wybrania poniżej właściwej encji wejściowej temperatury zewnętrznej; bez niej nic nie jest wysyłane.",
-          "valve_maintenance": "Zapobiega zacięciu się zaworów podczas długich okresów bez ogrzewania. ThermoSmart od czasu do czasu automatycznie porusza zaworami, gdy aktywny jest tryb Lato lub Urlop."
+          "valve_maintenance": "Zapobiega zacięciu się zaworów podczas długich okresów bez ogrzewania. ThermoSmart od czasu do czasu automatycznie porusza zaworami, gdy aktywny jest tryb Lato lub Urlop.",
+          "calibration_sync": "Koryguje wewnętrzny czujnik temperatury TRV, zapisując różnicę względem temperatury pomieszczenia w poniższej encji kalibracji. Wyłącz dla TRV używających zewnętrznego źródła temperatury. Wymaga encji kalibracji.",
+          "calibration_entity": "Encja numeryczna zawierająca lokalny offset kalibracji TRV. Pozostaw puste, aby wyłączyć kalibrację.",
+          "calibration_invert": "Włącz, jeśli TRV stosuje offset z przeciwnym znakiem."
         }
       },
       "state_menu": {
         "title": "Ustawienia stanu TRV (TRV {index}/{total})",
-        "description": "**Strefa:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nUstawienia stanu utrzymują wybrane encje tego TRV (select, number lub switch) oraz jego tryb HVAC na zdefiniowanej przez Ciebie wartości. W każdym cyklu lub zdarzeniu sterowania ThermoSmart je sprawdza i ustawia wartość tylko wtedy, gdy się różni. Pozostaw listę pustą, jeśli tego nie potrzebujesz.\n\n**Aktualnie skonfigurowane:**\n\n{state_rules}\n\nWybierz działanie. Wybierz **Zakończ dla tego TRV** po zakończeniu; zmiany zostaną zapisane po ostatnim TRV.",
+        "description": "**Strefa:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nUstawienia stanu utrzymują wybrane encje tego TRV (select, number lub switch) na zdefiniowanej przez Ciebie wartości. W każdym cyklu lub zdarzeniu sterowania ThermoSmart je sprawdza i ustawia wartość tylko wtedy, gdy się różni. Pozostaw listę pustą, jeśli tego nie potrzebujesz.\n\n**Aktualnie skonfigurowane:**\n\n{state_rules}\n\nWybierz działanie. Wybierz **Zakończ dla tego TRV** po zakończeniu; zmiany zostaną zapisane po ostatnim TRV.",
         "menu_options": {
           "state_add_device": "Dodaj encję tego TRV",
           "state_add_any": "Dodaj dowolną inną encję",
-          "state_hvac": "Ustaw wymagany tryb HVAC",
           "state_remove": "Usuń ustawienia",
           "state_done": "Zakończ dla tego TRV"
         }
@@ -262,13 +263,6 @@
         },
         "data_description": {
           "value": "Jeśli encja różni się od tej wartości, ThermoSmart ustawi ją w następnym cyklu lub zdarzeniu sterowania."
-        }
-      },
-      "state_hvac": {
-        "title": "Wymagany tryb HVAC (TRV {index}/{total})",
-        "description": "**TRV {index} z {total}:** {device_name}\n\nOkreśl tryb HVAC, w którym ten TRV musi się znajdować. Jeśli się różni, ThermoSmart przełączy go w następnym cyklu lub zdarzeniu sterowania.",
-        "data": {
-          "hvac_mode": "Tryb HVAC"
         }
       },
       "state_remove": {
@@ -454,6 +448,39 @@
       },
       "trv_observations": {
         "name": "Obserwacje TRV"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Tylko temperatura docelowa (TRV autonomiczny)",
+        "tpi_boost": "Modulacja temperatury docelowej TPI (obliczone podbicie)",
+        "direct_valve": "Bezpośrednie sterowanie zaworem (0–100%)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Dziedzicz ze strefy (Tylko temperatura docelowa)",
+        "setpoint": "Tylko temperatura docelowa",
+        "tpi_boost": "Modulacja temperatury docelowej TPI",
+        "direct_valve": "Bezpośrednie sterowanie zaworem"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Dziedzicz ze strefy (Modulacja temperatury docelowej TPI)",
+        "setpoint": "Tylko temperatura docelowa",
+        "tpi_boost": "Modulacja temperatury docelowej TPI",
+        "direct_valve": "Bezpośrednie sterowanie zaworem"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Dziedzicz ze strefy (Bezpośrednie sterowanie zaworem)",
+        "setpoint": "Tylko temperatura docelowa",
+        "tpi_boost": "Modulacja temperatury docelowej TPI",
+        "direct_valve": "Bezpośrednie sterowanie zaworem"
       }
     }
   }

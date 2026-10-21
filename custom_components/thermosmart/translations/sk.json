@@ -49,21 +49,25 @@
           "valve_entity": "Entita riadenia ventilu",
           "feed_external_temp": "Posielať teplotu miestnosti do TRV",
           "ext_temp_entity": "Vstupná entita vonkajšej teploty",
+          "calibration_sync": "Zapisovať kalibračný offset",
+          "calibration_entity": "Entita kalibračného offsetu",
           "calibration_invert": "Invertovať kalibračný offset",
           "valve_maintenance": "Povoliť cvičenie / údržbu ventilu"
         },
         "data_description": {
           "feed_external_temp": "Odosiela teplotu miestnosti do TRV. Vyžaduje výber správnej vstupnej entity vonkajšej teploty nižšie; bez nej sa nič neodošle.",
-          "valve_maintenance": "Zabraňuje zaseknutiu ventilov počas dlhších období bez kúrenia. ThermoSmart príležitostne automaticky pohne ventilmi, keď je aktívny letný alebo dovolenkový režim."
+          "valve_maintenance": "Zabraňuje zaseknutiu ventilov počas dlhších období bez kúrenia. ThermoSmart príležitostne automaticky pohne ventilmi, keď je aktívny letný alebo dovolenkový režim.",
+          "calibration_sync": "Koriguje interný teplotný senzor TRV zápisom rozdielu oproti izbovej teplote do kalibračnej entity nižšie. Vypnite pri TRV s externým zdrojom teploty. Vyžaduje kalibračnú entitu.",
+          "calibration_entity": "Číselná entita s lokálnym kalibračným offsetom TRV. Nechajte prázdne pre vypnutie kalibrácie.",
+          "calibration_invert": "Zapnite, ak TRV používa offset s opačným znamienkom."
         }
       },
       "state_menu": {
         "title": "Krok 3 – Nastavenia stavu TRV (TRV {index}/{total})",
-        "description": "**Zóna:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nNastavenia stavu udržiavajú vybrané entity tohto TRV (select, number alebo switch) a jeho režim HVAC na vami definovanej hodnote. Pri každom regulačnom cykle alebo udalosti ich ThermoSmart skontroluje a hodnotu nastaví, iba ak sa líši. Ak to nepotrebujete, nechajte zoznam prázdny.\n\n**Aktuálne nastavené:**\n\n{state_rules}\n\nVyberte akciu. Po dokončení vyberte **Hotovo s týmto TRV**.",
+        "description": "**Zóna:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nNastavenia stavu udržiavajú vybrané entity tohto TRV (select, number alebo switch) na vami definovanej hodnote. Pri každom regulačnom cykle alebo udalosti ich ThermoSmart skontroluje a hodnotu nastaví, iba ak sa líši. Ak to nepotrebujete, nechajte zoznam prázdny.\n\n**Aktuálne nastavené:**\n\n{state_rules}\n\nVyberte akciu. Po dokončení vyberte **Hotovo s týmto TRV**.",
         "menu_options": {
           "state_add_device": "Pridať entitu tohto TRV",
           "state_add_any": "Pridať ľubovoľnú inú entitu",
-          "state_hvac": "Nastaviť požadovaný režim HVAC",
           "state_remove": "Odstrániť nastavenia",
           "state_done": "Hotovo s týmto TRV"
         }
@@ -90,13 +94,6 @@
         },
         "data_description": {
           "value": "Ak sa entita líši od tejto hodnoty, ThermoSmart ju nastaví pri ďalšom regulačnom cykle alebo udalosti."
-        }
-      },
-      "state_hvac": {
-        "title": "Krok 3 – Požadovaný režim HVAC (TRV {index}/{total})",
-        "description": "**TRV {index} z {total}:** {device_name}\n\nDefinujte režim HVAC, v ktorom sa tento TRV musí nachádzať. Ak sa líši, ThermoSmart ho prepne pri ďalšom regulačnom cykle alebo udalosti.",
-        "data": {
-          "hvac_mode": "Režim HVAC"
         }
       },
       "state_remove": {
@@ -221,21 +218,25 @@
           "valve_entity": "Entita riadenia ventilu",
           "feed_external_temp": "Posielať teplotu miestnosti do TRV",
           "ext_temp_entity": "Vstupná entita vonkajšej teploty",
+          "calibration_sync": "Zapisovať kalibračný offset",
+          "calibration_entity": "Entita kalibračného offsetu",
           "calibration_invert": "Invertovať kalibračný offset",
           "valve_maintenance": "Povoliť cvičenie / údržbu ventilu"
         },
         "data_description": {
           "feed_external_temp": "Odosiela teplotu miestnosti do TRV. Vyžaduje výber správnej vstupnej entity vonkajšej teploty nižšie; bez nej sa nič neodošle.",
-          "valve_maintenance": "Zabraňuje zaseknutiu ventilov počas dlhších období bez kúrenia. ThermoSmart príležitostne automaticky pohne ventilmi, keď je aktívny letný alebo dovolenkový režim."
+          "valve_maintenance": "Zabraňuje zaseknutiu ventilov počas dlhších období bez kúrenia. ThermoSmart príležitostne automaticky pohne ventilmi, keď je aktívny letný alebo dovolenkový režim.",
+          "calibration_sync": "Koriguje interný teplotný senzor TRV zápisom rozdielu oproti izbovej teplote do kalibračnej entity nižšie. Vypnite pri TRV s externým zdrojom teploty. Vyžaduje kalibračnú entitu.",
+          "calibration_entity": "Číselná entita s lokálnym kalibračným offsetom TRV. Nechajte prázdne pre vypnutie kalibrácie.",
+          "calibration_invert": "Zapnite, ak TRV používa offset s opačným znamienkom."
         }
       },
       "state_menu": {
         "title": "Nastavenia stavu TRV (TRV {index}/{total})",
-        "description": "**Zóna:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nNastavenia stavu udržiavajú vybrané entity tohto TRV (select, number alebo switch) a jeho režim HVAC na vami definovanej hodnote. Pri každom regulačnom cykle alebo udalosti ich ThermoSmart skontroluje a hodnotu nastaví, iba ak sa líši. Ak to nepotrebujete, nechajte zoznam prázdny.\n\n**Aktuálne nastavené:**\n\n{state_rules}\n\nVyberte akciu. Po dokončení vyberte **Hotovo s týmto TRV**; zmeny sa uložia po poslednom TRV.",
+        "description": "**Zóna:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nNastavenia stavu udržiavajú vybrané entity tohto TRV (select, number alebo switch) na vami definovanej hodnote. Pri každom regulačnom cykle alebo udalosti ich ThermoSmart skontroluje a hodnotu nastaví, iba ak sa líši. Ak to nepotrebujete, nechajte zoznam prázdny.\n\n**Aktuálne nastavené:**\n\n{state_rules}\n\nVyberte akciu. Po dokončení vyberte **Hotovo s týmto TRV**; zmeny sa uložia po poslednom TRV.",
         "menu_options": {
           "state_add_device": "Pridať entitu tohto TRV",
           "state_add_any": "Pridať ľubovoľnú inú entitu",
-          "state_hvac": "Nastaviť požadovaný režim HVAC",
           "state_remove": "Odstrániť nastavenia",
           "state_done": "Hotovo s týmto TRV"
         }
@@ -262,13 +263,6 @@
         },
         "data_description": {
           "value": "Ak sa entita líši od tejto hodnoty, ThermoSmart ju nastaví pri ďalšom regulačnom cykle alebo udalosti."
-        }
-      },
-      "state_hvac": {
-        "title": "Požadovaný režim HVAC (TRV {index}/{total})",
-        "description": "**TRV {index} z {total}:** {device_name}\n\nDefinujte režim HVAC, v ktorom sa tento TRV musí nachádzať. Ak sa líši, ThermoSmart ho prepne pri ďalšom regulačnom cykle alebo udalosti.",
-        "data": {
-          "hvac_mode": "Režim HVAC"
         }
       },
       "state_remove": {
@@ -454,6 +448,39 @@
       },
       "trv_observations": {
         "name": "Pozorovania TRV"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Iba nastavená teplota (TRV autonómny)",
+        "tpi_boost": "TPI modulácia nastavenej teploty (vypočítané navýšenie)",
+        "direct_valve": "Priame riadenie ventilu (0–100 %)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Prevziať zo zóny (Iba nastavená teplota)",
+        "setpoint": "Iba nastavená teplota",
+        "tpi_boost": "TPI modulácia nastavenej teploty",
+        "direct_valve": "Priame riadenie ventilu"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Prevziať zo zóny (TPI modulácia nastavenej teploty)",
+        "setpoint": "Iba nastavená teplota",
+        "tpi_boost": "TPI modulácia nastavenej teploty",
+        "direct_valve": "Priame riadenie ventilu"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Prevziať zo zóny (Priame riadenie ventilu)",
+        "setpoint": "Iba nastavená teplota",
+        "tpi_boost": "TPI modulácia nastavenej teploty",
+        "direct_valve": "Priame riadenie ventilu"
       }
     }
   }

@@ -49,21 +49,25 @@
           "valve_entity": "Klepbesturingsentiteit",
           "feed_external_temp": "Kamertemperatuur naar TRV sturen",
           "ext_temp_entity": "Invoerentiteit voor externe temperatuur",
+          "calibration_sync": "Kalibratie-offset schrijven",
+          "calibration_entity": "Entiteit voor kalibratie-offset",
           "calibration_invert": "Kalibratie-offset omkeren",
           "valve_maintenance": "Klepbeweging / onderhoud inschakelen"
         },
         "data_description": {
           "feed_external_temp": "Stuurt de kamertemperatuur naar de TRV. Vereist dat hieronder de juiste invoerentiteit voor externe temperatuur wordt gekozen; zonder deze wordt niets verzonden.",
-          "valve_maintenance": "Voorkomt dat kleppen vastlopen tijdens langere periodes zonder verwarming. ThermoSmart beweegt de kleppen af en toe automatisch wanneer de Zomer- of Vakantiemodus actief is."
+          "valve_maintenance": "Voorkomt dat kleppen vastlopen tijdens langere periodes zonder verwarming. ThermoSmart beweegt de kleppen af en toe automatisch wanneer de Zomer- of Vakantiemodus actief is.",
+          "calibration_sync": "Corrigeert de interne temperatuursensor van de TRV door het verschil met de kamertemperatuur naar de onderstaande kalibratie-entiteit te schrijven. Uitschakelen voor TRV's met een externe temperatuurbron. Vereist een kalibratie-entiteit.",
+          "calibration_entity": "Number-entiteit met de lokale kalibratie-offset van de TRV. Laat leeg om kalibratie uit te schakelen.",
+          "calibration_invert": "Inschakelen als de TRV de offset met het tegenovergestelde teken toepast."
         }
       },
       "state_menu": {
         "title": "Stap 3 – TRV-statusinstellingen (TRV {index}/{total})",
-        "description": "**Zone:** {zone}\n**TRV {index} van {total}:** {device_name}\n\nStatusinstellingen houden gekozen entiteiten van deze TRV (select, number of switch) en de HVAC-modus op een waarde die je zelf bepaalt. Bij elke regelcyclus of regelgebeurtenis controleert ThermoSmart ze en stelt alleen een waarde in als die afwijkt. Laat de lijst leeg als je dit niet nodig hebt.\n\n**Momenteel geconfigureerd:**\n\n{state_rules}\n\nKies een actie. Selecteer **Klaar met deze TRV** wanneer je klaar bent.",
+        "description": "**Zone:** {zone}\n**TRV {index} van {total}:** {device_name}\n\nStatusinstellingen houden gekozen entiteiten van deze TRV (select, number of switch) op een waarde die je zelf bepaalt. Bij elke regelcyclus of regelgebeurtenis controleert ThermoSmart ze en stelt alleen een waarde in als die afwijkt. Laat de lijst leeg als je dit niet nodig hebt.\n\n**Momenteel geconfigureerd:**\n\n{state_rules}\n\nKies een actie. Selecteer **Klaar met deze TRV** wanneer je klaar bent.",
         "menu_options": {
           "state_add_device": "Een entiteit van deze TRV toevoegen",
           "state_add_any": "Een andere entiteit toevoegen",
-          "state_hvac": "Vereiste HVAC-modus instellen",
           "state_remove": "Instellingen verwijderen",
           "state_done": "Klaar met deze TRV"
         }
@@ -90,13 +94,6 @@
         },
         "data_description": {
           "value": "Als de entiteit afwijkt van deze waarde, stelt ThermoSmart deze in bij de volgende regelcyclus of gebeurtenis."
-        }
-      },
-      "state_hvac": {
-        "title": "Stap 3 – Vereiste HVAC-modus (TRV {index}/{total})",
-        "description": "**TRV {index} van {total}:** {device_name}\n\nBepaal de HVAC-modus waarin deze TRV moet staan. Als die afwijkt, schakelt ThermoSmart hem om bij de volgende regelcyclus of gebeurtenis.",
-        "data": {
-          "hvac_mode": "HVAC-modus"
         }
       },
       "state_remove": {
@@ -221,21 +218,25 @@
           "valve_entity": "Klepbesturingsentiteit",
           "feed_external_temp": "Kamertemperatuur naar TRV sturen",
           "ext_temp_entity": "Invoerentiteit voor externe temperatuur",
+          "calibration_sync": "Kalibratie-offset schrijven",
+          "calibration_entity": "Entiteit voor kalibratie-offset",
           "calibration_invert": "Kalibratie-offset omkeren",
           "valve_maintenance": "Klepbeweging / onderhoud inschakelen"
         },
         "data_description": {
           "feed_external_temp": "Stuurt de kamertemperatuur naar de TRV. Vereist dat hieronder de juiste invoerentiteit voor externe temperatuur wordt gekozen; zonder deze wordt niets verzonden.",
-          "valve_maintenance": "Voorkomt dat kleppen vastlopen tijdens langere periodes zonder verwarming. ThermoSmart beweegt de kleppen af en toe automatisch wanneer de Zomer- of Vakantiemodus actief is."
+          "valve_maintenance": "Voorkomt dat kleppen vastlopen tijdens langere periodes zonder verwarming. ThermoSmart beweegt de kleppen af en toe automatisch wanneer de Zomer- of Vakantiemodus actief is.",
+          "calibration_sync": "Corrigeert de interne temperatuursensor van de TRV door het verschil met de kamertemperatuur naar de onderstaande kalibratie-entiteit te schrijven. Uitschakelen voor TRV's met een externe temperatuurbron. Vereist een kalibratie-entiteit.",
+          "calibration_entity": "Number-entiteit met de lokale kalibratie-offset van de TRV. Laat leeg om kalibratie uit te schakelen.",
+          "calibration_invert": "Inschakelen als de TRV de offset met het tegenovergestelde teken toepast."
         }
       },
       "state_menu": {
         "title": "TRV-statusinstellingen (TRV {index}/{total})",
-        "description": "**Zone:** {zone}\n**TRV {index} van {total}:** {device_name}\n\nStatusinstellingen houden gekozen entiteiten van deze TRV (select, number of switch) en de HVAC-modus op een waarde die je zelf bepaalt. Bij elke regelcyclus of regelgebeurtenis controleert ThermoSmart ze en stelt alleen een waarde in als die afwijkt. Laat de lijst leeg als je dit niet nodig hebt.\n\n**Momenteel geconfigureerd:**\n\n{state_rules}\n\nKies een actie. Selecteer **Klaar met deze TRV** wanneer je klaar bent; wijzigingen worden opgeslagen na de laatste TRV.",
+        "description": "**Zone:** {zone}\n**TRV {index} van {total}:** {device_name}\n\nStatusinstellingen houden gekozen entiteiten van deze TRV (select, number of switch) op een waarde die je zelf bepaalt. Bij elke regelcyclus of regelgebeurtenis controleert ThermoSmart ze en stelt alleen een waarde in als die afwijkt. Laat de lijst leeg als je dit niet nodig hebt.\n\n**Momenteel geconfigureerd:**\n\n{state_rules}\n\nKies een actie. Selecteer **Klaar met deze TRV** wanneer je klaar bent; wijzigingen worden opgeslagen na de laatste TRV.",
         "menu_options": {
           "state_add_device": "Een entiteit van deze TRV toevoegen",
           "state_add_any": "Een andere entiteit toevoegen",
-          "state_hvac": "Vereiste HVAC-modus instellen",
           "state_remove": "Instellingen verwijderen",
           "state_done": "Klaar met deze TRV"
         }
@@ -262,13 +263,6 @@
         },
         "data_description": {
           "value": "Als de entiteit afwijkt van deze waarde, stelt ThermoSmart deze in bij de volgende regelcyclus of gebeurtenis."
-        }
-      },
-      "state_hvac": {
-        "title": "Vereiste HVAC-modus (TRV {index}/{total})",
-        "description": "**TRV {index} van {total}:** {device_name}\n\nBepaal de HVAC-modus waarin deze TRV moet staan. Als die afwijkt, schakelt ThermoSmart hem om bij de volgende regelcyclus of gebeurtenis.",
-        "data": {
-          "hvac_mode": "HVAC-modus"
         }
       },
       "state_remove": {
@@ -454,6 +448,39 @@
       },
       "trv_observations": {
         "name": "TRV-observaties"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Alleen streeftemperatuur (TRV autonoom)",
+        "tpi_boost": "TPI-modulatie van streeftemperatuur (berekende boost)",
+        "direct_valve": "Directe klepsturing (0–100%)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Overnemen van zone (Alleen streeftemperatuur)",
+        "setpoint": "Alleen streeftemperatuur",
+        "tpi_boost": "TPI-modulatie van streeftemperatuur",
+        "direct_valve": "Directe klepsturing"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Overnemen van zone (TPI-modulatie van streeftemperatuur)",
+        "setpoint": "Alleen streeftemperatuur",
+        "tpi_boost": "TPI-modulatie van streeftemperatuur",
+        "direct_valve": "Directe klepsturing"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Overnemen van zone (Directe klepsturing)",
+        "setpoint": "Alleen streeftemperatuur",
+        "tpi_boost": "TPI-modulatie van streeftemperatuur",
+        "direct_valve": "Directe klepsturing"
       }
     }
   }

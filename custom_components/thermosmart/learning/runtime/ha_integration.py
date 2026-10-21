@@ -58,7 +58,6 @@ class BoostBlockReason(StrEnum):
     """
     LEARNING_MODE_OFF = "learning_mode_off"
     ACTIVE_CONTROL_OFF = "active_control_off"
-    MIXED_CONTROL_TYPES = "mixed_control_types_unsupported"
     DEVICE_UNAVAILABLE = "device_unavailable"
     FAILED_DISPATCH = "failed_dispatch"
     PARTIAL_DISPATCH = "partial_dispatch"

@@ -49,21 +49,25 @@
           "valve_entity": "Entitet för ventilstyrning",
           "feed_external_temp": "Skicka rumstemperatur till TRV",
           "ext_temp_entity": "Entitet för extern temperaturingång",
+          "calibration_sync": "Skriv kalibreringsoffset",
+          "calibration_entity": "Entitet för kalibreringsoffset",
           "calibration_invert": "Invertera kalibreringsoffset",
           "valve_maintenance": "Aktivera ventilmotion / underhåll"
         },
         "data_description": {
           "feed_external_temp": "Skickar rumstemperaturen till TRV. Kräver att rätt entitet för extern temperaturingång väljs nedan; ingenting skickas utan den.",
-          "valve_maintenance": "Förhindrar att ventiler fastnar under längre perioder utan uppvärmning. ThermoSmart rör ventilerna automatiskt då och då medan Sommarläge eller Semesterläge är aktivt."
+          "valve_maintenance": "Förhindrar att ventiler fastnar under längre perioder utan uppvärmning. ThermoSmart rör ventilerna automatiskt då och då medan Sommarläge eller Semesterläge är aktivt.",
+          "calibration_sync": "Korrigerar TRV:ns interna temperatursensor genom att skriva skillnaden mot rumstemperaturen till kalibreringsentiteten nedan. Stäng av för TRV:er med extern temperaturkälla. Kräver en kalibreringsentitet.",
+          "calibration_entity": "Nummerentitet med TRV:ns lokala kalibreringsoffset. Lämna tom för att stänga av kalibrering.",
+          "calibration_invert": "Aktivera om TRV:n använder offseten med motsatt tecken."
         }
       },
       "state_menu": {
         "title": "Steg 3 – TRV-tillståndsinställningar (TRV {index}/{total})",
-        "description": "**Zon:** {zone}\n**TRV {index} av {total}:** {device_name}\n\nTillståndsinställningar håller valda entiteter på denna TRV (select, number eller switch) och dess HVAC-läge på ett värde som du definierar. Vid varje styrcykel eller styrhändelse kontrollerar ThermoSmart dem och sätter ett värde endast om det skiljer sig. Lämna listan tom om du inte behöver detta.\n\n**Konfigurerat just nu:**\n\n{state_rules}\n\nVälj en åtgärd. Välj **Klar med denna TRV** när du är klar.",
+        "description": "**Zon:** {zone}\n**TRV {index} av {total}:** {device_name}\n\nTillståndsinställningar håller valda entiteter på denna TRV (select, number eller switch) på ett värde som du definierar. Vid varje styrcykel eller styrhändelse kontrollerar ThermoSmart dem och sätter ett värde endast om det skiljer sig. Lämna listan tom om du inte behöver detta.\n\n**Konfigurerat just nu:**\n\n{state_rules}\n\nVälj en åtgärd. Välj **Klar med denna TRV** när du är klar.",
         "menu_options": {
           "state_add_device": "Lägg till en entitet för denna TRV",
           "state_add_any": "Lägg till valfri annan entitet",
-          "state_hvac": "Ange obligatoriskt HVAC-läge",
           "state_remove": "Ta bort inställningar",
           "state_done": "Klar med denna TRV"
         }
@@ -90,13 +94,6 @@
         },
         "data_description": {
           "value": "Om entiteten skiljer sig från detta värde sätter ThermoSmart det vid nästa styrcykel eller styrhändelse."
-        }
-      },
-      "state_hvac": {
-        "title": "Steg 3 – Obligatoriskt HVAC-läge (TRV {index}/{total})",
-        "description": "**TRV {index} av {total}:** {device_name}\n\nDefiniera det HVAC-läge som denna TRV måste vara i. Om det skiljer sig växlar ThermoSmart det vid nästa styrcykel eller styrhändelse.",
-        "data": {
-          "hvac_mode": "HVAC-läge"
         }
       },
       "state_remove": {
@@ -221,21 +218,25 @@
           "valve_entity": "Entitet för ventilstyrning",
           "feed_external_temp": "Skicka rumstemperatur till TRV",
           "ext_temp_entity": "Entitet för extern temperaturingång",
+          "calibration_sync": "Skriv kalibreringsoffset",
+          "calibration_entity": "Entitet för kalibreringsoffset",
           "calibration_invert": "Invertera kalibreringsoffset",
           "valve_maintenance": "Aktivera ventilmotion / underhåll"
         },
         "data_description": {
           "feed_external_temp": "Skickar rumstemperaturen till TRV. Kräver att rätt entitet för extern temperaturingång väljs nedan; ingenting skickas utan den.",
-          "valve_maintenance": "Förhindrar att ventiler fastnar under längre perioder utan uppvärmning. ThermoSmart rör ventilerna automatiskt då och då medan Sommarläge eller Semesterläge är aktivt."
+          "valve_maintenance": "Förhindrar att ventiler fastnar under längre perioder utan uppvärmning. ThermoSmart rör ventilerna automatiskt då och då medan Sommarläge eller Semesterläge är aktivt.",
+          "calibration_sync": "Korrigerar TRV:ns interna temperatursensor genom att skriva skillnaden mot rumstemperaturen till kalibreringsentiteten nedan. Stäng av för TRV:er med extern temperaturkälla. Kräver en kalibreringsentitet.",
+          "calibration_entity": "Nummerentitet med TRV:ns lokala kalibreringsoffset. Lämna tom för att stänga av kalibrering.",
+          "calibration_invert": "Aktivera om TRV:n använder offseten med motsatt tecken."
         }
       },
       "state_menu": {
         "title": "TRV-tillståndsinställningar (TRV {index}/{total})",
-        "description": "**Zon:** {zone}\n**TRV {index} av {total}:** {device_name}\n\nTillståndsinställningar håller valda entiteter på denna TRV (select, number eller switch) och dess HVAC-läge på ett värde som du definierar. Vid varje styrcykel eller styrhändelse kontrollerar ThermoSmart dem och sätter ett värde endast om det skiljer sig. Lämna listan tom om du inte behöver detta.\n\n**Konfigurerat just nu:**\n\n{state_rules}\n\nVälj en åtgärd. Välj **Klar med denna TRV** när du är klar; ändringar sparas efter den sista TRV:n.",
+        "description": "**Zon:** {zone}\n**TRV {index} av {total}:** {device_name}\n\nTillståndsinställningar håller valda entiteter på denna TRV (select, number eller switch) på ett värde som du definierar. Vid varje styrcykel eller styrhändelse kontrollerar ThermoSmart dem och sätter ett värde endast om det skiljer sig. Lämna listan tom om du inte behöver detta.\n\n**Konfigurerat just nu:**\n\n{state_rules}\n\nVälj en åtgärd. Välj **Klar med denna TRV** när du är klar; ändringar sparas efter den sista TRV:n.",
         "menu_options": {
           "state_add_device": "Lägg till en entitet för denna TRV",
           "state_add_any": "Lägg till valfri annan entitet",
-          "state_hvac": "Ange obligatoriskt HVAC-läge",
           "state_remove": "Ta bort inställningar",
           "state_done": "Klar med denna TRV"
         }
@@ -262,13 +263,6 @@
         },
         "data_description": {
           "value": "Om entiteten skiljer sig från detta värde sätter ThermoSmart det vid nästa styrcykel eller styrhändelse."
-        }
-      },
-      "state_hvac": {
-        "title": "Obligatoriskt HVAC-läge (TRV {index}/{total})",
-        "description": "**TRV {index} av {total}:** {device_name}\n\nDefiniera det HVAC-läge som denna TRV måste vara i. Om det skiljer sig växlar ThermoSmart det vid nästa styrcykel eller styrhändelse.",
-        "data": {
-          "hvac_mode": "HVAC-läge"
         }
       },
       "state_remove": {
@@ -454,6 +448,39 @@
       },
       "trv_observations": {
         "name": "TRV-observationer"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Endast börvärde (TRV autonom)",
+        "tpi_boost": "TPI-modulering av börvärde (beräknad boost)",
+        "direct_valve": "Direkt ventilstyrning (0–100 %)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Ärv från zonen (Endast börvärde)",
+        "setpoint": "Endast börvärde",
+        "tpi_boost": "TPI-modulering av börvärde",
+        "direct_valve": "Direkt ventilstyrning"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Ärv från zonen (TPI-modulering av börvärde)",
+        "setpoint": "Endast börvärde",
+        "tpi_boost": "TPI-modulering av börvärde",
+        "direct_valve": "Direkt ventilstyrning"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Ärv från zonen (Direkt ventilstyrning)",
+        "setpoint": "Endast börvärde",
+        "tpi_boost": "TPI-modulering av börvärde",
+        "direct_valve": "Direkt ventilstyrning"
       }
     }
   }

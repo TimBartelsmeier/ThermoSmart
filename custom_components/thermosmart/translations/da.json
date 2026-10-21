@@ -49,21 +49,25 @@
           "valve_entity": "Ventilstyringsenhed",
           "feed_external_temp": "Send rumtemperatur til TRV",
           "ext_temp_entity": "Enhed til ekstern temperaturindgang",
+          "calibration_sync": "Skriv kalibreringsforskydning",
+          "calibration_entity": "Entitet til kalibreringsforskydning",
           "calibration_invert": "Inverter kalibreringsoffset",
           "valve_maintenance": "Aktivér ventilmotion / vedligeholdelse"
         },
         "data_description": {
           "feed_external_temp": "Sender rumtemperaturen til TRV'en. Kræver, at den korrekte enhed til ekstern temperaturindgang vælges nedenfor; uden den sendes intet.",
-          "valve_maintenance": "Forhindrer ventiler i at sidde fast under længere perioder uden opvarmning. ThermoSmart bevæger ventilerne lejlighedsvis automatisk, mens sommertilstand eller feriestilstand er aktiv."
+          "valve_maintenance": "Forhindrer ventiler i at sidde fast under længere perioder uden opvarmning. ThermoSmart bevæger ventilerne lejlighedsvis automatisk, mens sommertilstand eller feriestilstand er aktiv.",
+          "calibration_sync": "Korrigerer TRV'ens interne temperatursensor ved at skrive forskellen til rumtemperaturen til kalibreringsentiteten nedenfor. Slå fra for TRV'er med ekstern temperaturkilde. Kræver en kalibreringsentitet.",
+          "calibration_entity": "Talentitet med TRV'ens lokale kalibreringsforskydning. Lad feltet stå tomt for at slå kalibrering fra.",
+          "calibration_invert": "Slå til, hvis TRV'en anvender forskydningen med modsat fortegn."
         }
       },
       "state_menu": {
         "title": "Trin 3 – TRV-tilstandsindstillinger (TRV {index}/{total})",
-        "description": "**Zone:** {zone}\n**TRV {index} af {total}:** {device_name}\n\nTilstandsindstillinger holder valgte enheder på denne TRV (select, number eller switch) og dens HVAC-tilstand på en værdi, du definerer. Ved hver styringscyklus eller styringshændelse kontrollerer ThermoSmart dem og sætter kun en værdi, hvis den afviger. Lad listen være tom, hvis du ikke har brug for dette.\n\n**Aktuelt konfigureret:**\n\n{state_rules}\n\nVælg en handling. Vælg **Færdig med denne TRV**, når du er færdig.",
+        "description": "**Zone:** {zone}\n**TRV {index} af {total}:** {device_name}\n\nTilstandsindstillinger holder valgte enheder på denne TRV (select, number eller switch) på en værdi, du definerer. Ved hver styringscyklus eller styringshændelse kontrollerer ThermoSmart dem og sætter kun en værdi, hvis den afviger. Lad listen være tom, hvis du ikke har brug for dette.\n\n**Aktuelt konfigureret:**\n\n{state_rules}\n\nVælg en handling. Vælg **Færdig med denne TRV**, når du er færdig.",
         "menu_options": {
           "state_add_device": "Tilføj en enhed fra denne TRV",
           "state_add_any": "Tilføj en anden enhed",
-          "state_hvac": "Angiv påkrævet HVAC-tilstand",
           "state_remove": "Fjern indstillinger",
           "state_done": "Færdig med denne TRV"
         }
@@ -90,13 +94,6 @@
         },
         "data_description": {
           "value": "Hvis enheden afviger fra denne værdi, sætter ThermoSmart den ved næste styringscyklus eller hændelse."
-        }
-      },
-      "state_hvac": {
-        "title": "Trin 3 – Påkrævet HVAC-tilstand (TRV {index}/{total})",
-        "description": "**TRV {index} af {total}:** {device_name}\n\nDefiner den HVAC-tilstand, denne TRV skal være i. Hvis den afviger, skifter ThermoSmart den ved næste styringscyklus eller hændelse.",
-        "data": {
-          "hvac_mode": "HVAC-tilstand"
         }
       },
       "state_remove": {
@@ -221,21 +218,25 @@
           "valve_entity": "Ventilstyringsenhed",
           "feed_external_temp": "Send rumtemperatur til TRV",
           "ext_temp_entity": "Enhed til ekstern temperaturindgang",
+          "calibration_sync": "Skriv kalibreringsforskydning",
+          "calibration_entity": "Entitet til kalibreringsforskydning",
           "calibration_invert": "Inverter kalibreringsoffset",
           "valve_maintenance": "Aktivér ventilmotion / vedligeholdelse"
         },
         "data_description": {
           "feed_external_temp": "Sender rumtemperaturen til TRV'en. Kræver, at den korrekte enhed til ekstern temperaturindgang vælges nedenfor; uden den sendes intet.",
-          "valve_maintenance": "Forhindrer ventiler i at sidde fast under længere perioder uden opvarmning. ThermoSmart bevæger ventilerne lejlighedsvis automatisk, mens sommertilstand eller feriestilstand er aktiv."
+          "valve_maintenance": "Forhindrer ventiler i at sidde fast under længere perioder uden opvarmning. ThermoSmart bevæger ventilerne lejlighedsvis automatisk, mens sommertilstand eller feriestilstand er aktiv.",
+          "calibration_sync": "Korrigerer TRV'ens interne temperatursensor ved at skrive forskellen til rumtemperaturen til kalibreringsentiteten nedenfor. Slå fra for TRV'er med ekstern temperaturkilde. Kræver en kalibreringsentitet.",
+          "calibration_entity": "Talentitet med TRV'ens lokale kalibreringsforskydning. Lad feltet stå tomt for at slå kalibrering fra.",
+          "calibration_invert": "Slå til, hvis TRV'en anvender forskydningen med modsat fortegn."
         }
       },
       "state_menu": {
         "title": "TRV-tilstandsindstillinger (TRV {index}/{total})",
-        "description": "**Zone:** {zone}\n**TRV {index} af {total}:** {device_name}\n\nTilstandsindstillinger holder valgte enheder på denne TRV (select, number eller switch) og dens HVAC-tilstand på en værdi, du definerer. Ved hver styringscyklus eller styringshændelse kontrollerer ThermoSmart dem og sætter kun en værdi, hvis den afviger. Lad listen være tom, hvis du ikke har brug for dette.\n\n**Aktuelt konfigureret:**\n\n{state_rules}\n\nVælg en handling. Vælg **Færdig med denne TRV**, når du er færdig; ændringer gemmes efter den sidste TRV.",
+        "description": "**Zone:** {zone}\n**TRV {index} af {total}:** {device_name}\n\nTilstandsindstillinger holder valgte enheder på denne TRV (select, number eller switch) på en værdi, du definerer. Ved hver styringscyklus eller styringshændelse kontrollerer ThermoSmart dem og sætter kun en værdi, hvis den afviger. Lad listen være tom, hvis du ikke har brug for dette.\n\n**Aktuelt konfigureret:**\n\n{state_rules}\n\nVælg en handling. Vælg **Færdig med denne TRV**, når du er færdig; ændringer gemmes efter den sidste TRV.",
         "menu_options": {
           "state_add_device": "Tilføj en enhed fra denne TRV",
           "state_add_any": "Tilføj en anden enhed",
-          "state_hvac": "Angiv påkrævet HVAC-tilstand",
           "state_remove": "Fjern indstillinger",
           "state_done": "Færdig med denne TRV"
         }
@@ -262,13 +263,6 @@
         },
         "data_description": {
           "value": "Hvis enheden afviger fra denne værdi, sætter ThermoSmart den ved næste styringscyklus eller hændelse."
-        }
-      },
-      "state_hvac": {
-        "title": "Påkrævet HVAC-tilstand (TRV {index}/{total})",
-        "description": "**TRV {index} af {total}:** {device_name}\n\nDefiner den HVAC-tilstand, denne TRV skal være i. Hvis den afviger, skifter ThermoSmart den ved næste styringscyklus eller hændelse.",
-        "data": {
-          "hvac_mode": "HVAC-tilstand"
         }
       },
       "state_remove": {
@@ -454,6 +448,39 @@
       },
       "trv_observations": {
         "name": "TRV-observationer"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Kun måltemperatur (TRV autonom)",
+        "tpi_boost": "TPI-modulering af måltemperatur (beregnet boost)",
+        "direct_valve": "Direkte ventilstyring (0–100 %)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Arv fra zonen (Kun måltemperatur)",
+        "setpoint": "Kun måltemperatur",
+        "tpi_boost": "TPI-modulering af måltemperatur",
+        "direct_valve": "Direkte ventilstyring"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Arv fra zonen (TPI-modulering af måltemperatur)",
+        "setpoint": "Kun måltemperatur",
+        "tpi_boost": "TPI-modulering af måltemperatur",
+        "direct_valve": "Direkte ventilstyring"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Arv fra zonen (Direkte ventilstyring)",
+        "setpoint": "Kun måltemperatur",
+        "tpi_boost": "TPI-modulering af måltemperatur",
+        "direct_valve": "Direkte ventilstyring"
       }
     }
   }

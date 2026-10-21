@@ -49,21 +49,25 @@
           "valve_entity": "Vana kontrol varlığı",
           "feed_external_temp": "Oda sıcaklığını TRV'ye besle",
           "ext_temp_entity": "Dış sıcaklık giriş varlığı",
+          "calibration_sync": "Kalibrasyon ofsetini yaz",
+          "calibration_entity": "Kalibrasyon ofseti varlığı",
           "calibration_invert": "Kalibrasyon ofsetini ters çevir",
           "valve_maintenance": "Vana egzersizi / bakımını etkinleştir"
         },
         "data_description": {
           "feed_external_temp": "Oda sıcaklığını TRV'ye gönderir. Aşağıda doğru dış sıcaklık giriş varlığının seçilmesini gerektirir; o olmadan hiçbir şey gönderilmez.",
-          "valve_maintenance": "Uzun ısıtmasız dönemlerde vanaların sıkışmasını önler. Yaz Modu veya Tatil Modu etkinken ThermoSmart vanaları ara sıra otomatik olarak hareket ettirir."
+          "valve_maintenance": "Uzun ısıtmasız dönemlerde vanaların sıkışmasını önler. Yaz Modu veya Tatil Modu etkinken ThermoSmart vanaları ara sıra otomatik olarak hareket ettirir.",
+          "calibration_sync": "Oda sıcaklığıyla farkı aşağıdaki kalibrasyon varlığına yazarak TRV'nin dahili sıcaklık sensörünü düzeltir. Harici sıcaklık kaynağı kullanan TRV'lerde kapatın. Bir kalibrasyon varlığı gerektirir.",
+          "calibration_entity": "TRV'nin yerel kalibrasyon ofsetini tutan sayı varlığı. Kalibrasyonu kapatmak için boş bırakın.",
+          "calibration_invert": "TRV ofseti ters işaretle uyguluyorsa açın."
         }
       },
       "state_menu": {
         "title": "Adım 3 – TRV durum ayarları (TRV {index}/{total})",
-        "description": "**Bölge:** {zone}\n**TRV {index} / {total}:** {device_name}\n\nDurum ayarları, bu TRV'nin seçilen varlıklarını (select, number veya switch) ve HVAC modunu sizin tanımladığınız bir değerde tutar. Her kontrol döngüsünde veya kontrol olayında ThermoSmart bunları denetler ve yalnızca farklıysa bir değer ayarlar. Buna ihtiyacınız yoksa listeyi boş bırakın.\n\n**Şu anda yapılandırılmış olanlar:**\n\n{state_rules}\n\nBir eylem seçin. İşiniz bittiğinde **Bu TRV ile işim bitti** seçeneğini seçin.",
+        "description": "**Bölge:** {zone}\n**TRV {index} / {total}:** {device_name}\n\nDurum ayarları, bu TRV'nin seçilen varlıklarını (select, number veya switch) sizin tanımladığınız bir değerde tutar. Her kontrol döngüsünde veya kontrol olayında ThermoSmart bunları denetler ve yalnızca farklıysa bir değer ayarlar. Buna ihtiyacınız yoksa listeyi boş bırakın.\n\n**Şu anda yapılandırılmış olanlar:**\n\n{state_rules}\n\nBir eylem seçin. İşiniz bittiğinde **Bu TRV ile işim bitti** seçeneğini seçin.",
         "menu_options": {
           "state_add_device": "Bu TRV'nin bir varlığını ekle",
           "state_add_any": "Başka herhangi bir varlık ekle",
-          "state_hvac": "Gerekli HVAC modunu ayarla",
           "state_remove": "Ayarları kaldır",
           "state_done": "Bu TRV ile işim bitti"
         }
@@ -90,13 +94,6 @@
         },
         "data_description": {
           "value": "Varlık bu değerden farklıysa ThermoSmart bir sonraki kontrol döngüsünde veya olayında onu ayarlar."
-        }
-      },
-      "state_hvac": {
-        "title": "Adım 3 – Gerekli HVAC modu (TRV {index}/{total})",
-        "description": "**TRV {index} / {total}:** {device_name}\n\nBu TRV'nin içinde olması gereken HVAC modunu tanımlayın. Farklıysa ThermoSmart bir sonraki kontrol döngüsünde veya olayında modu değiştirir.",
-        "data": {
-          "hvac_mode": "HVAC modu"
         }
       },
       "state_remove": {
@@ -221,21 +218,25 @@
           "valve_entity": "Vana kontrol varlığı",
           "feed_external_temp": "Oda sıcaklığını TRV'ye besle",
           "ext_temp_entity": "Dış sıcaklık giriş varlığı",
+          "calibration_sync": "Kalibrasyon ofsetini yaz",
+          "calibration_entity": "Kalibrasyon ofseti varlığı",
           "calibration_invert": "Kalibrasyon ofsetini ters çevir",
           "valve_maintenance": "Vana egzersizi / bakımını etkinleştir"
         },
         "data_description": {
           "feed_external_temp": "Oda sıcaklığını TRV'ye gönderir. Aşağıda doğru dış sıcaklık giriş varlığının seçilmesini gerektirir; o olmadan hiçbir şey gönderilmez.",
-          "valve_maintenance": "Uzun ısıtmasız dönemlerde vanaların sıkışmasını önler. Yaz Modu veya Tatil Modu etkinken ThermoSmart vanaları ara sıra otomatik olarak hareket ettirir."
+          "valve_maintenance": "Uzun ısıtmasız dönemlerde vanaların sıkışmasını önler. Yaz Modu veya Tatil Modu etkinken ThermoSmart vanaları ara sıra otomatik olarak hareket ettirir.",
+          "calibration_sync": "Oda sıcaklığıyla farkı aşağıdaki kalibrasyon varlığına yazarak TRV'nin dahili sıcaklık sensörünü düzeltir. Harici sıcaklık kaynağı kullanan TRV'lerde kapatın. Bir kalibrasyon varlığı gerektirir.",
+          "calibration_entity": "TRV'nin yerel kalibrasyon ofsetini tutan sayı varlığı. Kalibrasyonu kapatmak için boş bırakın.",
+          "calibration_invert": "TRV ofseti ters işaretle uyguluyorsa açın."
         }
       },
       "state_menu": {
         "title": "TRV durum ayarları (TRV {index}/{total})",
-        "description": "**Bölge:** {zone}\n**TRV {index} / {total}:** {device_name}\n\nDurum ayarları, bu TRV'nin seçilen varlıklarını (select, number veya switch) ve HVAC modunu sizin tanımladığınız bir değerde tutar. Her kontrol döngüsünde veya kontrol olayında ThermoSmart bunları denetler ve yalnızca farklıysa bir değer ayarlar. Buna ihtiyacınız yoksa listeyi boş bırakın.\n\n**Şu anda yapılandırılmış olanlar:**\n\n{state_rules}\n\nBir eylem seçin. İşiniz bittiğinde **Bu TRV ile işim bitti** seçeneğini seçin; değişiklikler son TRV'den sonra kaydedilir.",
+        "description": "**Bölge:** {zone}\n**TRV {index} / {total}:** {device_name}\n\nDurum ayarları, bu TRV'nin seçilen varlıklarını (select, number veya switch) sizin tanımladığınız bir değerde tutar. Her kontrol döngüsünde veya kontrol olayında ThermoSmart bunları denetler ve yalnızca farklıysa bir değer ayarlar. Buna ihtiyacınız yoksa listeyi boş bırakın.\n\n**Şu anda yapılandırılmış olanlar:**\n\n{state_rules}\n\nBir eylem seçin. İşiniz bittiğinde **Bu TRV ile işim bitti** seçeneğini seçin; değişiklikler son TRV'den sonra kaydedilir.",
         "menu_options": {
           "state_add_device": "Bu TRV'nin bir varlığını ekle",
           "state_add_any": "Başka herhangi bir varlık ekle",
-          "state_hvac": "Gerekli HVAC modunu ayarla",
           "state_remove": "Ayarları kaldır",
           "state_done": "Bu TRV ile işim bitti"
         }
@@ -262,13 +263,6 @@
         },
         "data_description": {
           "value": "Varlık bu değerden farklıysa ThermoSmart bir sonraki kontrol döngüsünde veya olayında onu ayarlar."
-        }
-      },
-      "state_hvac": {
-        "title": "Gerekli HVAC modu (TRV {index}/{total})",
-        "description": "**TRV {index} / {total}:** {device_name}\n\nBu TRV'nin içinde olması gereken HVAC modunu tanımlayın. Farklıysa ThermoSmart bir sonraki kontrol döngüsünde veya olayında modu değiştirir.",
-        "data": {
-          "hvac_mode": "HVAC modu"
         }
       },
       "state_remove": {
@@ -454,6 +448,39 @@
       },
       "trv_observations": {
         "name": "TRV gözlemleri"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Yalnızca hedef sıcaklık (TRV bağımsız)",
+        "tpi_boost": "TPI hedef sıcaklık modülasyonu (hesaplanan artış)",
+        "direct_valve": "Doğrudan vana kontrolü (%0–100)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Bölgeden devral (Yalnızca hedef sıcaklık)",
+        "setpoint": "Yalnızca hedef sıcaklık",
+        "tpi_boost": "TPI hedef sıcaklık modülasyonu",
+        "direct_valve": "Doğrudan vana kontrolü"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Bölgeden devral (TPI hedef sıcaklık modülasyonu)",
+        "setpoint": "Yalnızca hedef sıcaklık",
+        "tpi_boost": "TPI hedef sıcaklık modülasyonu",
+        "direct_valve": "Doğrudan vana kontrolü"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Bölgeden devral (Doğrudan vana kontrolü)",
+        "setpoint": "Yalnızca hedef sıcaklık",
+        "tpi_boost": "TPI hedef sıcaklık modülasyonu",
+        "direct_valve": "Doğrudan vana kontrolü"
       }
     }
   }

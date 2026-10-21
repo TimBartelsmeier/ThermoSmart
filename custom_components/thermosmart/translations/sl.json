@@ -49,21 +49,25 @@
           "valve_entity": "Entiteta za upravljanje ventila",
           "feed_external_temp": "Pošiljaj sobno temperaturo na TRV",
           "ext_temp_entity": "Vhodna entiteta zunanje temperature",
+          "calibration_sync": "Zapiši odmik kalibracije",
+          "calibration_entity": "Entiteta odmika kalibracije",
           "calibration_invert": "Obrni kalibracijski odmik",
           "valve_maintenance": "Omogoči razgibavanje / vzdrževanje ventila"
         },
         "data_description": {
           "feed_external_temp": "Pošilja sobno temperaturo na TRV. Zahteva izbiro ustrezne vhodne entitete zunanje temperature spodaj; brez nje se ne pošlje nič.",
-          "valve_maintenance": "Preprečuje, da bi se ventili zagozdili med daljšimi obdobji brez ogrevanja. ThermoSmart občasno samodejno premakne ventile, ko je aktiven poletni ali počitniški način."
+          "valve_maintenance": "Preprečuje, da bi se ventili zagozdili med daljšimi obdobji brez ogrevanja. ThermoSmart občasno samodejno premakne ventile, ko je aktiven poletni ali počitniški način.",
+          "calibration_sync": "Popravi notranji temperaturni senzor TRV tako, da razliko do sobne temperature zapiše v spodnjo entiteto kalibracije. Izklopite za TRV z zunanjim virom temperature. Zahteva entiteto kalibracije.",
+          "calibration_entity": "Številska entiteta z lokalnim odmikom kalibracije TRV. Pustite prazno, da izklopite kalibracijo.",
+          "calibration_invert": "Vklopite, če TRV uporablja odmik z nasprotnim predznakom."
         }
       },
       "state_menu": {
         "title": "Korak 3 – Nastavitve stanja TRV (TRV {index}/{total})",
-        "description": "**Cona:** {zone}\n**TRV {index} od {total}:** {device_name}\n\nNastavitve stanja ohranjajo izbrane entitete tega TRV (select, number ali switch) in njegov način HVAC na vrednosti, ki jo določite. Ob vsakem regulacijskem ciklu ali dogodku ThermoSmart preveri entitete in vrednost nastavi le, če se razlikuje. Če tega ne potrebujete, pustite seznam prazen.\n\n**Trenutno nastavljeno:**\n\n{state_rules}\n\nIzberite dejanje. Ko končate, izberite **Končano s tem TRV**.",
+        "description": "**Cona:** {zone}\n**TRV {index} od {total}:** {device_name}\n\nNastavitve stanja ohranjajo izbrane entitete tega TRV (select, number ali switch) na vrednosti, ki jo določite. Ob vsakem regulacijskem ciklu ali dogodku ThermoSmart preveri entitete in vrednost nastavi le, če se razlikuje. Če tega ne potrebujete, pustite seznam prazen.\n\n**Trenutno nastavljeno:**\n\n{state_rules}\n\nIzberite dejanje. Ko končate, izberite **Končano s tem TRV**.",
         "menu_options": {
           "state_add_device": "Dodaj entiteto tega TRV",
           "state_add_any": "Dodaj katero koli drugo entiteto",
-          "state_hvac": "Nastavi zahtevani način HVAC",
           "state_remove": "Odstrani nastavitve",
           "state_done": "Končano s tem TRV"
         }
@@ -90,13 +94,6 @@
         },
         "data_description": {
           "value": "Če se entiteta razlikuje od te vrednosti, jo ThermoSmart nastavi ob naslednjem regulacijskem ciklu ali dogodku."
-        }
-      },
-      "state_hvac": {
-        "title": "Korak 3 – Zahtevani način HVAC (TRV {index}/{total})",
-        "description": "**TRV {index} od {total}:** {device_name}\n\nDoločite način HVAC, v katerem mora biti ta TRV. Če se razlikuje, ga ThermoSmart preklopi ob naslednjem regulacijskem ciklu ali dogodku.",
-        "data": {
-          "hvac_mode": "Način HVAC"
         }
       },
       "state_remove": {
@@ -221,21 +218,25 @@
           "valve_entity": "Entiteta za upravljanje ventila",
           "feed_external_temp": "Pošiljaj sobno temperaturo na TRV",
           "ext_temp_entity": "Vhodna entiteta zunanje temperature",
+          "calibration_sync": "Zapiši odmik kalibracije",
+          "calibration_entity": "Entiteta odmika kalibracije",
           "calibration_invert": "Obrni kalibracijski odmik",
           "valve_maintenance": "Omogoči razgibavanje / vzdrževanje ventila"
         },
         "data_description": {
           "feed_external_temp": "Pošilja sobno temperaturo na TRV. Zahteva izbiro ustrezne vhodne entitete zunanje temperature spodaj; brez nje se ne pošlje nič.",
-          "valve_maintenance": "Preprečuje, da bi se ventili zagozdili med daljšimi obdobji brez ogrevanja. ThermoSmart občasno samodejno premakne ventile, ko je aktiven poletni ali počitniški način."
+          "valve_maintenance": "Preprečuje, da bi se ventili zagozdili med daljšimi obdobji brez ogrevanja. ThermoSmart občasno samodejno premakne ventile, ko je aktiven poletni ali počitniški način.",
+          "calibration_sync": "Popravi notranji temperaturni senzor TRV tako, da razliko do sobne temperature zapiše v spodnjo entiteto kalibracije. Izklopite za TRV z zunanjim virom temperature. Zahteva entiteto kalibracije.",
+          "calibration_entity": "Številska entiteta z lokalnim odmikom kalibracije TRV. Pustite prazno, da izklopite kalibracijo.",
+          "calibration_invert": "Vklopite, če TRV uporablja odmik z nasprotnim predznakom."
         }
       },
       "state_menu": {
         "title": "Nastavitve stanja TRV (TRV {index}/{total})",
-        "description": "**Cona:** {zone}\n**TRV {index} od {total}:** {device_name}\n\nNastavitve stanja ohranjajo izbrane entitete tega TRV (select, number ali switch) in njegov način HVAC na vrednosti, ki jo določite. Ob vsakem regulacijskem ciklu ali dogodku ThermoSmart preveri entitete in vrednost nastavi le, če se razlikuje. Če tega ne potrebujete, pustite seznam prazen.\n\n**Trenutno nastavljeno:**\n\n{state_rules}\n\nIzberite dejanje. Ko končate, izberite **Končano s tem TRV**; spremembe se shranijo po zadnjem TRV.",
+        "description": "**Cona:** {zone}\n**TRV {index} od {total}:** {device_name}\n\nNastavitve stanja ohranjajo izbrane entitete tega TRV (select, number ali switch) na vrednosti, ki jo določite. Ob vsakem regulacijskem ciklu ali dogodku ThermoSmart preveri entitete in vrednost nastavi le, če se razlikuje. Če tega ne potrebujete, pustite seznam prazen.\n\n**Trenutno nastavljeno:**\n\n{state_rules}\n\nIzberite dejanje. Ko končate, izberite **Končano s tem TRV**; spremembe se shranijo po zadnjem TRV.",
         "menu_options": {
           "state_add_device": "Dodaj entiteto tega TRV",
           "state_add_any": "Dodaj katero koli drugo entiteto",
-          "state_hvac": "Nastavi zahtevani način HVAC",
           "state_remove": "Odstrani nastavitve",
           "state_done": "Končano s tem TRV"
         }
@@ -262,13 +263,6 @@
         },
         "data_description": {
           "value": "Če se entiteta razlikuje od te vrednosti, jo ThermoSmart nastavi ob naslednjem regulacijskem ciklu ali dogodku."
-        }
-      },
-      "state_hvac": {
-        "title": "Zahtevani način HVAC (TRV {index}/{total})",
-        "description": "**TRV {index} od {total}:** {device_name}\n\nDoločite način HVAC, v katerem mora biti ta TRV. Če se razlikuje, ga ThermoSmart preklopi ob naslednjem regulacijskem ciklu ali dogodku.",
-        "data": {
-          "hvac_mode": "Način HVAC"
         }
       },
       "state_remove": {
@@ -454,6 +448,39 @@
       },
       "trv_observations": {
         "name": "Opazovanja TRV"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Samo ciljna temperatura (TRV samostojen)",
+        "tpi_boost": "TPI modulacija ciljne temperature (izračunano povišanje)",
+        "direct_valve": "Neposredno krmiljenje ventila (0–100 %)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Podeduj iz cone (Samo ciljna temperatura)",
+        "setpoint": "Samo ciljna temperatura",
+        "tpi_boost": "TPI modulacija ciljne temperature",
+        "direct_valve": "Neposredno krmiljenje ventila"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Podeduj iz cone (TPI modulacija ciljne temperature)",
+        "setpoint": "Samo ciljna temperatura",
+        "tpi_boost": "TPI modulacija ciljne temperature",
+        "direct_valve": "Neposredno krmiljenje ventila"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Podeduj iz cone (Neposredno krmiljenje ventila)",
+        "setpoint": "Samo ciljna temperatura",
+        "tpi_boost": "TPI modulacija ciljne temperature",
+        "direct_valve": "Neposredno krmiljenje ventila"
       }
     }
   }

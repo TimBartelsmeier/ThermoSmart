@@ -49,21 +49,25 @@
           "valve_entity": "Entidade de controlo da válvula",
           "feed_external_temp": "Enviar temperatura ambiente ao TRV",
           "ext_temp_entity": "Entidade de entrada da temperatura externa",
+          "calibration_sync": "Escrever desvio de calibração",
+          "calibration_entity": "Entidade do desvio de calibração",
           "calibration_invert": "Inverter offset de calibração",
           "valve_maintenance": "Ativar exercício / manutenção da válvula"
         },
         "data_description": {
           "feed_external_temp": "Envia a temperatura ambiente ao TRV. Requer a seleção da entidade de entrada de temperatura externa correta abaixo; sem ela, nada é enviado.",
-          "valve_maintenance": "Evita que as válvulas travem durante períodos prolongados sem aquecimento. O ThermoSmart move ocasionalmente as válvulas automaticamente quando o modo Verão ou Férias está ativo."
+          "valve_maintenance": "Evita que as válvulas travem durante períodos prolongados sem aquecimento. O ThermoSmart move ocasionalmente as válvulas automaticamente quando o modo Verão ou Férias está ativo.",
+          "calibration_sync": "Corrige o sensor de temperatura interno do TRV escrevendo a diferença para a temperatura ambiente na entidade de calibração abaixo. Desative para TRV que usam uma fonte de temperatura externa. Requer uma entidade de calibração.",
+          "calibration_entity": "Entidade numérica com o desvio de calibração local do TRV. Deixe vazio para desativar a calibração.",
+          "calibration_invert": "Ative se o TRV aplicar o desvio com o sinal oposto."
         }
       },
       "state_menu": {
         "title": "Passo 3 – Definições de estado do TRV (TRV {index}/{total})",
-        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nAs definições de estado mantêm entidades escolhidas deste TRV (select, number ou switch) e o respetivo modo HVAC num valor que definir. Em cada ciclo ou evento de controlo, o ThermoSmart verifica-as e define um valor apenas se diferir. Deixe a lista vazia se não precisar disto.\n\n**Atualmente configuradas:**\n\n{state_rules}\n\nEscolha uma ação. Selecione **Concluído com este TRV** quando terminar.",
+        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nAs definições de estado mantêm entidades escolhidas deste TRV (select, number ou switch) num valor que definir. Em cada ciclo ou evento de controlo, o ThermoSmart verifica-as e define um valor apenas se diferir. Deixe a lista vazia se não precisar disto.\n\n**Atualmente configuradas:**\n\n{state_rules}\n\nEscolha uma ação. Selecione **Concluído com este TRV** quando terminar.",
         "menu_options": {
           "state_add_device": "Adicionar uma entidade deste TRV",
           "state_add_any": "Adicionar qualquer outra entidade",
-          "state_hvac": "Definir modo HVAC necessário",
           "state_remove": "Remover definições",
           "state_done": "Concluído com este TRV"
         }
@@ -90,13 +94,6 @@
         },
         "data_description": {
           "value": "Se a entidade diferir deste valor, o ThermoSmart define-o no próximo ciclo ou evento de controlo."
-        }
-      },
-      "state_hvac": {
-        "title": "Passo 3 – Modo HVAC necessário (TRV {index}/{total})",
-        "description": "**TRV {index} de {total}:** {device_name}\n\nDefina o modo HVAC em que este TRV tem de estar. Se diferir, o ThermoSmart altera-o no próximo ciclo ou evento de controlo.",
-        "data": {
-          "hvac_mode": "Modo HVAC"
         }
       },
       "state_remove": {
@@ -221,21 +218,25 @@
           "valve_entity": "Entidade de controlo da válvula",
           "feed_external_temp": "Enviar temperatura ambiente ao TRV",
           "ext_temp_entity": "Entidade de entrada da temperatura externa",
+          "calibration_sync": "Escrever desvio de calibração",
+          "calibration_entity": "Entidade do desvio de calibração",
           "calibration_invert": "Inverter offset de calibração",
           "valve_maintenance": "Ativar exercício / manutenção da válvula"
         },
         "data_description": {
           "feed_external_temp": "Envia a temperatura ambiente ao TRV. Requer a seleção da entidade de entrada de temperatura externa correta abaixo; sem ela, nada é enviado.",
-          "valve_maintenance": "Evita que as válvulas travem durante períodos prolongados sem aquecimento. O ThermoSmart move ocasionalmente as válvulas automaticamente quando o modo Verão ou Férias está ativo."
+          "valve_maintenance": "Evita que as válvulas travem durante períodos prolongados sem aquecimento. O ThermoSmart move ocasionalmente as válvulas automaticamente quando o modo Verão ou Férias está ativo.",
+          "calibration_sync": "Corrige o sensor de temperatura interno do TRV escrevendo a diferença para a temperatura ambiente na entidade de calibração abaixo. Desative para TRV que usam uma fonte de temperatura externa. Requer uma entidade de calibração.",
+          "calibration_entity": "Entidade numérica com o desvio de calibração local do TRV. Deixe vazio para desativar a calibração.",
+          "calibration_invert": "Ative se o TRV aplicar o desvio com o sinal oposto."
         }
       },
       "state_menu": {
         "title": "Definições de estado do TRV (TRV {index}/{total})",
-        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nAs definições de estado mantêm entidades escolhidas deste TRV (select, number ou switch) e o respetivo modo HVAC num valor que definir. Em cada ciclo ou evento de controlo, o ThermoSmart verifica-as e define um valor apenas se diferir. Deixe a lista vazia se não precisar disto.\n\n**Atualmente configuradas:**\n\n{state_rules}\n\nEscolha uma ação. Selecione **Concluído com este TRV** quando terminar; as alterações são guardadas após o último TRV.",
+        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nAs definições de estado mantêm entidades escolhidas deste TRV (select, number ou switch) num valor que definir. Em cada ciclo ou evento de controlo, o ThermoSmart verifica-as e define um valor apenas se diferir. Deixe a lista vazia se não precisar disto.\n\n**Atualmente configuradas:**\n\n{state_rules}\n\nEscolha uma ação. Selecione **Concluído com este TRV** quando terminar; as alterações são guardadas após o último TRV.",
         "menu_options": {
           "state_add_device": "Adicionar uma entidade deste TRV",
           "state_add_any": "Adicionar qualquer outra entidade",
-          "state_hvac": "Definir modo HVAC necessário",
           "state_remove": "Remover definições",
           "state_done": "Concluído com este TRV"
         }
@@ -262,13 +263,6 @@
         },
         "data_description": {
           "value": "Se a entidade diferir deste valor, o ThermoSmart define-o no próximo ciclo ou evento de controlo."
-        }
-      },
-      "state_hvac": {
-        "title": "Modo HVAC necessário (TRV {index}/{total})",
-        "description": "**TRV {index} de {total}:** {device_name}\n\nDefina o modo HVAC em que este TRV tem de estar. Se diferir, o ThermoSmart altera-o no próximo ciclo ou evento de controlo.",
-        "data": {
-          "hvac_mode": "Modo HVAC"
         }
       },
       "state_remove": {
@@ -454,6 +448,39 @@
       },
       "trv_observations": {
         "name": "Observações TRV"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Apenas temperatura alvo (TRV autónomo)",
+        "tpi_boost": "Modulação da temperatura alvo TPI (reforço calculado)",
+        "direct_valve": "Controlo direto da válvula (0–100%)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Herdar da zona (Apenas temperatura alvo)",
+        "setpoint": "Apenas temperatura alvo",
+        "tpi_boost": "Modulação da temperatura alvo TPI",
+        "direct_valve": "Controlo direto da válvula"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Herdar da zona (Modulação da temperatura alvo TPI)",
+        "setpoint": "Apenas temperatura alvo",
+        "tpi_boost": "Modulação da temperatura alvo TPI",
+        "direct_valve": "Controlo direto da válvula"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Herdar da zona (Controlo direto da válvula)",
+        "setpoint": "Apenas temperatura alvo",
+        "tpi_boost": "Modulação da temperatura alvo TPI",
+        "direct_valve": "Controlo direto da válvula"
       }
     }
   }

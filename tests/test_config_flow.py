@@ -16,7 +16,6 @@ from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.thermosmart.config_flow import ThermoSmartConfigFlow
-from custom_components.thermosmart import _migrate_device_settings
 from custom_components.thermosmart.const import (
     DOMAIN,
     CONF_WEATHER_ENTITY,
@@ -32,9 +31,6 @@ from custom_components.thermosmart.const import (
     CONF_VACATION_TEMP,
     CONF_WINDOW_OPEN_TEMP,
     CONF_ECO_TEMP,
-    CONF_MANAGE_TEMP_SOURCE,
-    CONF_VALVE_MAINTENANCE,
-    CONF_CALIBRATION_INVERT,
     CONF_SCHED_WD_MORNING,
     CONF_SCHED_WD_NIGHT,
     CONF_SCHED_WE_MORNING,
@@ -365,50 +361,7 @@ class TestZoneFlowNavigation:
         assert CONF_LEARNING_ENABLED not in data
 
 
-class TestLegacyDeviceSettingsMigration:
-    async def test_legacy_entry_gets_per_device_defaults(self, hass, enable_custom_integrations):
-        entry = MockConfigEntry(
-            domain=DOMAIN,
-            data={
-                "entry_type": "zone",
-                "name": "Living room",
-                "climate_entities": ["climate.trv"],
-                CONF_CALIBRATION_INVERT: True,
-                CONF_VALVE_MAINTENANCE: False,
-                CONF_MANAGE_TEMP_SOURCE: True,
-            },
-        )
-        entry.add_to_hass(hass)
-        detection = {
-            "settings": {
-                CONF_DEV_CONTROL_MODE: CONTROL_MODE_INHERIT,
-                CONF_DEV_VALVE_ENTITY: "number.valve_position",
-                CONF_DEV_FEED_EXT_TEMP: False,
-                CONF_DEV_EXT_TEMP_ENTITY: "number.external_temperature",
-                CONF_DEV_CALIBRATION_INVERT: False,
-                CONF_DEV_VALVE_MAINTENANCE: True,
-            },
-            "state_entity": "select.temperature_sensor",
-            "state_value": "external",
-        }
-        with patch(
-            "custom_components.thermosmart.config_flow._detect_device_settings",
-            return_value=detection,
-        ):
-            _migrate_device_settings(hass, entry)
-
-        settings = entry.data["device_settings"]["climate.trv"]
-        assert entry.data[CONF_ZONE_CONTROL_MODE] == CONTROL_MODE_TPI_BOOST
-        assert entry.data[CONF_CONTROL_INTERVAL] == 5
-        assert entry.data[CONF_EXT_TEMP_THRESHOLD] == 0.5
-        assert settings[CONF_DEV_CONTROL_MODE] == CONTROL_MODE_DIRECT_VALVE
-        assert settings[CONF_DEV_FEED_EXT_TEMP] is True
-        assert settings[CONF_DEV_CALIBRATION_INVERT] is True
-        assert settings[CONF_DEV_VALVE_MAINTENANCE] is False
-        assert settings[CONF_DEV_STATE_SETTINGS] == [{
-            "entity_id": "select.temperature_sensor", "value": "external"
-        }]
-
+class TestZoneFlowWeather:
     async def test_zone_flow_entry_has_no_weather_entity_when_omitted(
         self, hass, enable_custom_integrations
     ):
@@ -623,7 +576,7 @@ class TestStateSettingsSubFlow:
         assert menu["description_placeholders"]["index"] == "1"
         assert menu["description_placeholders"]["total"] == "1"
 
-    async def test_select_number_and_hvac_rules_are_saved(
+    async def test_select_and_number_rules_are_saved(
         self, hass, enable_custom_integrations
     ):
         flow_id, _ = await self._to_state_menu(hass)
@@ -644,10 +597,6 @@ class TestStateSettingsSubFlow:
         assert next(iter(form["data_schema"].schema)).default() == 40.0
         await flow.async_configure(flow_id, {"value": 60})
 
-        form = await flow.async_configure(flow_id, {"next_step_id": "state_hvac"})
-        assert next(iter(form["data_schema"].schema)).default() == "heat"
-        await flow.async_configure(flow_id, {"hvac_mode": "heat"})
-
         await flow.async_configure(flow_id, {"next_step_id": "state_done"})
         await flow.async_configure(flow_id, _SCHEDULE)
         await flow.async_configure(flow_id, _PRESENCE)
@@ -659,15 +608,17 @@ class TestStateSettingsSubFlow:
         assert rules == [
             {"entity_id": "select.mode", "value": "external"},
             {"entity_id": "number.limit", "value": 60.0},
-            {"entity_id": "climate.test_trv", "value": "heat"},
         ]
 
     async def test_remove_rule(self, hass, enable_custom_integrations):
-        flow_id, _ = await self._to_state_menu(hass)
+        flow_id, first = await self._to_state_menu(hass)
         flow = hass.config_entries.flow
-        await flow.async_configure(flow_id, {"next_step_id": "state_hvac"})
-        menu = await flow.async_configure(flow_id, {"hvac_mode": "auto"})
+        assert "state_remove" not in first["menu_options"]
+        await flow.async_configure(flow_id, {"next_step_id": "state_add_any"})
+        menu = await flow.async_configure(flow_id, {"entity_id": "select.mode"})
+        menu = await flow.async_configure(flow_id, {"value": "external"})
         assert "state_remove" in menu["menu_options"]
+        assert "state_hvac" not in menu["menu_options"]
         await flow.async_configure(flow_id, {"next_step_id": "state_remove"})
-        menu = await flow.async_configure(flow_id, {"remove": ["climate.test_trv"]})
+        menu = await flow.async_configure(flow_id, {"remove": ["select.mode"]})
         assert "state_remove" not in menu["menu_options"]

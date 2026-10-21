@@ -1,4 +1,4 @@
-"""TRV control, calibration and quirk management – ThermoSmart TRVControlMixin."""
+"""TRV control and calibration – ThermoSmart TRVControlMixin."""
 from __future__ import annotations
 
 import asyncio
@@ -13,13 +13,6 @@ from homeassistant.util.unit_conversion import TemperatureConverter
 from .device_profiles import DeviceProfile, get_profile, VALVE_MAX_LIMIT, SETPOINT_HVAC_FIRST
 from .temperature_units import from_internal_temperature_c, to_internal_temperature_c
 from .const import (
-    AUTO_QUIRK_PATTERNS,
-    AUTO_CALIBRATION_PATTERNS,
-    AUTO_EXT_TEMP_PATTERNS,
-    AUTO_VALVE_PATTERNS,
-    CONF_CALIBRATION_ENTITIES,
-    CONF_CALIBRATION_INVERT,
-    CONF_QUIRK_ENTITIES,
     CONF_WINDOW_OPEN_TEMP,
     CONF_DEVICE_SETTINGS,
     CONF_EXT_TEMP_THRESHOLD,
@@ -29,6 +22,8 @@ from .const import (
     CONF_DEV_VALVE_ENTITY,
     CONF_DEV_FEED_EXT_TEMP,
     CONF_DEV_EXT_TEMP_ENTITY,
+    CONF_DEV_CALIBRATION_ENTITY,
+    CONF_DEV_CALIBRATION_SYNC,
     CONF_DEV_CALIBRATION_INVERT,
     CONF_DEV_STATE_SETTINGS,
     CONTROL_MODE_INHERIT,
@@ -143,7 +138,7 @@ class TRVControlMixin:
     # ── Geräteerkennung ──────────────────────────────────────────────
 
     async def async_detect_device_entities(self) -> None:
-        """Erkennt Quirk-Switches und Kalibrierungs-Entities via Device Registry."""
+        """Resolve the device profile of every configured TRV via the device registry."""
         cfg = self.zone_cfg
         climate_entities = cfg.get("climate_entities", [])
         if not climate_entities:
@@ -174,78 +169,7 @@ class TRVControlMixin:
                 self.zone_name, profile.identifier, climate_id, manufacturer, model,
             )
 
-        quirks: list[str] = []
-        cal_map: dict[str, str] = {}
-
-        for device_id, climate_id in device_to_climate.items():
-            for entry in er.async_entries_for_device(ent_reg, device_id):
-                domain = entry.entity_id.split(".")[0]
-
-                if domain == "switch":
-                    for pattern in AUTO_QUIRK_PATTERNS:
-                        if pattern in entry.entity_id:
-                            quirks.append(entry.entity_id)
-                            break
-
-                elif domain == "number":
-                    if any(p in entry.entity_id for p in AUTO_CALIBRATION_PATTERNS):
-                        cal_map[climate_id] = entry.entity_id
-
-        manual_quirks = set(cfg.get(CONF_QUIRK_ENTITIES, []))
-        new_quirks = [e for e in quirks if e not in manual_quirks]
-        if new_quirks:
-            _LOGGER.info("ThermoSmart '%s': Quirk-Autodetect: %s", self.zone_name, new_quirks)
-        if cal_map:
-            _LOGGER.info("ThermoSmart '%s': Kalibrierungs-Autodetect: %s", self.zone_name, cal_map)
-
-        # External Temperature Input Entities (TRVZB: Raumtemp direkt ins TRV schreiben)
-        ext_temp_map: dict[str, str] = {}
-        for device_id, climate_id in device_to_climate.items():
-            for entry in er.async_entries_for_device(ent_reg, device_id):
-                if entry.entity_id.split(".")[0] != "number":
-                    continue
-                eid_lower = entry.entity_id.lower()
-                tk = getattr(entry, "translation_key", None) or ""
-                name = (getattr(entry, "original_name", None) or "").lower()
-                for pattern in AUTO_EXT_TEMP_PATTERNS:
-                    if pattern in eid_lower or pattern in tk.lower() or pattern in name:
-                        ext_temp_map[climate_id] = entry.entity_id
-                        break
-
-        if ext_temp_map:
-            _LOGGER.info(
-                "ThermoSmart '%s': External-Temp-Input-Autodetect: %s",
-                self.zone_name, ext_temp_map,
-            )
-
-        # Direct valve position control (TPI duty-cycle written as 0–100%).
-        valve_map: dict[str, str] = {}
-        for device_id, climate_id in device_to_climate.items():
-            for entry in er.async_entries_for_device(ent_reg, device_id):
-                if entry.entity_id.split(".")[0] != "number":
-                    continue
-                eid_lower = entry.entity_id.lower()
-                tk = (getattr(entry, "translation_key", None) or "").lower()
-                name = (getattr(entry, "original_name", None) or "").lower()
-                for pattern in AUTO_VALVE_PATTERNS:
-                    if pattern in eid_lower or pattern in tk or pattern in name:
-                        # Nicht mit ext_temp_map überschneiden
-                        if entry.entity_id not in ext_temp_map.values():
-                            valve_map[climate_id] = entry.entity_id
-                        break
-
-        if valve_map:
-            _LOGGER.info(
-                "ThermoSmart '%s': Ventil-Autodetect (direkte %-Steuerung): %s",
-                self.zone_name, valve_map,
-            )
-
         self._device_profiles = profile_map
-
-        self._auto_quirk_entities = quirks
-        self._auto_calibration_map = cal_map
-        self._auto_ext_temp_map = ext_temp_map
-        self._auto_valve_map = valve_map
 
     # ── TRV-Offline-Tracking ─────────────────────────────────────────
 
@@ -374,48 +298,12 @@ class TRVControlMixin:
         if room_temp is None:
             return
 
-        climate_entities = cfg.get("climate_entities", [])
-        manual_cal = cfg.get(CONF_CALIBRATION_ENTITIES, [])
-
-        if not self._auto_calibration_map and not manual_cal:
-            return
-
-        for i, climate_id in enumerate(climate_entities):
-            cal_entity = self._auto_calibration_map.get(climate_id)
-            if not cal_entity:
-                cal_entity = manual_cal[i] if i < len(manual_cal) else None
-            if not cal_entity:
+        for climate_id in cfg.get("climate_entities", []):
+            settings = cfg.get(CONF_DEVICE_SETTINGS, {}).get(climate_id, {})
+            cal_entity = settings.get(CONF_DEV_CALIBRATION_ENTITY)
+            if not cal_entity or not settings.get(CONF_DEV_CALIBRATION_SYNC, False):
                 continue
-
             _cal_profile = self._device_profiles.get(climate_id)
-            if _cal_profile is not None and not _cal_profile.calibration_sync:
-                _LOGGER.debug(
-                    "ThermoSmart '%s': calibration skipped for %s – profile '%s' has calibration_sync=False",
-                    self.zone_name, climate_id, _cal_profile.identifier,
-                )
-                continue
-
-            # Temperature-source state is user-configured; avoid calibration
-            # writes when that configured select is actively using external input.
-            device_settings = cfg.get(CONF_DEVICE_SETTINGS, {}).get(climate_id, {})
-            uses_external_source = False
-            for rule in device_settings.get(CONF_DEV_STATE_SETTINGS, []):
-                entity_id = rule.get("entity_id")
-                target = str(rule.get("value", rule.get("target_value", ""))).lower()
-                if not isinstance(entity_id, str) or not entity_id.startswith("select."):
-                    continue
-                if target != "external":
-                    continue
-                source_state = self.hass.states.get(entity_id)
-                if source_state is not None and source_state.state == "external":
-                    uses_external_source = True
-                    break
-            if uses_external_source:
-                _LOGGER.debug(
-                    "ThermoSmart '%s': skipping calibration for %s – configured external temperature source is active",
-                    self.zone_name, climate_id,
-                )
-                continue
 
             trv_state = self._get_trv_state(climate_id)
             trv_temp: float | None = None
@@ -437,22 +325,7 @@ class TRVControlMixin:
 
             raw_offset = room_temp - trv_temp
 
-            # Inversion priority:
-            #   1. Key present in cfg → user made an explicit choice; use it as-is.
-            #      (key present + False means user consciously disabled inversion)
-            #   2. Key absent (old ConfigEntry pre-dating the field) → use profile default.
-            #      This is safe: old entries without the key never had user-configured
-            #      inversion, so applying the profile default cannot reverse a user setting.
-            _device_cfg = cfg.get(CONF_DEVICE_SETTINGS, {}).get(climate_id, {})
-            _invert = (
-                _device_cfg[CONF_DEV_CALIBRATION_INVERT]
-                if CONF_DEV_CALIBRATION_INVERT in _device_cfg
-                else (
-                    cfg[CONF_CALIBRATION_INVERT]
-                    if CONF_CALIBRATION_INVERT in cfg
-                    else (_cal_profile.calibration_inverted if _cal_profile is not None else False)
-                )
-            )
+            _invert = settings.get(CONF_DEV_CALIBRATION_INVERT, False)
             if _invert:
                 raw_offset = -raw_offset
 
@@ -492,36 +365,6 @@ class TRVControlMixin:
                 {"entity_id": cal_entity, "value": clamped},
                 blocking=False,
             ))
-
-    # ── Quirks ───────────────────────────────────────────────────────
-
-    async def _async_apply_quirks(self, cfg: dict) -> None:
-        """TRV-interne Logiken deaktivieren die mit ThermoSmart konkurrieren."""
-        manual = cfg.get(CONF_QUIRK_ENTITIES, [])
-        quirk_entities = list(dict.fromkeys(manual + self._auto_quirk_entities))
-        if not quirk_entities:
-            return
-        tasks = []
-        for entity_id in quirk_entities:
-            state = self.hass.states.get(entity_id)
-            if state is None or state.state in ("unavailable", "unknown"):
-                continue
-            if state.state == "on":
-                _LOGGER.info(
-                    "ThermoSmart '%s': Quirk deaktivieren %s (war 'on')",
-                    self.zone_name, entity_id,
-                )
-                tasks.append(self.hass.services.async_call(
-                    "switch", "turn_off", {"entity_id": entity_id}, blocking=False,
-                ))
-        if tasks:
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            for result in results:
-                if isinstance(result, Exception):
-                    _LOGGER.debug(
-                        "ThermoSmart '%s': Quirk-Deaktivierung fehlgeschlagen: %s",
-                        self.zone_name, result,
-                    )
 
     # ── Hilfsroutinen ────────────────────────────────────────────────
 
@@ -649,7 +492,7 @@ class TRVControlMixin:
         enforced = getattr(self, "_state_settings_enforced", set())
         for rule in rules:
             entity_id = rule.get("entity_id")
-            target = rule.get("value", rule.get("target_value"))
+            target = rule.get("value")
             if not entity_id or target in (None, ""):
                 continue
             rule_key = (climate_id, entity_id, str(target))
@@ -686,8 +529,6 @@ class TRVControlMixin:
             elif domain == "switch":
                 service = "turn_on" if target_on else "turn_off"
                 payload = {}
-            elif domain == "climate":
-                service, payload = "set_hvac_mode", {"hvac_mode": str(target)}
             else:
                 _LOGGER.warning(
                     "ThermoSmart '%s': Unsupported state setting entity domain for %s",
@@ -939,11 +780,9 @@ class TRVControlMixin:
             settings = device_settings.get(climate_id, {})
             device_mode = settings.get(CONF_DEV_CONTROL_MODE, CONTROL_MODE_INHERIT)
             effective_mode = device_mode if device_mode != CONTROL_MODE_INHERIT else zone_mode
-            if device_settings and effective_mode != CONTROL_MODE_DIRECT_VALVE:
+            if effective_mode != CONTROL_MODE_DIRECT_VALVE:
                 continue
-            valve_entity = settings.get(CONF_DEV_VALVE_ENTITY) or getattr(
-                self, "_auto_valve_map", {}
-            ).get(climate_id)
+            valve_entity = settings.get(CONF_DEV_VALVE_ENTITY)
             if not valve_entity:
                 continue
 
@@ -1040,12 +879,8 @@ class TRVControlMixin:
 
         for climate_id in cfg.get("climate_entities", []):
             settings = device_settings.get(climate_id, {})
-            if device_settings and not settings.get(CONF_DEV_FEED_EXT_TEMP, False):
-                continue
-            ext_entity = settings.get(CONF_DEV_EXT_TEMP_ENTITY) or getattr(
-                self, "_auto_ext_temp_map", {}
-            ).get(climate_id)
-            if not ext_entity:
+            ext_entity = settings.get(CONF_DEV_EXT_TEMP_ENTITY)
+            if not settings.get(CONF_DEV_FEED_EXT_TEMP, False) or not ext_entity:
                 continue
 
             state = self.hass.states.get(ext_entity)

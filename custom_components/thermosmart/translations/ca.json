@@ -49,21 +49,25 @@
           "valve_entity": "Entitat de control de la vàlvula",
           "feed_external_temp": "Enviar la temperatura de l'habitació al TRV",
           "ext_temp_entity": "Entitat d'entrada de temperatura externa",
+          "calibration_sync": "Escriu el desfasament de calibratge",
+          "calibration_entity": "Entitat del desfasament de calibratge",
           "calibration_invert": "Invertir el desplaçament de calibratge",
           "valve_maintenance": "Activar exercici / manteniment de la vàlvula"
         },
         "data_description": {
           "feed_external_temp": "Envia la temperatura de l'habitació al TRV. Cal seleccionar l'entitat d'entrada de temperatura externa correcta a sota; sense ella no s'envia res.",
-          "valve_maintenance": "Evita que les vàlvules s'encallin durant períodes prolongats sense calefacció. ThermoSmart mou ocasionalment les vàlvules de manera automàtica mentre el mode Estiu o el mode Vacances està actiu."
+          "valve_maintenance": "Evita que les vàlvules s'encallin durant períodes prolongats sense calefacció. ThermoSmart mou ocasionalment les vàlvules de manera automàtica mentre el mode Estiu o el mode Vacances està actiu.",
+          "calibration_sync": "Corregeix el sensor de temperatura intern del TRV escrivint la diferència amb la temperatura ambient a l'entitat de calibratge següent. Desactiveu-ho per a TRV que usen una font de temperatura externa. Requereix una entitat de calibratge.",
+          "calibration_entity": "Entitat numèrica que conté el desfasament de calibratge local del TRV. Deixeu-la buida per desactivar el calibratge.",
+          "calibration_invert": "Activeu-ho si el TRV aplica el desfasament amb el signe oposat."
         }
       },
       "state_menu": {
         "title": "Pas 3 – Configuració d'estat del TRV (TRV {index}/{total})",
-        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nLa configuració d'estat manté entitats escollides d'aquest TRV (select, number o switch) i el seu mode HVAC en un valor que definiu. En cada cicle de control o esdeveniment de control, ThermoSmart les comprova i estableix un valor només si difereix. Deixeu la llista buida si no ho necessiteu.\n\n**Configurat actualment:**\n\n{state_rules}\n\nTrieu una acció. Seleccioneu **Fet amb aquest TRV** quan hàgiu acabat.",
+        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nLa configuració d'estat manté entitats escollides d'aquest TRV (select, number o switch) en un valor que definiu. En cada cicle de control o esdeveniment de control, ThermoSmart les comprova i estableix un valor només si difereix. Deixeu la llista buida si no ho necessiteu.\n\n**Configurat actualment:**\n\n{state_rules}\n\nTrieu una acció. Seleccioneu **Fet amb aquest TRV** quan hàgiu acabat.",
         "menu_options": {
           "state_add_device": "Afegir una entitat d'aquest TRV",
           "state_add_any": "Afegir qualsevol altra entitat",
-          "state_hvac": "Establir el mode HVAC requerit",
           "state_remove": "Eliminar configuracions",
           "state_done": "Fet amb aquest TRV"
         }
@@ -90,13 +94,6 @@
         },
         "data_description": {
           "value": "Si l'entitat difereix d'aquest valor, ThermoSmart l'estableix en el proper cicle de control o esdeveniment."
-        }
-      },
-      "state_hvac": {
-        "title": "Pas 3 – Mode HVAC requerit (TRV {index}/{total})",
-        "description": "**TRV {index} de {total}:** {device_name}\n\nDefiniu el mode HVAC en què ha d'estar aquest TRV. Si difereix, ThermoSmart el canvia en el proper cicle de control o esdeveniment.",
-        "data": {
-          "hvac_mode": "Mode HVAC"
         }
       },
       "state_remove": {
@@ -221,21 +218,25 @@
           "valve_entity": "Entitat de control de la vàlvula",
           "feed_external_temp": "Enviar la temperatura de l'habitació al TRV",
           "ext_temp_entity": "Entitat d'entrada de temperatura externa",
+          "calibration_sync": "Escriu el desfasament de calibratge",
+          "calibration_entity": "Entitat del desfasament de calibratge",
           "calibration_invert": "Invertir el desplaçament de calibratge",
           "valve_maintenance": "Activar exercici / manteniment de la vàlvula"
         },
         "data_description": {
           "feed_external_temp": "Envia la temperatura de l'habitació al TRV. Cal seleccionar l'entitat d'entrada de temperatura externa correcta a sota; sense ella no s'envia res.",
-          "valve_maintenance": "Evita que les vàlvules s'encallin durant períodes prolongats sense calefacció. ThermoSmart mou ocasionalment les vàlvules de manera automàtica mentre el mode Estiu o el mode Vacances està actiu."
+          "valve_maintenance": "Evita que les vàlvules s'encallin durant períodes prolongats sense calefacció. ThermoSmart mou ocasionalment les vàlvules de manera automàtica mentre el mode Estiu o el mode Vacances està actiu.",
+          "calibration_sync": "Corregeix el sensor de temperatura intern del TRV escrivint la diferència amb la temperatura ambient a l'entitat de calibratge següent. Desactiveu-ho per a TRV que usen una font de temperatura externa. Requereix una entitat de calibratge.",
+          "calibration_entity": "Entitat numèrica que conté el desfasament de calibratge local del TRV. Deixeu-la buida per desactivar el calibratge.",
+          "calibration_invert": "Activeu-ho si el TRV aplica el desfasament amb el signe oposat."
         }
       },
       "state_menu": {
         "title": "Configuració d'estat del TRV (TRV {index}/{total})",
-        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nLa configuració d'estat manté entitats escollides d'aquest TRV (select, number o switch) i el seu mode HVAC en un valor que definiu. En cada cicle de control o esdeveniment de control, ThermoSmart les comprova i estableix un valor només si difereix. Deixeu la llista buida si no ho necessiteu.\n\n**Configurat actualment:**\n\n{state_rules}\n\nTrieu una acció. Seleccioneu **Fet amb aquest TRV** quan hàgiu acabat; els canvis es desen després del darrer TRV.",
+        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nLa configuració d'estat manté entitats escollides d'aquest TRV (select, number o switch) en un valor que definiu. En cada cicle de control o esdeveniment de control, ThermoSmart les comprova i estableix un valor només si difereix. Deixeu la llista buida si no ho necessiteu.\n\n**Configurat actualment:**\n\n{state_rules}\n\nTrieu una acció. Seleccioneu **Fet amb aquest TRV** quan hàgiu acabat; els canvis es desen després del darrer TRV.",
         "menu_options": {
           "state_add_device": "Afegir una entitat d'aquest TRV",
           "state_add_any": "Afegir qualsevol altra entitat",
-          "state_hvac": "Establir el mode HVAC requerit",
           "state_remove": "Eliminar configuracions",
           "state_done": "Fet amb aquest TRV"
         }
@@ -262,13 +263,6 @@
         },
         "data_description": {
           "value": "Si l'entitat difereix d'aquest valor, ThermoSmart l'estableix en el proper cicle de control o esdeveniment."
-        }
-      },
-      "state_hvac": {
-        "title": "Mode HVAC requerit (TRV {index}/{total})",
-        "description": "**TRV {index} de {total}:** {device_name}\n\nDefiniu el mode HVAC en què ha d'estar aquest TRV. Si difereix, ThermoSmart el canvia en el proper cicle de control o esdeveniment.",
-        "data": {
-          "hvac_mode": "Mode HVAC"
         }
       },
       "state_remove": {
@@ -454,6 +448,39 @@
       },
       "trv_observations": {
         "name": "Observacions TRV"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Només consigna (TRV autònom)",
+        "tpi_boost": "Modulació de consigna TPI (increment calculat)",
+        "direct_valve": "Control directe de la vàlvula (0–100%)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Hereta de la zona (Només consigna)",
+        "setpoint": "Només consigna",
+        "tpi_boost": "Modulació de consigna TPI",
+        "direct_valve": "Control directe de la vàlvula"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Hereta de la zona (Modulació de consigna TPI)",
+        "setpoint": "Només consigna",
+        "tpi_boost": "Modulació de consigna TPI",
+        "direct_valve": "Control directe de la vàlvula"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Hereta de la zona (Control directe de la vàlvula)",
+        "setpoint": "Només consigna",
+        "tpi_boost": "Modulació de consigna TPI",
+        "direct_valve": "Control directe de la vàlvula"
       }
     }
   }
