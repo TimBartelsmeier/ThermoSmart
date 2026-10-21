@@ -14,7 +14,7 @@
         "description": "Konfiguruje globalne przełączniki trybu Lato i Wakacje. Termostat nie jest wymagany. Globalne przełączniki sterują wszystkimi strefami jednocześnie."
       },
       "add_zone": {
-        "title": "Krok 1 / 4 – Urządzenia i czujniki",
+        "title": "Krok 1 – Urządzenia i czujniki",
         "description": "Wybierz zawory TRV i czujniki dla tej strefy grzewczej. Jednostki kalibracji i przełączniki quirk są wykrywane automatycznie.",
         "data": {
           "name": "Nazwa strefy (np. Salon)",
@@ -23,19 +23,91 @@
           "humidity_sensors": "Czujniki wilgotności wewnętrznej",
           "window_sensors": "Czujniki okien (binary_sensor)",
           "window_open_delay": "Ogrzewanie wyłączone – opóźnienie po otwarciu okna",
-          "window_close_delay": "Ogrzewanie włączone – opóźnienie po zamknięciu okna",
-          "valve_maintenance": "Włącz konserwację zaworów (niedziela 03:00 – tylko w trybie Lato lub Urlop)",
-          "manage_temp_source": "Automatycznie użyj zewnętrznej temperatury pokojowej dla obsługiwanych TRV",
-          "calibration_invert": "Odwróć offset kalibracji (dla zaworów TRV jak ME167, które odwracają znak)"
+          "window_close_delay": "Ogrzewanie włączone – opóźnienie po zamknięciu okna"
+        }
+      },
+      "control_options": {
+        "title": "Krok 2 – Strategia sterowania strefą",
+        "description": "Wybierz domyślną strategię dla strefy. Ustawienia poszczególnych urządzeń (kolejne strony) mogą ją nadpisać.\n\nWykryte urządzenia:\n\n{detected_devices}",
+        "data": {
+          "zone_control_mode": "Tryb sterowania strefą",
+          "control_interval": "Minimalny odstęp cyklu sterowania",
+          "temp_tolerance": "Tolerancja temperatury",
+          "ext_temp_threshold": "Próg zapisu temperatury zewnętrznej"
         },
         "data_description": {
-          "valve_maintenance": "Zapobiega zacięciu się zaworów podczas długich okresów bez ogrzewania. ThermoSmart od czasu do czasu automatycznie porusza zaworami, gdy aktywny jest tryb Lato lub Urlop.",
-          "manage_temp_source": "ThermoSmart nadal używa zewnętrznych czujników temperatury do własnej logiki sterowania. Po włączeniu ThermoSmart przełącza również obsługiwane TRV na zewnętrzne źródło temperatury i wraca do wewnętrznego czujnika TRV, gdy zewnętrzne czujniki stają się niedostępne.",
-          "calibration_invert": "Odwraca znak offsetu kalibracji dla konkretnych modeli TRV, których kierunek offsetu różni się od standardowego zachowania. Aktywuj tylko wtedy, gdy wymaga tego urządzenie."
+          "zone_control_mode": "**Tylko wartość zadana:** ThermoSmart wysyła zwykłą temperaturę docelową, a TRV samodzielnie reguluje swój zawór.\n\n**Modulacja wartości zadanej TPI:** ThermoSmart oblicza zapotrzebowanie na ciepło i podnosi lub obniża wartość zadaną wysyłaną do TRV, aby otworzyć lub zamknąć zawór.\n\n**Bezpośrednie sterowanie zaworem:** ThermoSmart zapisuje obliczone otwarcie zaworu (0–100 %) w encji pozycji zaworu TRV i wysyła zwykłą temperaturę docelową jako wartość zadaną.",
+          "control_interval": "Minimalny czas między regularnymi cyklami sterowania. Każdy cykl ponownie oblicza zapotrzebowanie na ciepło i zapisuje wartości zadane, pozycje zaworów oraz ustawienia stanu w TRV. Zdarzenia, takie jak otwarcie okna lub ręczne nadpisanie, mogą wcześniej wywołać dodatkowy cykl. Krótsze odstępy zapewniają szybsze reakcje, ale mogą też przeciążać urządzenia lub zapychać sieci, np. Zigbee. W praktyce 2–3 minuty w połączeniu z rozsądnymi progami zmian temperatury, które muszą zostać przekroczone, aby nowe wartości zostały wysłane do TRV, powinny wystarczyć.",
+          "ext_temp_threshold": "Temperatura zewnętrzna jest zapisywana dopiero po osiągnięciu przez różnicę tego progu i musi być włączona dla każdego TRV, który ma otrzymywać aktualizację."
+        }
+      },
+      "device_settings": {
+        "title": "Krok 3 – Ustawienia TRV (TRV {index}/{total})",
+        "description": "**Strefa:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nTe ustawienia dotyczą tylko tego TRV. Następnie możesz zdefiniować ustawienia stanu dla tego TRV.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Tryb sterowania",
+          "valve_entity": "Encja sterowania zaworem",
+          "feed_external_temp": "Przekazuj temperaturę pomieszczenia do TRV",
+          "ext_temp_entity": "Encja wejściowa temperatury zewnętrznej",
+          "calibration_invert": "Odwróć offset kalibracji",
+          "valve_maintenance": "Włącz ćwiczenie / konserwację zaworu"
+        },
+        "data_description": {
+          "feed_external_temp": "Wysyła temperaturę pomieszczenia do TRV. Wymaga wybrania poniżej właściwej encji wejściowej temperatury zewnętrznej; bez niej nic nie jest wysyłane.",
+          "valve_maintenance": "Zapobiega zacięciu się zaworów podczas długich okresów bez ogrzewania. ThermoSmart od czasu do czasu automatycznie porusza zaworami, gdy aktywny jest tryb Lato lub Urlop."
+        }
+      },
+      "state_menu": {
+        "title": "Krok 3 – Ustawienia stanu TRV (TRV {index}/{total})",
+        "description": "**Strefa:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nUstawienia stanu utrzymują wybrane encje tego TRV (select, number lub switch) oraz jego tryb HVAC na zdefiniowanej przez Ciebie wartości. W każdym cyklu lub zdarzeniu sterowania ThermoSmart je sprawdza i ustawia wartość tylko wtedy, gdy się różni. Pozostaw listę pustą, jeśli tego nie potrzebujesz.\n\n**Aktualnie skonfigurowane:**\n\n{state_rules}\n\nWybierz działanie. Wybierz **Zakończ dla tego TRV** po zakończeniu.",
+        "menu_options": {
+          "state_add_device": "Dodaj encję tego TRV",
+          "state_add_any": "Dodaj dowolną inną encję",
+          "state_hvac": "Ustaw wymagany tryb HVAC",
+          "state_remove": "Usuń ustawienia",
+          "state_done": "Zakończ dla tego TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Krok 3 – Dodaj ustawienie stanu (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nWybierz encję, którą ThermoSmart ma utrzymywać na określonej wartości. {scope}\n\nWartość wybierzesz na następnej stronie.",
+        "data": {
+          "entity_id": "Encja"
+        }
+      },
+      "state_add_any": {
+        "title": "Krok 3 – Dodaj ustawienie stanu (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nWybierz encję, którą ThermoSmart ma utrzymywać na określonej wartości. {scope}\n\nWartość wybierzesz na następnej stronie.",
+        "data": {
+          "entity_id": "Encja"
+        }
+      },
+      "state_value": {
+        "title": "Krok 3 – Wartość ustawienia stanu (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nOkreśl wartość, którą ThermoSmart wymusza dla **{entity}**.\n\nAktualna wartość: {current}",
+        "data": {
+          "value": "Wartość do wymuszenia"
+        },
+        "data_description": {
+          "value": "Jeśli encja różni się od tej wartości, ThermoSmart ustawi ją w następnym cyklu lub zdarzeniu sterowania."
+        }
+      },
+      "state_hvac": {
+        "title": "Krok 3 – Wymagany tryb HVAC (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nOkreśl tryb HVAC, w którym ten TRV musi się znajdować. Jeśli się różni, ThermoSmart przełączy go w następnym cyklu lub zdarzeniu sterowania.",
+        "data": {
+          "hvac_mode": "Tryb HVAC"
+        }
+      },
+      "state_remove": {
+        "title": "Krok 3 – Usuń ustawienia stanu (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nWybierz ustawienia stanu, których ThermoSmart ma przestać wymuszać dla tego TRV.",
+        "data": {
+          "remove": "Ustawienia do usunięcia"
         }
       },
       "schedule": {
-        "title": "Krok 2 / 4 – Temperatury i harmonogram",
+        "title": "Krok 4 – Temperatury i harmonogram",
         "description": "Przebieg dnia: Noc → Komfort → Noc\n\nGdy wszystkie osoby są nieobecne, ThermoSmart automatycznie przełącza na temperaturę nieobecności – niezależnie od harmonogramu.",
         "data": {
           "comfort_temp": "Temperatura komfortu (gdy ktoś jest w domu)",
@@ -44,7 +116,6 @@
           "vacation_temp": "Temperatura wakacyjna (ochrona przed mrozem)",
           "eco_temp": "Temperatura Eco (oszczędność energii, między nocną a komfortową)",
           "window_open_temp": "Temperatura przy otwartym oknie",
-          "temp_tolerance": "Tolerancja temperatury – próg aktualizacji wartości zadanej",
           "schedule_enabled": "Włącz harmonogram czasowy",
           "sched_wd_morning": "Dzień roboczy: Komfort od",
           "sched_wd_night": "Dzień roboczy: Noc od",
@@ -59,12 +130,11 @@
           "sched_we_night": "Od tej godziny obowiązuje temperatura nocna",
           "away_temp": "Stosowana automatycznie tylko gdy skonfigurowane jest wykrywanie obecności (Krok 3). Można ją również ustawić ręcznie za pomocą selektora trybu.",
           "eco_temp": "Używana, gdy selektor trybu jest ręcznie ustawiony na 'Eco'. Nie jest aktywowana automatycznie.",
-          "window_open_temp": "Temperatura docelowa, gdy okno jest otwarte. W przypadku termostatów nieobsługujących bardzo niskich wartości, użyj wyższej wartości, np. 10 °C.",
-          "temp_tolerance": "Minimalna zmiana obliczonej wartości zadanej TRV przed wysłaniem przez ThermoSmart nowej aktualizacji. Ogranicza zbędne zapisy do termostatu. 0,5 °C sprawdza się dobrze w większości pomieszczeń."
+          "window_open_temp": "Temperatura docelowa, gdy okno jest otwarte. W przypadku termostatów nieobsługujących bardzo niskich wartości, użyj wyższej wartości, np. 10 °C."
         }
       },
       "presence": {
-        "title": "Krok 3 / 4 – Obecność i uczenie",
+        "title": "Krok 5 – Obecność i uczenie",
         "description": "Kto jest w domu? ThermoSmart automatycznie przełącza w tryb nieobecności gdy wszyscy wyjdą.",
         "data": {
           "presence_persons": "Osoby do wykrywania obecności",
@@ -72,7 +142,7 @@
         }
       },
       "weather": {
-        "title": "Krok 4 / 4 – Pogoda i czujniki zewnętrzne",
+        "title": "Krok 6 – Pogoda i czujniki zewnętrzne",
         "description": "Wszystkie pola opcjonalne – własne czujniki mają pierwszeństwo przed jednostką pogodową. System działa też bez danych pogodowych.",
         "data": {
           "weather_entity": "Jednostka pogodowa (np. weather.home)",
@@ -105,8 +175,11 @@
     "step": {
       "init": {
         "title": "Ustawienia",
+        "description": "Wybierz, którą część strefy **{zone}** chcesz edytować. Każda sekcja jest zapisywana osobno.",
         "menu_options": {
           "devices": "Urządzenia i czujniki",
+          "control_options": "Strategia sterowania strefą (tryb domyślny, interwał, progi)",
+          "device_settings": "Ustawienia poszczególnych TRV (nadpisanie trybu, encje, ustawienia stanu)",
           "schedule": "Temperatury i harmonogram",
           "presence": "Obecność i uczenie",
           "weather": "Pogoda i czujniki zewnętrzne"
@@ -122,15 +195,87 @@
           "humidity_sensors": "Czujniki wilgotności wewnętrznej",
           "window_sensors": "Czujniki okien",
           "window_open_delay": "Ogrzewanie wyłączone – opóźnienie po otwarciu okna",
-          "window_close_delay": "Ogrzewanie włączone – opóźnienie po zamknięciu okna",
-          "valve_maintenance": "Włącz konserwację zaworów (tylko tryb Lato / Urlop)",
-          "manage_temp_source": "Automatycznie użyj zewnętrznej temperatury pokojowej dla obsługiwanych TRV",
-          "calibration_invert": "Odwróć offset kalibracji (ME167 i podobne)"
+          "window_close_delay": "Ogrzewanie włączone – opóźnienie po zamknięciu okna"
+        }
+      },
+      "control_options": {
+        "title": "Strategia sterowania strefą",
+        "description": "Strefa **{zone}**: wybierz domyślną strategię dla strefy. Ustawienia poszczególnych urządzeń mogą ją nadpisać.",
+        "data": {
+          "zone_control_mode": "Tryb sterowania strefą",
+          "control_interval": "Minimalny odstęp cyklu sterowania",
+          "temp_tolerance": "Tolerancja temperatury",
+          "ext_temp_threshold": "Próg zapisu temperatury zewnętrznej"
         },
         "data_description": {
-          "valve_maintenance": "Zapobiega zacięciu się zaworów podczas długich okresów bez ogrzewania. ThermoSmart od czasu do czasu automatycznie porusza zaworami, gdy aktywny jest tryb Lato lub Urlop.",
-          "manage_temp_source": "ThermoSmart nadal używa zewnętrznych czujników temperatury do własnej logiki sterowania. Po włączeniu ThermoSmart przełącza również obsługiwane TRV na zewnętrzne źródło temperatury i wraca do wewnętrznego czujnika TRV, gdy zewnętrzne czujniki stają się niedostępne.",
-          "calibration_invert": "Odwraca znak offsetu kalibracji dla konkretnych modeli TRV, których kierunek offsetu różni się od standardowego zachowania. Aktywuj tylko wtedy, gdy wymaga tego urządzenie."
+          "zone_control_mode": "**Tylko wartość zadana:** ThermoSmart wysyła zwykłą temperaturę docelową, a TRV samodzielnie reguluje swój zawór.\n\n**Modulacja wartości zadanej TPI:** ThermoSmart oblicza zapotrzebowanie na ciepło i podnosi lub obniża wartość zadaną wysyłaną do TRV, aby otworzyć lub zamknąć zawór.\n\n**Bezpośrednie sterowanie zaworem:** ThermoSmart zapisuje obliczone otwarcie zaworu (0–100 %) w encji pozycji zaworu TRV i wysyła zwykłą temperaturę docelową jako wartość zadaną.",
+          "control_interval": "Minimalny czas między regularnymi cyklami sterowania. Każdy cykl ponownie oblicza zapotrzebowanie na ciepło i zapisuje wartości zadane, pozycje zaworów oraz ustawienia stanu w TRV. Zdarzenia, takie jak otwarcie okna lub ręczne nadpisanie, mogą wcześniej wywołać dodatkowy cykl. Krótsze odstępy zapewniają szybsze reakcje, ale mogą też przeciążać urządzenia lub zapychać sieci, np. Zigbee. W praktyce 2–3 minuty w połączeniu z rozsądnymi progami zmian temperatury, które muszą zostać przekroczone, aby nowe wartości zostały wysłane do TRV, powinny wystarczyć.",
+          "ext_temp_threshold": "Temperatura zewnętrzna jest zapisywana dopiero po osiągnięciu przez różnicę tego progu i musi być włączona dla każdego TRV, który ma otrzymywać aktualizację."
+        }
+      },
+      "device_settings": {
+        "title": "Ustawienia TRV (TRV {index}/{total})",
+        "description": "**Strefa:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nTe ustawienia dotyczą tylko tego TRV. Następnie możesz edytować ustawienia stanu dla tego TRV. Nic nie zostanie zapisane, dopóki nie przejdziesz przez ostatni TRV.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Tryb sterowania",
+          "valve_entity": "Encja sterowania zaworem",
+          "feed_external_temp": "Przekazuj temperaturę pomieszczenia do TRV",
+          "ext_temp_entity": "Encja wejściowa temperatury zewnętrznej",
+          "calibration_invert": "Odwróć offset kalibracji",
+          "valve_maintenance": "Włącz ćwiczenie / konserwację zaworu"
+        },
+        "data_description": {
+          "feed_external_temp": "Wysyła temperaturę pomieszczenia do TRV. Wymaga wybrania poniżej właściwej encji wejściowej temperatury zewnętrznej; bez niej nic nie jest wysyłane.",
+          "valve_maintenance": "Zapobiega zacięciu się zaworów podczas długich okresów bez ogrzewania. ThermoSmart od czasu do czasu automatycznie porusza zaworami, gdy aktywny jest tryb Lato lub Urlop."
+        }
+      },
+      "state_menu": {
+        "title": "Ustawienia stanu TRV (TRV {index}/{total})",
+        "description": "**Strefa:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nUstawienia stanu utrzymują wybrane encje tego TRV (select, number lub switch) oraz jego tryb HVAC na zdefiniowanej przez Ciebie wartości. W każdym cyklu lub zdarzeniu sterowania ThermoSmart je sprawdza i ustawia wartość tylko wtedy, gdy się różni. Pozostaw listę pustą, jeśli tego nie potrzebujesz.\n\n**Aktualnie skonfigurowane:**\n\n{state_rules}\n\nWybierz działanie. Wybierz **Zakończ dla tego TRV** po zakończeniu; zmiany zostaną zapisane po ostatnim TRV.",
+        "menu_options": {
+          "state_add_device": "Dodaj encję tego TRV",
+          "state_add_any": "Dodaj dowolną inną encję",
+          "state_hvac": "Ustaw wymagany tryb HVAC",
+          "state_remove": "Usuń ustawienia",
+          "state_done": "Zakończ dla tego TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Dodaj ustawienie stanu (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nWybierz encję, którą ThermoSmart ma utrzymywać na określonej wartości. {scope}\n\nWartość wybierzesz na następnej stronie.",
+        "data": {
+          "entity_id": "Encja"
+        }
+      },
+      "state_add_any": {
+        "title": "Dodaj ustawienie stanu (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nWybierz encję, którą ThermoSmart ma utrzymywać na określonej wartości. {scope}\n\nWartość wybierzesz na następnej stronie.",
+        "data": {
+          "entity_id": "Encja"
+        }
+      },
+      "state_value": {
+        "title": "Wartość ustawienia stanu (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nOkreśl wartość, którą ThermoSmart wymusza dla **{entity}**.\n\nAktualna wartość: {current}",
+        "data": {
+          "value": "Wartość do wymuszenia"
+        },
+        "data_description": {
+          "value": "Jeśli encja różni się od tej wartości, ThermoSmart ustawi ją w następnym cyklu lub zdarzeniu sterowania."
+        }
+      },
+      "state_hvac": {
+        "title": "Wymagany tryb HVAC (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nOkreśl tryb HVAC, w którym ten TRV musi się znajdować. Jeśli się różni, ThermoSmart przełączy go w następnym cyklu lub zdarzeniu sterowania.",
+        "data": {
+          "hvac_mode": "Tryb HVAC"
+        }
+      },
+      "state_remove": {
+        "title": "Usuń ustawienia stanu (TRV {index}/{total})",
+        "description": "**TRV {index} z {total}:** {device_name}\n\nWybierz ustawienia stanu, których ThermoSmart ma przestać wymuszać dla tego TRV.",
+        "data": {
+          "remove": "Ustawienia do usunięcia"
         }
       },
       "schedule": {
@@ -143,7 +288,6 @@
           "vacation_temp": "Temperatura wakacyjna",
           "eco_temp": "Temperatura Eco",
           "window_open_temp": "Temperatura przy otwartym oknie",
-          "temp_tolerance": "Tolerancja temperatury",
           "schedule_enabled": "Włącz harmonogram czasowy",
           "sched_wd_morning": "Dzień roboczy: Komfort od",
           "sched_wd_night": "Dzień roboczy: Noc od",
@@ -158,8 +302,7 @@
           "sched_we_night": "Od tej godziny obowiązuje temperatura nocna",
           "away_temp": "Stosowana automatycznie tylko gdy skonfigurowane jest wykrywanie obecności (Krok 3). Można ją również ustawić ręcznie za pomocą selektora trybu.",
           "eco_temp": "Używana, gdy selektor trybu jest ręcznie ustawiony na 'Eco'. Nie jest aktywowana automatycznie.",
-          "window_open_temp": "Temperatura docelowa, gdy okno jest otwarte. W przypadku termostatów nieobsługujących bardzo niskich wartości, użyj wyższej wartości, np. 10 °C.",
-          "temp_tolerance": "Minimalna zmiana obliczonej wartości zadanej TRV przed wysłaniem przez ThermoSmart nowej aktualizacji. Ogranicza zbędne zapisy do termostatu. 0,5 °C sprawdza się dobrze w większości pomieszczeń."
+          "window_open_temp": "Temperatura docelowa, gdy okno jest otwarte. W przypadku termostatów nieobsługujących bardzo niskich wartości, użyj wyższej wartości, np. 10 °C."
         }
       },
       "presence": {

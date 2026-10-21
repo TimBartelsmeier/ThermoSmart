@@ -14,7 +14,7 @@
         "description": "Setter opp den globale sommermodusvelgeren (Automatisk / På / Av) og feriebryteren. Ingen termostat kreves. Begge kontrollene gjelder for alle soner samtidig."
       },
       "add_zone": {
-        "title": "Trinn 1 / 4 – Enheter og sensorer",
+        "title": "Trinn 1 – Enheter og sensorer",
         "description": "Velg TRV-er og sensorer for denne varmesonen. Kalibreringsenheter og quirk-brytere oppdages automatisk.",
         "data": {
           "name": "Sonenavn (f.eks. Stue)",
@@ -23,19 +23,91 @@
           "humidity_sensors": "Innendørs fuktighetssensorer",
           "window_sensors": "Vinduensensorer (binary_sensor)",
           "window_open_delay": "Varme av – forsinkelse etter vindu åpnes",
-          "window_close_delay": "Varme på – forsinkelse etter vindu lukkes",
-          "valve_maintenance": "Aktiver ventilvedlikehold (søndag 03:00 – kun sommer- eller feriemodus)",
-          "manage_temp_source": "Bruk automatisk ekstern romtemperatur for støttede TRV-er",
-          "calibration_invert": "Inverter kalibreringsoffset (for TRV-er som ME167 som inverterer fortegnet)"
+          "window_close_delay": "Varme på – forsinkelse etter vindu lukkes"
+        }
+      },
+      "control_options": {
+        "title": "Trinn 2 – Sonestyringsstrategi",
+        "description": "Velg en standard for sonen. Innstillinger per enhet (neste sider) kan overstyre denne strategien.\n\nOppdagede enheter:\n\n{detected_devices}",
+        "data": {
+          "zone_control_mode": "Sonestyringsmodus",
+          "control_interval": "Minste intervall for styringssyklus",
+          "temp_tolerance": "Temperaturtoleranse",
+          "ext_temp_threshold": "Terskel for skriving av ekstern temperatur"
         },
         "data_description": {
-          "valve_maintenance": "Forhindrer at ventiler setter seg fast i lengre perioder uten oppvarming. ThermoSmart beveger ventilene av og til automatisk når Sommer- eller Feriemodus er aktiv.",
-          "manage_temp_source": "ThermoSmart fortsetter å bruke eksterne temperatursensorer for sin egen styrelogikk. Når den er aktivert, bytter ThermoSmart også støttede TRV-er til sin eksterne temperaturkilde og faller tilbake til den interne TRV-sensoren hvis eksterne sensorer blir utilgjengelige.",
-          "calibration_invert": "Inverterer kalibreringsoffset-fortegnet for spesifikke TRV-modeller der offsetretningen avviker fra standardatferden. Aktiver bare hvis enheten din krever det."
+          "zone_control_mode": "**Kun settpunkt:** ThermoSmart sender ren måltemperatur, og TRV-en regulerer ventilen selv.\n\n**TPI-settpunktmodulering:** ThermoSmart beregner varmebehovet og hever eller senker settpunktet som sendes til TRV-en for å åpne eller lukke ventilen.\n\n**Direkte ventilstyring:** ThermoSmart skriver den beregnede ventilåpningen (0–100 %) til TRV-ens ventilposisjonsentitet og sender ren måltemperatur som settpunkt.",
+          "control_interval": "Minste tid mellom vanlige styringssykluser. Hver syklus beregner varmebehovet på nytt og skriver settpunkter, ventilposisjoner og tilstandsinnstillinger til TRV-ene. Hendelser som at et vindu åpnes eller en manuell overstyring kan utløse en ekstra syklus tidligere. Kortere intervaller gir raskere reaksjon, men kan også overbelaste enheter eller tette til nettverk, f.eks. Zigbee. I praksis bør 2–3 minutter kombinert med fornuftige terskler for temperaturendringer, som må overskrides før nye verdier sendes til TRV-en, fungere fint.",
+          "ext_temp_threshold": "Ekstern temperatur skrives først når forskjellen når denne terskelen, og må aktiveres for hver TRV som skal motta oppdateringen."
+        }
+      },
+      "device_settings": {
+        "title": "Trinn 3 – TRV-innstillinger (TRV {index}/{total})",
+        "description": "**Sone:** {zone}\n**TRV {index} av {total}:** {device_name}\n\nDisse innstillingene gjelder bare for denne TRV-en. Neste steg er å definere tilstandsinnstillinger for denne TRV-en.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Styringsmodus",
+          "valve_entity": "Ventilstyringsentitet",
+          "feed_external_temp": "Send romtemperatur til TRV",
+          "ext_temp_entity": "Inngangsentitet for ekstern temperatur",
+          "calibration_invert": "Inverter kalibreringsoffset",
+          "valve_maintenance": "Aktiver ventilbevegelse / vedlikehold"
+        },
+        "data_description": {
+          "feed_external_temp": "Sender romtemperaturen til TRV-en. Krever at riktig inngangsentitet for ekstern temperatur velges nedenfor; uten den sendes ingenting.",
+          "valve_maintenance": "Forhindrer at ventiler setter seg fast i lengre perioder uten oppvarming. ThermoSmart beveger ventilene av og til automatisk når Sommer- eller Feriemodus er aktiv."
+        }
+      },
+      "state_menu": {
+        "title": "Trinn 3 – TRV-tilstandsinnstillinger (TRV {index}/{total})",
+        "description": "**Sone:** {zone}\n**TRV {index} av {total}:** {device_name}\n\nTilstandsinnstillinger holder valgte entiteter for denne TRV-en (select, number eller switch) og dens HVAC-modus på en verdi du definerer. Ved hver styringssyklus eller styringshendelse sjekker ThermoSmart dem og setter en verdi bare hvis den avviker. La listen stå tom hvis du ikke trenger dette.\n\n**Nåværende konfigurasjon:**\n\n{state_rules}\n\nVelg en handling. Velg **Ferdig med denne TRV-en** når du er ferdig.",
+        "menu_options": {
+          "state_add_device": "Legg til en entitet for denne TRV-en",
+          "state_add_any": "Legg til en annen entitet",
+          "state_hvac": "Angi påkrevd HVAC-modus",
+          "state_remove": "Fjern innstillinger",
+          "state_done": "Ferdig med denne TRV-en"
+        }
+      },
+      "state_add_device": {
+        "title": "Trinn 3 – Legg til tilstandsinnstilling (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nVelg entiteten ThermoSmart skal holde på en bestemt verdi. {scope}\n\nDu velger verdien på neste side.",
+        "data": {
+          "entity_id": "Entitet"
+        }
+      },
+      "state_add_any": {
+        "title": "Trinn 3 – Legg til tilstandsinnstilling (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nVelg entiteten ThermoSmart skal holde på en bestemt verdi. {scope}\n\nDu velger verdien på neste side.",
+        "data": {
+          "entity_id": "Entitet"
+        }
+      },
+      "state_value": {
+        "title": "Trinn 3 – Verdi for tilstandsinnstilling (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nDefiner verdien ThermoSmart håndhever for **{entity}**.\n\nNåværende verdi: {current}",
+        "data": {
+          "value": "Verdi som skal håndheves"
+        },
+        "data_description": {
+          "value": "Hvis entiteten avviker fra denne verdien, setter ThermoSmart den ved neste styringssyklus eller -hendelse."
+        }
+      },
+      "state_hvac": {
+        "title": "Trinn 3 – Påkrevd HVAC-modus (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nDefiner HVAC-modusen denne TRV-en må ha. Hvis den avviker, bytter ThermoSmart den ved neste styringssyklus eller -hendelse.",
+        "data": {
+          "hvac_mode": "HVAC-modus"
+        }
+      },
+      "state_remove": {
+        "title": "Trinn 3 – Fjern tilstandsinnstillinger (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nVelg tilstandsinnstillingene ThermoSmart skal slutte å håndheve for denne TRV-en.",
+        "data": {
+          "remove": "Innstillinger som skal fjernes"
         }
       },
       "schedule": {
-        "title": "Trinn 2 / 4 – Temperaturer og tidsplan",
+        "title": "Trinn 4 – Temperaturer og tidsplan",
         "description": "Daglig forløp: Natt → Komfort → Natt\n\nNår alle personer er borte, bytter ThermoSmart automatisk til fraværstemperaturen – uavhengig av tidsplanen.",
         "data": {
           "comfort_temp": "Komforttemperatur (når noen er hjemme)",
@@ -44,7 +116,6 @@
           "vacation_temp": "Ferietemperatur (frostbeskyttelse)",
           "eco_temp": "Eco-temperatur (energisparing, mellom natt og komfort)",
           "window_open_temp": "Temperatur ved åpent vindu",
-          "temp_tolerance": "Temperaturtolerance – grense for setpunkt-oppdatering",
           "schedule_enabled": "Aktiver tidsplan",
           "sched_wd_morning": "Hverdag: Komfort fra",
           "sched_wd_night": "Hverdag: Natt fra",
@@ -59,12 +130,11 @@
           "sched_we_night": "Natttemperaturen gjelder fra dette tidspunktet",
           "away_temp": "Brukes automatisk bare når tilstedeværelsesgjenkjenning er konfigurert (Trinn 3). Kan også angis manuelt via modusvelgeren.",
           "eco_temp": "Brukes når modusvelgeren manuelt er satt til 'Eco'. Aktiveres ikke automatisk.",
-          "window_open_temp": "Måltemperatur mens et vindu er åpent. For termostater som ikke støtter svært lave innstillinger, bruk en høyere verdi som f.eks. 10 °C.",
-          "temp_tolerance": "Minimumsendring av det beregnede TRV-setpunktet før ThermoSmart sender en ny oppdatering. Reduserer unødvendige skrivinger til termostaten. 0,5 °C fungerer bra for de fleste rom."
+          "window_open_temp": "Måltemperatur mens et vindu er åpent. For termostater som ikke støtter svært lave innstillinger, bruk en høyere verdi som f.eks. 10 °C."
         }
       },
       "presence": {
-        "title": "Trinn 3 / 4 – Tilstedeværelse og læring",
+        "title": "Trinn 5 – Tilstedeværelse og læring",
         "description": "Hvem er hjemme? ThermoSmart bytter automatisk til fraværsmodus når alle forlater hjemmet.",
         "data": {
           "presence_persons": "Personer for tilstedeværelsesregistrering",
@@ -72,7 +142,7 @@
         }
       },
       "weather": {
-        "title": "Trinn 4 / 4 – Vær og utendørs sensorer",
+        "title": "Trinn 6 – Vær og utendørs sensorer",
         "description": "Alle felt er valgfrie – egne sensorer har forrang over værenheten. Systemet fungerer også uten værdata.",
         "data": {
           "weather_entity": "Værenhet (f.eks. weather.home)",
@@ -105,8 +175,11 @@
     "step": {
       "init": {
         "title": "Innstillinger",
+        "description": "Velg hvilken del av sone **{zone}** du vil redigere. Hver seksjon lagres for seg.",
         "menu_options": {
           "devices": "Enheter og sensorer",
+          "control_options": "Sonestyringsstrategi (standardmodus, intervall, terskler)",
+          "device_settings": "Innstillinger per TRV (modusoverstyring, entiteter, tilstandsinnstillinger)",
           "schedule": "Temperaturer og tidsplan",
           "presence": "Tilstedeværelse og læring",
           "weather": "Vær og utendørs sensorer"
@@ -122,15 +195,87 @@
           "humidity_sensors": "Innendørs fuktighetssensorer",
           "window_sensors": "Vinduensensorer",
           "window_open_delay": "Varme av – forsinkelse etter vindu åpnes",
-          "window_close_delay": "Varme på – forsinkelse etter vindu lukkes",
-          "valve_maintenance": "Aktiver ventilvedlikehold (kun sommer- / feriemodus)",
-          "manage_temp_source": "Bruk automatisk ekstern romtemperatur for støttede TRV-er",
-          "calibration_invert": "Inverter kalibreringsoffset (ME167 og lignende)"
+          "window_close_delay": "Varme på – forsinkelse etter vindu lukkes"
+        }
+      },
+      "control_options": {
+        "title": "Sonestyringsstrategi",
+        "description": "Sone **{zone}**: velg en standard for sonen. Innstillinger per enhet kan overstyre denne strategien.",
+        "data": {
+          "zone_control_mode": "Sonestyringsmodus",
+          "control_interval": "Minste intervall for styringssyklus",
+          "temp_tolerance": "Temperaturtoleranse",
+          "ext_temp_threshold": "Terskel for skriving av ekstern temperatur"
         },
         "data_description": {
-          "valve_maintenance": "Forhindrer at ventiler setter seg fast i lengre perioder uten oppvarming. ThermoSmart beveger ventilene av og til automatisk når Sommer- eller Feriemodus er aktiv.",
-          "manage_temp_source": "ThermoSmart fortsetter å bruke eksterne temperatursensorer for sin egen styrelogikk. Når den er aktivert, bytter ThermoSmart også støttede TRV-er til sin eksterne temperaturkilde og faller tilbake til den interne TRV-sensoren hvis eksterne sensorer blir utilgjengelige.",
-          "calibration_invert": "Inverterer kalibreringsoffset-fortegnet for spesifikke TRV-modeller der offsetretningen avviker fra standardatferden. Aktiver bare hvis enheten din krever det."
+          "zone_control_mode": "**Kun settpunkt:** ThermoSmart sender ren måltemperatur, og TRV-en regulerer ventilen selv.\n\n**TPI-settpunktmodulering:** ThermoSmart beregner varmebehovet og hever eller senker settpunktet som sendes til TRV-en for å åpne eller lukke ventilen.\n\n**Direkte ventilstyring:** ThermoSmart skriver den beregnede ventilåpningen (0–100 %) til TRV-ens ventilposisjonsentitet og sender ren måltemperatur som settpunkt.",
+          "control_interval": "Minste tid mellom vanlige styringssykluser. Hver syklus beregner varmebehovet på nytt og skriver settpunkter, ventilposisjoner og tilstandsinnstillinger til TRV-ene. Hendelser som at et vindu åpnes eller en manuell overstyring kan utløse en ekstra syklus tidligere. Kortere intervaller gir raskere reaksjon, men kan også overbelaste enheter eller tette til nettverk, f.eks. Zigbee. I praksis bør 2–3 minutter kombinert med fornuftige terskler for temperaturendringer, som må overskrides før nye verdier sendes til TRV-en, fungere fint.",
+          "ext_temp_threshold": "Ekstern temperatur skrives først når forskjellen når denne terskelen, og må aktiveres for hver TRV som skal motta oppdateringen."
+        }
+      },
+      "device_settings": {
+        "title": "TRV-innstillinger (TRV {index}/{total})",
+        "description": "**Sone:** {zone}\n**TRV {index} av {total}:** {device_name}\n\nDisse innstillingene gjelder bare for denne TRV-en. Neste steg er å redigere tilstandsinnstillinger for denne TRV-en. Ingenting lagres før du har gått gjennom den siste TRV-en.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Styringsmodus",
+          "valve_entity": "Ventilstyringsentitet",
+          "feed_external_temp": "Send romtemperatur til TRV",
+          "ext_temp_entity": "Inngangsentitet for ekstern temperatur",
+          "calibration_invert": "Inverter kalibreringsoffset",
+          "valve_maintenance": "Aktiver ventilbevegelse / vedlikehold"
+        },
+        "data_description": {
+          "feed_external_temp": "Sender romtemperaturen til TRV-en. Krever at riktig inngangsentitet for ekstern temperatur velges nedenfor; uten den sendes ingenting.",
+          "valve_maintenance": "Forhindrer at ventiler setter seg fast i lengre perioder uten oppvarming. ThermoSmart beveger ventilene av og til automatisk når Sommer- eller Feriemodus er aktiv."
+        }
+      },
+      "state_menu": {
+        "title": "TRV-tilstandsinnstillinger (TRV {index}/{total})",
+        "description": "**Sone:** {zone}\n**TRV {index} av {total}:** {device_name}\n\nTilstandsinnstillinger holder valgte entiteter for denne TRV-en (select, number eller switch) og dens HVAC-modus på en verdi du definerer. Ved hver styringssyklus eller styringshendelse sjekker ThermoSmart dem og setter en verdi bare hvis den avviker. La listen stå tom hvis du ikke trenger dette.\n\n**Nåværende konfigurasjon:**\n\n{state_rules}\n\nVelg en handling. Velg **Ferdig med denne TRV-en** når du er ferdig; endringer lagres etter den siste TRV-en.",
+        "menu_options": {
+          "state_add_device": "Legg til en entitet for denne TRV-en",
+          "state_add_any": "Legg til en annen entitet",
+          "state_hvac": "Angi påkrevd HVAC-modus",
+          "state_remove": "Fjern innstillinger",
+          "state_done": "Ferdig med denne TRV-en"
+        }
+      },
+      "state_add_device": {
+        "title": "Legg til tilstandsinnstilling (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nVelg entiteten ThermoSmart skal holde på en bestemt verdi. {scope}\n\nDu velger verdien på neste side.",
+        "data": {
+          "entity_id": "Entitet"
+        }
+      },
+      "state_add_any": {
+        "title": "Legg til tilstandsinnstilling (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nVelg entiteten ThermoSmart skal holde på en bestemt verdi. {scope}\n\nDu velger verdien på neste side.",
+        "data": {
+          "entity_id": "Entitet"
+        }
+      },
+      "state_value": {
+        "title": "Verdi for tilstandsinnstilling (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nDefiner verdien ThermoSmart håndhever for **{entity}**.\n\nNåværende verdi: {current}",
+        "data": {
+          "value": "Verdi som skal håndheves"
+        },
+        "data_description": {
+          "value": "Hvis entiteten avviker fra denne verdien, setter ThermoSmart den ved neste styringssyklus eller -hendelse."
+        }
+      },
+      "state_hvac": {
+        "title": "Påkrevd HVAC-modus (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nDefiner HVAC-modusen denne TRV-en må ha. Hvis den avviker, bytter ThermoSmart den ved neste styringssyklus eller -hendelse.",
+        "data": {
+          "hvac_mode": "HVAC-modus"
+        }
+      },
+      "state_remove": {
+        "title": "Fjern tilstandsinnstillinger (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nVelg tilstandsinnstillingene ThermoSmart skal slutte å håndheve for denne TRV-en.",
+        "data": {
+          "remove": "Innstillinger som skal fjernes"
         }
       },
       "schedule": {
@@ -143,7 +288,6 @@
           "vacation_temp": "Ferietemperatur",
           "eco_temp": "Eco-temperatur",
           "window_open_temp": "Temperatur ved åpent vindu",
-          "temp_tolerance": "Temperaturtolerance",
           "schedule_enabled": "Aktiver tidsplan",
           "sched_wd_morning": "Hverdag: Komfort fra",
           "sched_wd_night": "Hverdag: Natt fra",
@@ -158,8 +302,7 @@
           "sched_we_night": "Natttemperaturen gjelder fra dette tidspunktet",
           "away_temp": "Brukes automatisk bare når tilstedeværelsesgjenkjenning er konfigurert (Trinn 3). Kan også angis manuelt via modusvelgeren.",
           "eco_temp": "Brukes når modusvelgeren manuelt er satt til 'Eco'. Aktiveres ikke automatisk.",
-          "window_open_temp": "Måltemperatur mens et vindu er åpent. For termostater som ikke støtter svært lave innstillinger, bruk en høyere verdi som f.eks. 10 °C.",
-          "temp_tolerance": "Minimumsendring av det beregnede TRV-setpunktet før ThermoSmart sender en ny oppdatering. Reduserer unødvendige skrivinger til termostaten. 0,5 °C fungerer bra for de fleste rom."
+          "window_open_temp": "Måltemperatur mens et vindu er åpent. For termostater som ikke støtter svært lave innstillinger, bruk en høyere verdi som f.eks. 10 °C."
         }
       },
       "presence": {

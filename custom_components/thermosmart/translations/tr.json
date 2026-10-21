@@ -14,7 +14,7 @@
         "description": "Global yaz modu seçiciyi (Otomatik / Açık / Kapalı) ve tatil anahtarını yapılandırır. Termostat gerekmez. Her iki kontrol de aynı anda tüm bölgelere uygulanır."
       },
       "add_zone": {
-        "title": "Adım 1 / 4 – Cihazlar ve sensörler",
+        "title": "Adım 1 – Cihazlar ve sensörler",
         "description": "Bu ısıtma bölgesi için TRV'leri ve sensörleri seçin. Kalibrasyon varlıkları ve quirk anahtarları otomatik olarak algılanır.",
         "data": {
           "name": "Bölge adı (ör. Oturma odası)",
@@ -23,19 +23,91 @@
           "humidity_sensors": "İç mekan nem sensörleri",
           "window_sensors": "Pencere sensörleri (binary_sensor)",
           "window_open_delay": "Isıtma kapat – pencere açıldıktan sonra gecikme",
-          "window_close_delay": "Isıtma aç – pencere kapandıktan sonra gecikme",
-          "valve_maintenance": "Valf bakımını etkinleştir (Pazar 03:00 – yalnızca yaz modu veya tatil)",
-          "manage_temp_source": "Desteklenen TRV'ler için harici oda sıcaklığını otomatik kullan",
-          "calibration_invert": "Kalibrasyon ofsetini ters çevir (işareti tersine çeviren ME167 gibi TRV'ler için)"
+          "window_close_delay": "Isıtma aç – pencere kapandıktan sonra gecikme"
+        }
+      },
+      "control_options": {
+        "title": "Adım 2 – Bölge kontrol stratejisi",
+        "description": "Bir bölge varsayılanı seçin. Cihaz başına ayarlar (sonraki sayfalar) bu stratejiyi geçersiz kılabilir.\n\nAlgılanan cihazlar:\n\n{detected_devices}",
+        "data": {
+          "zone_control_mode": "Bölge kontrol modu",
+          "control_interval": "Minimum kontrol döngüsü aralığı",
+          "temp_tolerance": "Sıcaklık toleransı",
+          "ext_temp_threshold": "Dış sıcaklık yazma eşiği"
         },
         "data_description": {
-          "valve_maintenance": "Uzun ısıtmasız dönemler boyunca vanaların sıkışmasını önler. Yaz Modu veya Tatil Modu etkinken ThermoSmart vanaları zaman zaman otomatik olarak hareket ettirir.",
-          "manage_temp_source": "ThermoSmart, kendi kontrol mantığı için harici sıcaklık sensörlerini kullanmaya devam eder. Etkinleştirildiğinde, ThermoSmart desteklenen TRV'leri harici sıcaklık kaynağına da geçirir ve harici sensörler kullanılamaz hale gelirse TRV'nin dahili sensörüne geri döner.",
-          "calibration_invert": "Standart davranıştan farklı offset yönüne sahip belirli TRV modelleri için kalibrasyon offset işaretini tersine çevirir. Yalnızca cihazınız gerektiriyorsa etkinleştirin."
+          "zone_control_mode": "**Yalnızca set noktası:** ThermoSmart düz hedef sıcaklığı gönderir ve TRV vanasını kendisi ayarlar.\n\n**TPI set noktası modülasyonu:** ThermoSmart ısıtma talebini hesaplar ve vanayı açmak veya kapatmak için TRV'ye gönderilen set noktasını yükseltir veya düşürür.\n\n**Doğrudan vana kontrolü:** ThermoSmart hesaplanan vana açıklığını (0–100 %) TRV'nin vana konumu varlığına yazar ve düz hedefi set noktası olarak gönderir.",
+          "control_interval": "Düzenli kontrol döngüleri arasındaki minimum süre. Her döngü ısıtma talebini yeniden hesaplar ve set noktalarını, vana konumlarını ve durum ayarlarını TRV'lere yazar. Pencere açma veya manuel geçersiz kılma gibi olaylar daha erken ek bir döngüyü tetikleyebilir. Daha kısa aralıklar daha hızlı tepki verir ancak cihazları aşırı yükleyebilir veya Zigbee gibi ağları tıkayabilir. Pratikte, yeni değerlerin TRV'ye gönderilmesi için aşılması gereken makul sıcaklık değişim eşikleriyle birlikte 2–3 dakika yeterli olmalıdır.",
+          "ext_temp_threshold": "Dış sıcaklık yalnızca fark bu eşiğe ulaştıktan sonra yazılır ve güncellemeyi alması gereken her TRV için etkinleştirilmelidir."
+        }
+      },
+      "device_settings": {
+        "title": "Adım 3 – TRV ayarları (TRV {index}/{total})",
+        "description": "**Bölge:** {zone}\n**TRV {index} / {total}:** {device_name}\n\nBu ayarlar yalnızca bu TRV için geçerlidir. Sonraki adımda bu TRV için durum ayarlarını tanımlayabilirsiniz.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Kontrol modu",
+          "valve_entity": "Vana kontrol varlığı",
+          "feed_external_temp": "Oda sıcaklığını TRV'ye besle",
+          "ext_temp_entity": "Dış sıcaklık giriş varlığı",
+          "calibration_invert": "Kalibrasyon ofsetini ters çevir",
+          "valve_maintenance": "Vana egzersizi / bakımını etkinleştir"
+        },
+        "data_description": {
+          "feed_external_temp": "Oda sıcaklığını TRV'ye gönderir. Aşağıda doğru dış sıcaklık giriş varlığının seçilmesini gerektirir; o olmadan hiçbir şey gönderilmez.",
+          "valve_maintenance": "Uzun ısıtmasız dönemlerde vanaların sıkışmasını önler. Yaz Modu veya Tatil Modu etkinken ThermoSmart vanaları ara sıra otomatik olarak hareket ettirir."
+        }
+      },
+      "state_menu": {
+        "title": "Adım 3 – TRV durum ayarları (TRV {index}/{total})",
+        "description": "**Bölge:** {zone}\n**TRV {index} / {total}:** {device_name}\n\nDurum ayarları, bu TRV'nin seçilen varlıklarını (select, number veya switch) ve HVAC modunu sizin tanımladığınız bir değerde tutar. Her kontrol döngüsünde veya kontrol olayında ThermoSmart bunları denetler ve yalnızca farklıysa bir değer ayarlar. Buna ihtiyacınız yoksa listeyi boş bırakın.\n\n**Şu anda yapılandırılmış olanlar:**\n\n{state_rules}\n\nBir eylem seçin. İşiniz bittiğinde **Bu TRV ile işim bitti** seçeneğini seçin.",
+        "menu_options": {
+          "state_add_device": "Bu TRV'nin bir varlığını ekle",
+          "state_add_any": "Başka herhangi bir varlık ekle",
+          "state_hvac": "Gerekli HVAC modunu ayarla",
+          "state_remove": "Ayarları kaldır",
+          "state_done": "Bu TRV ile işim bitti"
+        }
+      },
+      "state_add_device": {
+        "title": "Adım 3 – Durum ayarı ekle (TRV {index}/{total})",
+        "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın belirli bir değerde tutması gereken varlığı seçin. {scope}\n\nDeğeri sonraki sayfada seçersiniz.",
+        "data": {
+          "entity_id": "Varlık"
+        }
+      },
+      "state_add_any": {
+        "title": "Adım 3 – Durum ayarı ekle (TRV {index}/{total})",
+        "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın belirli bir değerde tutması gereken varlığı seçin. {scope}\n\nDeğeri sonraki sayfada seçersiniz.",
+        "data": {
+          "entity_id": "Varlık"
+        }
+      },
+      "state_value": {
+        "title": "Adım 3 – Durum ayarı değeri (TRV {index}/{total})",
+        "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın **{entity}** için uygulayacağı değeri tanımlayın.\n\nGeçerli değer: {current}",
+        "data": {
+          "value": "Uygulanacak değer"
+        },
+        "data_description": {
+          "value": "Varlık bu değerden farklıysa ThermoSmart bir sonraki kontrol döngüsünde veya olayında onu ayarlar."
+        }
+      },
+      "state_hvac": {
+        "title": "Adım 3 – Gerekli HVAC modu (TRV {index}/{total})",
+        "description": "**TRV {index} / {total}:** {device_name}\n\nBu TRV'nin içinde olması gereken HVAC modunu tanımlayın. Farklıysa ThermoSmart bir sonraki kontrol döngüsünde veya olayında modu değiştirir.",
+        "data": {
+          "hvac_mode": "HVAC modu"
+        }
+      },
+      "state_remove": {
+        "title": "Adım 3 – Durum ayarlarını kaldır (TRV {index}/{total})",
+        "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın bu TRV için uygulamayı bırakması gereken durum ayarlarını seçin.",
+        "data": {
+          "remove": "Kaldırılacak ayarlar"
         }
       },
       "schedule": {
-        "title": "Adım 2 / 4 – Sıcaklıklar ve program",
+        "title": "Adım 4 – Sıcaklıklar ve program",
         "description": "Günlük akış: Gece → Konfor → Gece\n\nTüm kişiler uzakta olduğunda, ThermoSmart programdan bağımsız olarak otomatik olarak uzakta sıcaklığına geçer.",
         "data": {
           "comfort_temp": "Konfor sıcaklığı (biri evdeyken)",
@@ -44,7 +116,6 @@
           "vacation_temp": "Tatil sıcaklığı (don koruması)",
           "eco_temp": "Eco sıcaklığı (enerji tasarrufu, gece ile konfor arası)",
           "window_open_temp": "Pencere açık sıcaklığı",
-          "temp_tolerance": "Sıcaklık toleransı – set noktası güncelleme eşiği",
           "schedule_enabled": "Zaman programını etkinleştir",
           "sched_wd_morning": "Hafta içi: Konfor saat",
           "sched_wd_night": "Hafta içi: Gece saat",
@@ -59,12 +130,11 @@
           "sched_we_night": "Gece sıcaklığı bu saatten itibaren geçerlidir",
           "away_temp": "Yalnızca varlık algılama yapılandırıldığında (Adım 3) otomatik olarak uygulanır. Mod seçici aracılığıyla da manuel olarak ayarlanabilir.",
           "eco_temp": "Mod seçici 'Eco' olarak manuel ayarlandığında kullanılır. Otomatik olarak etkinleştirilmez.",
-          "window_open_temp": "Pencere açıkken hedef sıcaklık. Çok düşük değerleri desteklemeyen termostatlar için 10 °C gibi daha yüksek bir değer kullanın.",
-          "temp_tolerance": "ThermoSmart'ın yeni bir güncelleme göndermeden önce hesaplanan TRV set noktasındaki minimum değişiklik. Termostata gereksiz yazmaları azaltır. 0,5 °C çoğu oda için iyi çalışır."
+          "window_open_temp": "Pencere açıkken hedef sıcaklık. Çok düşük değerleri desteklemeyen termostatlar için 10 °C gibi daha yüksek bir değer kullanın."
         }
       },
       "presence": {
-        "title": "Adım 3 / 4 – Varlık ve öğrenme",
+        "title": "Adım 5 – Varlık",
         "description": "Evde kim var? ThermoSmart, herkes gittiğinde otomatik olarak uzakta moduna geçer.",
         "data": {
           "presence_persons": "Varlık algılama için kişiler",
@@ -72,7 +142,7 @@
         }
       },
       "weather": {
-        "title": "Adım 4 / 4 – Hava durumu ve dış sensörler",
+        "title": "Adım 6 – Hava durumu ve dış sensörler",
         "description": "Tüm alanlar isteğe bağlıdır – kendi sensörleriniz hava durumu varlığına göre önceliklidir. Sistem hava durumu verileri olmadan da çalışır.",
         "data": {
           "weather_entity": "Hava durumu varlığı (ör. weather.home)",
@@ -105,8 +175,11 @@
     "step": {
       "init": {
         "title": "Ayarlar",
+        "description": "**{zone}** bölgesinin hangi bölümünü düzenleyeceğinizi seçin. Her bölüm ayrı ayrı kaydedilir.",
         "menu_options": {
           "devices": "Cihazlar ve sensörler",
+          "control_options": "Bölge kontrol stratejisi (varsayılan mod, aralık, eşikler)",
+          "device_settings": "TRV başına ayarlar (mod geçersiz kılma, varlıklar, durum ayarları)",
           "schedule": "Sıcaklıklar ve program",
           "presence": "Varlık ve öğrenme",
           "weather": "Hava durumu ve dış sensörler"
@@ -122,15 +195,87 @@
           "humidity_sensors": "İç mekan nem sensörleri",
           "window_sensors": "Pencere sensörleri",
           "window_open_delay": "Isıtma kapat – pencere açıldıktan sonra gecikme",
-          "window_close_delay": "Isıtma aç – pencere kapandıktan sonra gecikme",
-          "valve_maintenance": "Valf bakımını etkinleştir (yalnızca yaz / tatil modu)",
-          "manage_temp_source": "Desteklenen TRV'ler için harici oda sıcaklığını otomatik kullan",
-          "calibration_invert": "Kalibrasyon ofsetini ters çevir (ME167 ve benzerleri)"
+          "window_close_delay": "Isıtma aç – pencere kapandıktan sonra gecikme"
+        }
+      },
+      "control_options": {
+        "title": "Bölge kontrol stratejisi",
+        "description": "Bölge **{zone}**: bir bölge varsayılanı seçin. Cihaz başına ayarlar bu stratejiyi geçersiz kılabilir.",
+        "data": {
+          "zone_control_mode": "Bölge kontrol modu",
+          "control_interval": "Minimum kontrol döngüsü aralığı",
+          "temp_tolerance": "Sıcaklık toleransı",
+          "ext_temp_threshold": "Dış sıcaklık yazma eşiği"
         },
         "data_description": {
-          "valve_maintenance": "Uzun ısıtmasız dönemler boyunca vanaların sıkışmasını önler. Yaz Modu veya Tatil Modu etkinken ThermoSmart vanaları zaman zaman otomatik olarak hareket ettirir.",
-          "manage_temp_source": "ThermoSmart, kendi kontrol mantığı için harici sıcaklık sensörlerini kullanmaya devam eder. Etkinleştirildiğinde, ThermoSmart desteklenen TRV'leri harici sıcaklık kaynağına da geçirir ve harici sensörler kullanılamaz hale gelirse TRV'nin dahili sensörüne geri döner.",
-          "calibration_invert": "Standart davranıştan farklı offset yönüne sahip belirli TRV modelleri için kalibrasyon offset işaretini tersine çevirir. Yalnızca cihazınız gerektiriyorsa etkinleştirin."
+          "zone_control_mode": "**Yalnızca set noktası:** ThermoSmart düz hedef sıcaklığı gönderir ve TRV vanasını kendisi ayarlar.\n\n**TPI set noktası modülasyonu:** ThermoSmart ısıtma talebini hesaplar ve vanayı açmak veya kapatmak için TRV'ye gönderilen set noktasını yükseltir veya düşürür.\n\n**Doğrudan vana kontrolü:** ThermoSmart hesaplanan vana açıklığını (0–100 %) TRV'nin vana konumu varlığına yazar ve düz hedefi set noktası olarak gönderir.",
+          "control_interval": "Düzenli kontrol döngüleri arasındaki minimum süre. Her döngü ısıtma talebini yeniden hesaplar ve set noktalarını, vana konumlarını ve durum ayarlarını TRV'lere yazar. Pencere açma veya manuel geçersiz kılma gibi olaylar daha erken ek bir döngüyü tetikleyebilir. Daha kısa aralıklar daha hızlı tepki verir ancak cihazları aşırı yükleyebilir veya Zigbee gibi ağları tıkayabilir. Pratikte, yeni değerlerin TRV'ye gönderilmesi için aşılması gereken makul sıcaklık değişim eşikleriyle birlikte 2–3 dakika yeterli olmalıdır.",
+          "ext_temp_threshold": "Dış sıcaklık yalnızca fark bu eşiğe ulaştıktan sonra yazılır ve güncellemeyi alması gereken her TRV için etkinleştirilmelidir."
+        }
+      },
+      "device_settings": {
+        "title": "TRV ayarları (TRV {index}/{total})",
+        "description": "**Bölge:** {zone}\n**TRV {index} / {total}:** {device_name}\n\nBu ayarlar yalnızca bu TRV için geçerlidir. Sonraki adımda bu TRV için durum ayarlarını düzenleyebilirsiniz. Son TRV'yi tamamlayana kadar hiçbir şey kaydedilmez.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Kontrol modu",
+          "valve_entity": "Vana kontrol varlığı",
+          "feed_external_temp": "Oda sıcaklığını TRV'ye besle",
+          "ext_temp_entity": "Dış sıcaklık giriş varlığı",
+          "calibration_invert": "Kalibrasyon ofsetini ters çevir",
+          "valve_maintenance": "Vana egzersizi / bakımını etkinleştir"
+        },
+        "data_description": {
+          "feed_external_temp": "Oda sıcaklığını TRV'ye gönderir. Aşağıda doğru dış sıcaklık giriş varlığının seçilmesini gerektirir; o olmadan hiçbir şey gönderilmez.",
+          "valve_maintenance": "Uzun ısıtmasız dönemlerde vanaların sıkışmasını önler. Yaz Modu veya Tatil Modu etkinken ThermoSmart vanaları ara sıra otomatik olarak hareket ettirir."
+        }
+      },
+      "state_menu": {
+        "title": "TRV durum ayarları (TRV {index}/{total})",
+        "description": "**Bölge:** {zone}\n**TRV {index} / {total}:** {device_name}\n\nDurum ayarları, bu TRV'nin seçilen varlıklarını (select, number veya switch) ve HVAC modunu sizin tanımladığınız bir değerde tutar. Her kontrol döngüsünde veya kontrol olayında ThermoSmart bunları denetler ve yalnızca farklıysa bir değer ayarlar. Buna ihtiyacınız yoksa listeyi boş bırakın.\n\n**Şu anda yapılandırılmış olanlar:**\n\n{state_rules}\n\nBir eylem seçin. İşiniz bittiğinde **Bu TRV ile işim bitti** seçeneğini seçin; değişiklikler son TRV'den sonra kaydedilir.",
+        "menu_options": {
+          "state_add_device": "Bu TRV'nin bir varlığını ekle",
+          "state_add_any": "Başka herhangi bir varlık ekle",
+          "state_hvac": "Gerekli HVAC modunu ayarla",
+          "state_remove": "Ayarları kaldır",
+          "state_done": "Bu TRV ile işim bitti"
+        }
+      },
+      "state_add_device": {
+        "title": "Durum ayarı ekle (TRV {index}/{total})",
+        "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın belirli bir değerde tutması gereken varlığı seçin. {scope}\n\nDeğeri sonraki sayfada seçersiniz.",
+        "data": {
+          "entity_id": "Varlık"
+        }
+      },
+      "state_add_any": {
+        "title": "Durum ayarı ekle (TRV {index}/{total})",
+        "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın belirli bir değerde tutması gereken varlığı seçin. {scope}\n\nDeğeri sonraki sayfada seçersiniz.",
+        "data": {
+          "entity_id": "Varlık"
+        }
+      },
+      "state_value": {
+        "title": "Durum ayarı değeri (TRV {index}/{total})",
+        "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın **{entity}** için uygulayacağı değeri tanımlayın.\n\nGeçerli değer: {current}",
+        "data": {
+          "value": "Uygulanacak değer"
+        },
+        "data_description": {
+          "value": "Varlık bu değerden farklıysa ThermoSmart bir sonraki kontrol döngüsünde veya olayında onu ayarlar."
+        }
+      },
+      "state_hvac": {
+        "title": "Gerekli HVAC modu (TRV {index}/{total})",
+        "description": "**TRV {index} / {total}:** {device_name}\n\nBu TRV'nin içinde olması gereken HVAC modunu tanımlayın. Farklıysa ThermoSmart bir sonraki kontrol döngüsünde veya olayında modu değiştirir.",
+        "data": {
+          "hvac_mode": "HVAC modu"
+        }
+      },
+      "state_remove": {
+        "title": "Durum ayarlarını kaldır (TRV {index}/{total})",
+        "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın bu TRV için uygulamayı bırakması gereken durum ayarlarını seçin.",
+        "data": {
+          "remove": "Kaldırılacak ayarlar"
         }
       },
       "schedule": {
@@ -143,7 +288,6 @@
           "vacation_temp": "Tatil sıcaklığı",
           "eco_temp": "Eco sıcaklığı",
           "window_open_temp": "Pencere açık sıcaklığı",
-          "temp_tolerance": "Sıcaklık toleransı",
           "schedule_enabled": "Zaman programını etkinleştir",
           "sched_wd_morning": "Hafta içi: Konfor saat",
           "sched_wd_night": "Hafta içi: Gece saat",
@@ -158,12 +302,11 @@
           "sched_we_night": "Gece sıcaklığı bu saatten itibaren geçerlidir",
           "away_temp": "Yalnızca varlık algılama yapılandırıldığında (Adım 3) otomatik olarak uygulanır. Mod seçici aracılığıyla da manuel olarak ayarlanabilir.",
           "eco_temp": "Mod seçici 'Eco' olarak manuel ayarlandığında kullanılır. Otomatik olarak etkinleştirilmez.",
-          "window_open_temp": "Pencere açıkken hedef sıcaklık. Çok düşük değerleri desteklemeyen termostatlar için 10 °C gibi daha yüksek bir değer kullanın.",
-          "temp_tolerance": "ThermoSmart'ın yeni bir güncelleme göndermeden önce hesaplanan TRV set noktasındaki minimum değişiklik. Termostata gereksiz yazmaları azaltır. 0,5 °C çoğu oda için iyi çalışır."
+          "window_open_temp": "Pencere açıkken hedef sıcaklık. Çok düşük değerleri desteklemeyen termostatlar için 10 °C gibi daha yüksek bir değer kullanın."
         }
       },
       "presence": {
-        "title": "Varlık ve öğrenme",
+        "title": "Varlık",
         "description": "Evde kim var? ThermoSmart, herkes gittiğinde otomatik olarak uzakta moduna geçer.",
         "data": {
           "presence_persons": "Varlık algılama için kişiler",
