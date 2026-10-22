@@ -53,7 +53,8 @@
           "calibration_sync": "Kalibrierungs-Offset schreiben",
           "calibration_entity": "Entität für Kalibrierungs-Offset",
           "calibration_invert": "Kalibrierungs-Offset invertieren",
-          "valve_maintenance": "Ventilbewegung / Wartung aktivieren"
+          "valve_maintenance": "Ventilbewegung / Wartung aktivieren",
+          "window_off": "Bei geöffnetem Fenster ausschalten"
         },
         "data_description": {
           "feed_external_temp": "Sendet die Raumtemperatur an das TRV. Erfordert die Auswahl der richtigen Entity für den externen Temperatureingang unten; ohne sie wird nichts gesendet.",
@@ -61,7 +62,8 @@
           "calibration_sync": "Korrigiert den internen Temperatursensor des TRV, indem die Differenz zur Raumtemperatur in die unten gewählte Kalibrierungs-Entität geschrieben wird. Für TRVs mit externer Temperaturquelle ausschalten. Erfordert eine Kalibrierungs-Entität.",
           "calibration_entity": "Number-Entität mit dem lokalen Kalibrierungs-Offset des TRV. Leer lassen, um die Kalibrierung zu deaktivieren.",
           "calibration_invert": "Aktivieren, wenn der TRV den Offset mit umgekehrtem Vorzeichen anwendet.",
-          "valve_entity": "Number-Entität, die die Ventilöffnung dieses TRV steuert. Nur nötig, wenn die direkte Ventilsteuerung für diesen TRV aktiviert ist; andernfalls wird sie ignoriert und kann leer bleiben. ThermoSmart schreibt 0–100 (%), bzw. 0–1 bei Entitäten mit \"level\" im Namen."
+          "valve_entity": "Number-Entität, die die Ventilöffnung dieses TRV steuert. Nur nötig, wenn die direkte Ventilsteuerung für diesen TRV aktiviert ist; andernfalls wird sie ignoriert und kann leer bleiben. ThermoSmart schreibt 0–100 (%), bzw. 0–1 bei Entitäten mit \"level\" im Namen.",
+          "window_off": "Schaltet das Gerät aus (HVAC-Modus „Aus“), wenn ein Fenster geöffnet ist. Wenn du dies nutzt, stelle sicher, dass dein TRV auch im ausgeschalteten Zustand noch einen Frostschutz aktiv hat (manche Modelle haben das, andere nicht), damit nichts einfriert. Wenn du diesen Schalter deaktivierst, bleibt der TRV im Heizmodus und wird bei geöffnetem Fenster stattdessen auf die auf einer der nächsten Seiten festgelegte Fenster-offen-Zieltemperatur gesetzt."
         }
       },
       "state_menu": {
@@ -140,7 +142,7 @@
           "sched_we_night": "Ab dieser Uhrzeit gilt die Nachttemperatur",
           "away_temp": "Wird nur automatisch angewendet wenn die Präsenzerkennung konfiguriert ist (Schritt 3). Kann auch manuell über den Heizmodus-Selector gesetzt werden.",
           "eco_temp": "Wird verwendet wenn der Heizmodus-Selector manuell auf 'Eco' gesetzt wird. Wird nicht automatisch aktiviert.",
-          "window_open_temp": "Zieltemperatur, solange ein Fenster geöffnet ist. Für Thermostate, die sehr niedrige Sollwerte nicht unterstützen, kann z. B. 10 °C verwendet werden."
+          "window_open_temp": "Zieltemperatur, die bei geöffnetem Fenster am TRV eingestellt wird – außer der TRV ist so konfiguriert, dass er bei geöffnetem Fenster ausgeschaltet wird (siehe Geräteeinstellungen). Für Thermostate, die sehr niedrige Sollwerte nicht unterstützen, einen höheren Wert wie 10 °C verwenden."
         }
       },
       "presence": {
@@ -235,7 +237,8 @@
           "calibration_sync": "Kalibrierungs-Offset schreiben",
           "calibration_entity": "Entität für Kalibrierungs-Offset",
           "calibration_invert": "Kalibrierungs-Offset invertieren",
-          "valve_maintenance": "Ventilbewegung / Wartung aktivieren"
+          "valve_maintenance": "Ventilbewegung / Wartung aktivieren",
+          "window_off": "Bei geöffnetem Fenster ausschalten"
         },
         "data_description": {
           "feed_external_temp": "Sendet die Raumtemperatur an das TRV. Erfordert die Auswahl der richtigen Entity für den externen Temperatureingang unten; ohne sie wird nichts gesendet.",
@@ -243,7 +246,8 @@
           "calibration_sync": "Korrigiert den internen Temperatursensor des TRV, indem die Differenz zur Raumtemperatur in die unten gewählte Kalibrierungs-Entität geschrieben wird. Für TRVs mit externer Temperaturquelle ausschalten. Erfordert eine Kalibrierungs-Entität.",
           "calibration_entity": "Number-Entität mit dem lokalen Kalibrierungs-Offset des TRV. Leer lassen, um die Kalibrierung zu deaktivieren.",
           "calibration_invert": "Aktivieren, wenn der TRV den Offset mit umgekehrtem Vorzeichen anwendet.",
-          "valve_entity": "Number-Entität, die die Ventilöffnung dieses TRV steuert. Nur nötig, wenn die direkte Ventilsteuerung für diesen TRV aktiviert ist; andernfalls wird sie ignoriert und kann leer bleiben. ThermoSmart schreibt 0–100 (%), bzw. 0–1 bei Entitäten mit \"level\" im Namen."
+          "valve_entity": "Number-Entität, die die Ventilöffnung dieses TRV steuert. Nur nötig, wenn die direkte Ventilsteuerung für diesen TRV aktiviert ist; andernfalls wird sie ignoriert und kann leer bleiben. ThermoSmart schreibt 0–100 (%), bzw. 0–1 bei Entitäten mit \"level\" im Namen.",
+          "window_off": "Schaltet das Gerät aus (HVAC-Modus „Aus“), wenn ein Fenster geöffnet ist. Wenn du dies nutzt, stelle sicher, dass dein TRV auch im ausgeschalteten Zustand noch einen Frostschutz aktiv hat (manche Modelle haben das, andere nicht), damit nichts einfriert. Wenn du diesen Schalter deaktivierst, bleibt der TRV im Heizmodus und wird bei geöffnetem Fenster stattdessen auf die auf einer der nächsten Seiten festgelegte Fenster-offen-Zieltemperatur gesetzt."
         }
       },
       "state_menu": {
@@ -322,7 +326,7 @@
           "sched_we_night": "Ab dieser Uhrzeit gilt die Nachttemperatur",
           "away_temp": "Wird nur automatisch angewendet wenn die Präsenzerkennung konfiguriert ist. Kann auch manuell über den Heizmodus-Selector gesetzt werden.",
           "eco_temp": "Wird verwendet wenn der Heizmodus-Selector manuell auf 'Eco' gesetzt wird. Wird nicht automatisch aktiviert.",
-          "window_open_temp": "Zieltemperatur, solange ein Fenster geöffnet ist. Für Thermostate, die sehr niedrige Sollwerte nicht unterstützen, kann z. B. 10 °C verwendet werden."
+          "window_open_temp": "Zieltemperatur, die bei geöffnetem Fenster am TRV eingestellt wird – außer der TRV ist so konfiguriert, dass er bei geöffnetem Fenster ausgeschaltet wird (siehe Geräteeinstellungen). Für Thermostate, die sehr niedrige Sollwerte nicht unterstützen, einen höheren Wert wie 10 °C verwenden."
         }
       },
       "presence": {

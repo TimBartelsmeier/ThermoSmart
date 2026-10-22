@@ -25,6 +25,7 @@ from .const import (
     CONF_DEV_CALIBRATION_ENTITY,
     CONF_DEV_CALIBRATION_SYNC,
     CONF_DEV_CALIBRATION_INVERT,
+    CONF_DEV_WINDOW_OFF,
     CONF_DEV_STATE_SETTINGS,
     CONTROL_MODE_INHERIT,
     CONTROL_MODE_SETPOINT,
@@ -547,8 +548,45 @@ class TRVControlMixin:
                     self.zone_name, entity_id, target, err,
                 )
 
+    def _window_off_wanted(self, entity_id: str, state, cfg: dict) -> bool:
+        """True if this TRV should be turned off (not setpoint-lowered) on an open window."""
+        settings = cfg.get(CONF_DEVICE_SETTINGS, {}).get(entity_id, {})
+        if not settings.get(CONF_DEV_WINDOW_OFF, False):
+            return False
+        if "off" not in (state.attributes.get("hvac_modes") or []):
+            _LOGGER.debug(
+                "ThermoSmart '%s': %s has no 'off' mode – using window-open setpoint instead",
+                self.zone_name, entity_id,
+            )
+            return False
+        return True
+
+    async def _async_restore_after_window_off(self, cfg: dict) -> None:
+        """Switch TRVs that were turned off for an open window back to heat."""
+        for entity_id in list(self._window_off_entities):
+            self._window_off_entities.discard(entity_id)
+            # The window-open phase wrote no setpoint; a stale value would make the
+            # manual-change listener misread the TRV's first report after re-heating.
+            self._last_written_setpoints.pop(entity_id, None)
+            state = self._get_trv_state(entity_id)
+            if state is None or state.state != "off":
+                continue
+            if "heat" not in (state.attributes.get("hvac_modes") or []):
+                continue
+            try:
+                await self.hass.services.async_call(
+                    "climate", "set_hvac_mode",
+                    {"entity_id": entity_id, "hvac_mode": "heat"},
+                    blocking=True,
+                )
+            except Exception as err:
+                _LOGGER.warning(
+                    "ThermoSmart '%s': could not re-enable heat mode on %s: %s",
+                    self.zone_name, entity_id, err,
+                )
+
     async def _apply_temperature(self, cfg: dict, recommendation: dict) -> "_DispatchStats":
-        """TRV-Setpoints schreiben oder 5°C bei geöffnetem Fenster setzen.
+        """TRV-Setpoints schreiben; bei geöffnetem Fenster Fenster-Setpoint setzen oder TRV ausschalten.
 
         _last_written_setpoints is updated only for entities where the service call
         actually succeeded.  This prevents false manual-override detection after a
@@ -563,11 +601,22 @@ class TRVControlMixin:
                 effective_frost = cfg.get(CONF_WINDOW_OPEN_TEMP, WINDOW_OPEN_SETPOINT)
                 # Collect (entity_id, frost_temp, coro) so results can be paired with entities.
                 _frost_pending: list = []
+                _off_pending: list = []
                 for entity_id in cfg.get("climate_entities", []):
                     await self._async_enforce_device_state_settings(entity_id, cfg)
                     state = self._get_trv_state(entity_id)
                     if state is None:
                         continue
+                    if self._window_off_wanted(entity_id, state, cfg):
+                        self._window_off_entities.add(entity_id)
+                        if state.state != "off":
+                            _off_pending.append((entity_id, self.hass.services.async_call(
+                                "climate", "set_hvac_mode",
+                                {"entity_id": entity_id, "hvac_mode": "off"},
+                                blocking=True,
+                            )))
+                        continue
+                    self._window_off_entities.discard(entity_id)
                     if not self._supports_single_setpoint(entity_id, state):
                         continue
                     frost_temp = cfg.get(CONF_WINDOW_OPEN_TEMP, WINDOW_OPEN_SETPOINT)
@@ -612,6 +661,18 @@ class TRVControlMixin:
                          "temperature": from_internal_temperature_c(self.hass, frost_temp)},
                         blocking=True,
                     )))
+                if _off_pending:
+                    _off_results = await asyncio.gather(
+                        *[coro for _, coro in _off_pending], return_exceptions=True)
+                    for (eid, _), result in zip(_off_pending, _off_results):
+                        if isinstance(result, BaseException):
+                            _LOGGER.debug(
+                                "ThermoSmart '%s': window-open turn-off failed for %s: %s",
+                                self.zone_name, eid, result,
+                            )
+                            stats.record(result, entity_id=eid)
+                        else:
+                            stats.record(None)
                 if _frost_pending:
                     _results = await asyncio.gather(
                         *[coro for _, _, coro in _frost_pending], return_exceptions=True)
@@ -630,6 +691,8 @@ class TRVControlMixin:
                 # would show the stale pre-window-open setpoint for one full cycle.
                 recommendation["trv_setpoint"] = effective_frost
             return stats
+
+        await self._async_restore_after_window_off(cfg)
 
         if not (5.0 <= target <= 30.0):
             _LOGGER.warning(

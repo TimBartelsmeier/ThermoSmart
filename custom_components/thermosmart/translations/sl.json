@@ -53,7 +53,8 @@
           "calibration_sync": "Zapiši odmik kalibracije",
           "calibration_entity": "Entiteta odmika kalibracije",
           "calibration_invert": "Obrni kalibracijski odmik",
-          "valve_maintenance": "Omogoči razgibavanje / vzdrževanje ventila"
+          "valve_maintenance": "Omogoči razgibavanje / vzdrževanje ventila",
+          "window_off": "Izklopi ob odprtem oknu"
         },
         "data_description": {
           "feed_external_temp": "Pošilja sobno temperaturo na TRV. Zahteva izbiro ustrezne vhodne entitete zunanje temperature spodaj; brez nje se ne pošlje nič.",
@@ -61,7 +62,8 @@
           "calibration_sync": "Popravi notranji temperaturni senzor TRV tako, da razliko do sobne temperature zapiše v spodnjo entiteto kalibracije. Izklopite za TRV z zunanjim virom temperature. Zahteva entiteto kalibracije.",
           "calibration_entity": "Številska entiteta z lokalnim odmikom kalibracije TRV. Pustite prazno, da izklopite kalibracijo.",
           "calibration_invert": "Vklopite, če TRV uporablja odmik z nasprotnim predznakom.",
-          "valve_entity": "Številska entiteta, ki nadzoruje odprtost ventila tega TRV. Potrebna le, če je za ta TRV omogočeno neposredno krmiljenje ventila; sicer se prezre in jo lahko pustite prazno. ThermoSmart zapiše 0–100 (%) ali 0–1 za entitete z \"level\" v imenu."
+          "valve_entity": "Številska entiteta, ki nadzoruje odprtost ventila tega TRV. Potrebna le, če je za ta TRV omogočeno neposredno krmiljenje ventila; sicer se prezre in jo lahko pustite prazno. ThermoSmart zapiše 0–100 (%) ali 0–1 za entitete z \"level\" v imenu.",
+          "window_off": "Izklopi napravo (način HVAC izklopljen), ko je okno odprto. Če to uporabljate, poskrbite, da ima TRV tudi v izklopljenem stanju še vedno vklopljeno zaščito pred zmrzaljo (nekateri modeli jo imajo, drugi ne), da ne zmrzne. Če to stikalo izklopite, TRV ostane v načinu ogrevanja, vendar se ob odprtem oknu nastavi na ciljno temperaturo za odprto okno, določeno na eni od naslednjih strani."
         }
       },
       "state_menu": {
@@ -140,7 +142,7 @@
           "sched_we_night": "Nočna temperatura velja od tega časa",
           "away_temp": "Samodejno se uporabi samo, ko je konfigurirana zaznava prisotnosti (Korak 3). Lahko se nastavi tudi ročno prek izbirnika načina.",
           "eco_temp": "Uporablja se, ko je izbirnik načina ročno nastavljen na 'Eco'. Ne aktivira se samodejno.",
-          "window_open_temp": "Ciljna temperatura, ko je okno odprto. Za termostate, ki ne podpirajo zelo nizkih vrednosti, uporabite višjo vrednost, npr. 10 °C."
+          "window_open_temp": "Ciljna temperatura, nastavljena na TRV, medtem ko je okno odprto, razen če je ta TRV nastavljen na izklop (glejte nastavitve posamezne naprave). Za termostate, ki ne podpirajo zelo nizkih vrednosti, uporabite višjo vrednost, npr. 10 °C."
         }
       },
       "presence": {
@@ -235,7 +237,8 @@
           "calibration_sync": "Zapiši odmik kalibracije",
           "calibration_entity": "Entiteta odmika kalibracije",
           "calibration_invert": "Obrni kalibracijski odmik",
-          "valve_maintenance": "Omogoči razgibavanje / vzdrževanje ventila"
+          "valve_maintenance": "Omogoči razgibavanje / vzdrževanje ventila",
+          "window_off": "Izklopi ob odprtem oknu"
         },
         "data_description": {
           "feed_external_temp": "Pošilja sobno temperaturo na TRV. Zahteva izbiro ustrezne vhodne entitete zunanje temperature spodaj; brez nje se ne pošlje nič.",
@@ -243,7 +246,8 @@
           "calibration_sync": "Popravi notranji temperaturni senzor TRV tako, da razliko do sobne temperature zapiše v spodnjo entiteto kalibracije. Izklopite za TRV z zunanjim virom temperature. Zahteva entiteto kalibracije.",
           "calibration_entity": "Številska entiteta z lokalnim odmikom kalibracije TRV. Pustite prazno, da izklopite kalibracijo.",
           "calibration_invert": "Vklopite, če TRV uporablja odmik z nasprotnim predznakom.",
-          "valve_entity": "Številska entiteta, ki nadzoruje odprtost ventila tega TRV. Potrebna le, če je za ta TRV omogočeno neposredno krmiljenje ventila; sicer se prezre in jo lahko pustite prazno. ThermoSmart zapiše 0–100 (%) ali 0–1 za entitete z \"level\" v imenu."
+          "valve_entity": "Številska entiteta, ki nadzoruje odprtost ventila tega TRV. Potrebna le, če je za ta TRV omogočeno neposredno krmiljenje ventila; sicer se prezre in jo lahko pustite prazno. ThermoSmart zapiše 0–100 (%) ali 0–1 za entitete z \"level\" v imenu.",
+          "window_off": "Izklopi napravo (način HVAC izklopljen), ko je okno odprto. Če to uporabljate, poskrbite, da ima TRV tudi v izklopljenem stanju še vedno vklopljeno zaščito pred zmrzaljo (nekateri modeli jo imajo, drugi ne), da ne zmrzne. Če to stikalo izklopite, TRV ostane v načinu ogrevanja, vendar se ob odprtem oknu nastavi na ciljno temperaturo za odprto okno, določeno na eni od naslednjih strani."
         }
       },
       "state_menu": {
@@ -322,7 +326,7 @@
           "sched_we_night": "Nočna temperatura velja od tega časa",
           "away_temp": "Samodejno se uporabi samo, ko je konfigurirana zaznava prisotnosti (Korak 3). Lahko se nastavi tudi ročno prek izbirnika načina.",
           "eco_temp": "Uporablja se, ko je izbirnik načina ročno nastavljen na 'Eco'. Ne aktivira se samodejno.",
-          "window_open_temp": "Ciljna temperatura, ko je okno odprto. Za termostate, ki ne podpirajo zelo nizkih vrednosti, uporabite višjo vrednost, npr. 10 °C."
+          "window_open_temp": "Ciljna temperatura, nastavljena na TRV, medtem ko je okno odprto, razen če je ta TRV nastavljen na izklop (glejte nastavitve posamezne naprave). Za termostate, ki ne podpirajo zelo nizkih vrednosti, uporabite višjo vrednost, npr. 10 °C."
         }
       },
       "presence": {

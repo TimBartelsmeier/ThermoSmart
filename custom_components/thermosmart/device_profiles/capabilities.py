@@ -78,6 +78,7 @@ class DevicePreset:
     calibration_inverted: bool = False
     valve_maintenance: bool = True
     feed_external_temp: bool = False
+    window_off: bool = False
     calibration_sync: bool = True
     quirk_entity_patterns: tuple[str, ...] = ()
     default_state_settings: list[dict[str, str]] = field(default_factory=list)

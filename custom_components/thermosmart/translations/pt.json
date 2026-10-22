@@ -53,7 +53,8 @@
           "calibration_sync": "Escrever desvio de calibração",
           "calibration_entity": "Entidade do desvio de calibração",
           "calibration_invert": "Inverter offset de calibração",
-          "valve_maintenance": "Ativar exercício / manutenção da válvula"
+          "valve_maintenance": "Ativar exercício / manutenção da válvula",
+          "window_off": "Desligar quando uma janela está aberta"
         },
         "data_description": {
           "feed_external_temp": "Envia a temperatura ambiente ao TRV. Requer a seleção da entidade de entrada de temperatura externa correta abaixo; sem ela, nada é enviado.",
@@ -61,7 +62,8 @@
           "calibration_sync": "Corrige o sensor de temperatura interno do TRV escrevendo a diferença para a temperatura ambiente na entidade de calibração abaixo. Desative para TRV que usam uma fonte de temperatura externa. Requer uma entidade de calibração.",
           "calibration_entity": "Entidade numérica com o desvio de calibração local do TRV. Deixe vazio para desativar a calibração.",
           "calibration_invert": "Ative se o TRV aplicar o desvio com o sinal oposto.",
-          "valve_entity": "Entidade numérica que controla a abertura da válvula deste TRV. Só é necessária se o controlo direto da válvula estiver ativado para este TRV; caso contrário é ignorada e pode ficar vazia. O ThermoSmart escreve 0–100 (%), ou 0–1 para entidades com \"level\" no nome."
+          "valve_entity": "Entidade numérica que controla a abertura da válvula deste TRV. Só é necessária se o controlo direto da válvula estiver ativado para este TRV; caso contrário é ignorada e pode ficar vazia. O ThermoSmart escreve 0–100 (%), ou 0–1 para entidades com \"level\" no nome.",
+          "window_off": "Desliga o dispositivo (modo HVAC desligado) quando uma janela está aberta. Se usar isto, certifique-se de que o TRV mantém a proteção contra congelamento ativa quando desligado (alguns modelos têm, outros não) para evitar o congelamento. Se desativar este interruptor, o TRV é mantido em modo de aquecimento, mas definido para a temperatura alvo de janela aberta definida numa das páginas seguintes."
         }
       },
       "state_menu": {
@@ -140,7 +142,7 @@
           "sched_we_night": "A temperatura noturna aplica-se a partir desta hora",
           "away_temp": "Aplicada automaticamente apenas quando a deteção de presença está configurada (Passo 3). Pode também ser definida manualmente através do seletor de modo.",
           "eco_temp": "Usada quando o seletor de modo é definido manualmente para 'Eco'. Não é ativada automaticamente.",
-          "window_open_temp": "Temperatura alvo enquanto uma janela está aberta. Para termostatos que não suportam valores muito baixos, use um valor mais alto como 10 °C."
+          "window_open_temp": "Temperatura alvo definida num TRV enquanto uma janela está aberta, a menos que esse TRV esteja configurado para ser desligado (consulte as definições por dispositivo). Para termóstatos que não suportam valores muito baixos, use um valor mais alto, como 10 °C."
         }
       },
       "presence": {
@@ -235,7 +237,8 @@
           "calibration_sync": "Escrever desvio de calibração",
           "calibration_entity": "Entidade do desvio de calibração",
           "calibration_invert": "Inverter offset de calibração",
-          "valve_maintenance": "Ativar exercício / manutenção da válvula"
+          "valve_maintenance": "Ativar exercício / manutenção da válvula",
+          "window_off": "Desligar quando uma janela está aberta"
         },
         "data_description": {
           "feed_external_temp": "Envia a temperatura ambiente ao TRV. Requer a seleção da entidade de entrada de temperatura externa correta abaixo; sem ela, nada é enviado.",
@@ -243,7 +246,8 @@
           "calibration_sync": "Corrige o sensor de temperatura interno do TRV escrevendo a diferença para a temperatura ambiente na entidade de calibração abaixo. Desative para TRV que usam uma fonte de temperatura externa. Requer uma entidade de calibração.",
           "calibration_entity": "Entidade numérica com o desvio de calibração local do TRV. Deixe vazio para desativar a calibração.",
           "calibration_invert": "Ative se o TRV aplicar o desvio com o sinal oposto.",
-          "valve_entity": "Entidade numérica que controla a abertura da válvula deste TRV. Só é necessária se o controlo direto da válvula estiver ativado para este TRV; caso contrário é ignorada e pode ficar vazia. O ThermoSmart escreve 0–100 (%), ou 0–1 para entidades com \"level\" no nome."
+          "valve_entity": "Entidade numérica que controla a abertura da válvula deste TRV. Só é necessária se o controlo direto da válvula estiver ativado para este TRV; caso contrário é ignorada e pode ficar vazia. O ThermoSmart escreve 0–100 (%), ou 0–1 para entidades com \"level\" no nome.",
+          "window_off": "Desliga o dispositivo (modo HVAC desligado) quando uma janela está aberta. Se usar isto, certifique-se de que o TRV mantém a proteção contra congelamento ativa quando desligado (alguns modelos têm, outros não) para evitar o congelamento. Se desativar este interruptor, o TRV é mantido em modo de aquecimento, mas definido para a temperatura alvo de janela aberta definida numa das páginas seguintes."
         }
       },
       "state_menu": {
@@ -322,7 +326,7 @@
           "sched_we_night": "A temperatura noturna aplica-se a partir desta hora",
           "away_temp": "Aplicada automaticamente apenas quando a deteção de presença está configurada (Passo 3). Pode também ser definida manualmente através do seletor de modo.",
           "eco_temp": "Usada quando o seletor de modo é definido manualmente para 'Eco'. Não é ativada automaticamente.",
-          "window_open_temp": "Temperatura alvo enquanto uma janela está aberta. Para termostatos que não suportam valores muito baixos, use um valor mais alto como 10 °C."
+          "window_open_temp": "Temperatura alvo definida num TRV enquanto uma janela está aberta, a menos que esse TRV esteja configurado para ser desligado (consulte as definições por dispositivo). Para termóstatos que não suportam valores muito baixos, use um valor mais alto, como 10 °C."
         }
       },
       "presence": {

@@ -53,7 +53,8 @@
           "calibration_sync": "写入校准偏移",
           "calibration_entity": "校准偏移实体",
           "calibration_invert": "反转校准偏移",
-          "valve_maintenance": "启用阀门活动 / 维护"
+          "valve_maintenance": "启用阀门活动 / 维护",
+          "window_off": "窗户打开时关闭"
         },
         "data_description": {
           "feed_external_temp": "将室温发送给 TRV。需要在下方选择正确的外部温度输入实体；否则不会发送任何内容。",
@@ -61,7 +62,8 @@
           "calibration_sync": "通过将与室温的差值写入下方的校准实体来校正 TRV 内部温度传感器。使用外部温度源的 TRV 请关闭。需要校准实体。",
           "calibration_entity": "保存 TRV 本地校准偏移的数值实体。留空则禁用校准。",
           "calibration_invert": "如果 TRV 以相反符号应用偏移，请启用。",
-          "valve_entity": "控制此 TRV 阀门开度的数值实体。仅在为此 TRV 启用直接阀门控制时需要，否则将被忽略，可留空。ThermoSmart 写入 0–100（%），名称中含 \"level\" 的实体则写入 0–1。"
+          "valve_entity": "控制此 TRV 阀门开度的数值实体。仅在为此 TRV 启用直接阀门控制时需要，否则将被忽略，可留空。ThermoSmart 写入 0–100（%），名称中含 \"level\" 的实体则写入 0–1。",
+          "window_off": "窗户打开时关闭设备（HVAC 模式为关）。使用此选项时，请确保您的 TRV 在关闭状态下仍启用防冻保护（部分型号具备，部分不具备），以防冻结。如果关闭此开关，TRV 将保持制热模式，但窗户打开时会改为设置为后续页面之一中定义的窗户打开目标温度。"
         }
       },
       "state_menu": {
@@ -140,7 +142,7 @@
           "sched_we_night": "夜间温度从此时间起生效",
           "away_temp": "仅在配置了存在检测时自动应用（步骤 3）。也可通过模式选择器手动设置。",
           "eco_temp": "当模式选择器手动设置为 'Eco' 时使用。不会自动激活。",
-          "window_open_temp": "窗户打开时的目标温度。对于不支持非常低设定点的恒温器，请使用较高值，例如 10 °C。"
+          "window_open_temp": "窗户打开时设置在 TRV 上的目标温度，除非该 TRV 被配置为窗户打开时关闭（见各设备设置）。对于不支持极低设定值的恒温器，请使用较高的值，例如 10 °C。"
         }
       },
       "presence": {
@@ -235,7 +237,8 @@
           "calibration_sync": "写入校准偏移",
           "calibration_entity": "校准偏移实体",
           "calibration_invert": "反转校准偏移",
-          "valve_maintenance": "启用阀门活动 / 维护"
+          "valve_maintenance": "启用阀门活动 / 维护",
+          "window_off": "窗户打开时关闭"
         },
         "data_description": {
           "feed_external_temp": "将室温发送给 TRV。需要在下方选择正确的外部温度输入实体；否则不会发送任何内容。",
@@ -243,7 +246,8 @@
           "calibration_sync": "通过将与室温的差值写入下方的校准实体来校正 TRV 内部温度传感器。使用外部温度源的 TRV 请关闭。需要校准实体。",
           "calibration_entity": "保存 TRV 本地校准偏移的数值实体。留空则禁用校准。",
           "calibration_invert": "如果 TRV 以相反符号应用偏移，请启用。",
-          "valve_entity": "控制此 TRV 阀门开度的数值实体。仅在为此 TRV 启用直接阀门控制时需要，否则将被忽略，可留空。ThermoSmart 写入 0–100（%），名称中含 \"level\" 的实体则写入 0–1。"
+          "valve_entity": "控制此 TRV 阀门开度的数值实体。仅在为此 TRV 启用直接阀门控制时需要，否则将被忽略，可留空。ThermoSmart 写入 0–100（%），名称中含 \"level\" 的实体则写入 0–1。",
+          "window_off": "窗户打开时关闭设备（HVAC 模式为关）。使用此选项时，请确保您的 TRV 在关闭状态下仍启用防冻保护（部分型号具备，部分不具备），以防冻结。如果关闭此开关，TRV 将保持制热模式，但窗户打开时会改为设置为后续页面之一中定义的窗户打开目标温度。"
         }
       },
       "state_menu": {
@@ -322,7 +326,7 @@
           "sched_we_night": "夜间温度从此时间起生效",
           "away_temp": "仅在配置了存在检测时自动应用（步骤 3）。也可通过模式选择器手动设置。",
           "eco_temp": "当模式选择器手动设置为 'Eco' 时使用。不会自动激活。",
-          "window_open_temp": "窗户打开时的目标温度。对于不支持非常低设定点的恒温器，请使用较高值，例如 10 °C。"
+          "window_open_temp": "窗户打开时设置在 TRV 上的目标温度，除非该 TRV 被配置为窗户打开时关闭（见各设备设置）。对于不支持极低设定值的恒温器，请使用较高的值，例如 10 °C。"
         }
       },
       "presence": {

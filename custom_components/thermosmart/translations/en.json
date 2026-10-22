@@ -53,7 +53,8 @@
           "calibration_sync": "Write calibration offset",
           "calibration_entity": "Calibration offset entity",
           "calibration_invert": "Invert calibration offset",
-          "valve_maintenance": "Enable valve exercise / maintenance"
+          "valve_maintenance": "Enable valve exercise / maintenance",
+          "window_off": "Turn off when window is open"
         },
         "data_description": {
           "feed_external_temp": "Sends the room temperature to the TRV. Requires selecting the correct external temperature input entity below; nothing is sent without it.",
@@ -61,7 +62,8 @@
           "calibration_sync": "Corrects the TRV's internal temperature sensor by writing the difference to the room temperature into the calibration entity below. Turn off for TRVs that use an external temperature source. Requires a calibration entity.",
           "calibration_entity": "Number entity that holds the TRV's local temperature calibration offset. Leave empty to disable calibration.",
           "calibration_invert": "Enable if the TRV applies the calibration offset with the opposite sign.",
-          "valve_entity": "Number entity that controls the valve opening of this TRV. Only needed if direct valve control is enabled for this TRV, otherwise it is ignored and can be left empty. ThermoSmart writes 0–100 (%), or 0–1 for entities whose name contains \"level\"."
+          "valve_entity": "Number entity that controls the valve opening of this TRV. Only needed if direct valve control is enabled for this TRV, otherwise it is ignored and can be left empty. ThermoSmart writes 0–100 (%), or 0–1 for entities whose name contains \"level\".",
+          "window_off": "Turn off the device (HVAC mode off) when a window is open. If you use this, you should make sure that your TRV still has frost protection enabled when turned off (some models do, but not all) to prevent freezing. If you disable this toggle, the TRV will be kept in heat mode but set to the window open target temperature defined on one of the next pages instead when a window is open."
         }
       },
       "state_menu": {
@@ -140,7 +142,7 @@
           "sched_we_night": "Night temperature applies from this time",
           "away_temp": "Only applied automatically when presence detection is configured (Step 3). Can also be set manually via the mode select.",
           "eco_temp": "Used when the mode select is manually set to 'Eco'. Not applied automatically.",
-          "window_open_temp": "Target temperature while a window is open. For thermostats that do not support very low setpoints, use a higher value such as 10 °C."
+          "window_open_temp": "Target temperature set on a TRV while a window is open, unless that TRV is configured to be turned off when a window is open (see the per-device settings). For thermostats that do not support very low setpoints, use a higher value such as 10 °C."
         }
       },
       "presence": {
@@ -235,7 +237,8 @@
           "calibration_sync": "Write calibration offset",
           "calibration_entity": "Calibration offset entity",
           "calibration_invert": "Invert calibration offset",
-          "valve_maintenance": "Enable valve exercise / maintenance"
+          "valve_maintenance": "Enable valve exercise / maintenance",
+          "window_off": "Turn off when window is open"
         },
         "data_description": {
           "feed_external_temp": "Sends the room temperature to the TRV. Requires selecting the correct external temperature input entity below; nothing is sent without it.",
@@ -243,7 +246,8 @@
           "calibration_sync": "Corrects the TRV's internal temperature sensor by writing the difference to the room temperature into the calibration entity below. Turn off for TRVs that use an external temperature source. Requires a calibration entity.",
           "calibration_entity": "Number entity that holds the TRV's local temperature calibration offset. Leave empty to disable calibration.",
           "calibration_invert": "Enable if the TRV applies the calibration offset with the opposite sign.",
-          "valve_entity": "Number entity that controls the valve opening of this TRV. Only needed if direct valve control is enabled for this TRV, otherwise it is ignored and can be left empty. ThermoSmart writes 0–100 (%), or 0–1 for entities whose name contains \"level\"."
+          "valve_entity": "Number entity that controls the valve opening of this TRV. Only needed if direct valve control is enabled for this TRV, otherwise it is ignored and can be left empty. ThermoSmart writes 0–100 (%), or 0–1 for entities whose name contains \"level\".",
+          "window_off": "Turn off the device (HVAC mode off) when a window is open. If you use this, you should make sure that your TRV still has frost protection enabled when turned off (some models do, but not all) to prevent freezing. If you disable this toggle, the TRV will be kept in heat mode but set to the window open target temperature defined on one of the next pages instead when a window is open."
         }
       },
       "state_menu": {
@@ -322,7 +326,7 @@
           "sched_we_night": "Night temperature applies from this time",
           "away_temp": "Only applied automatically when presence detection is configured. Can also be set manually via the mode select.",
           "eco_temp": "Used when the mode select is manually set to 'Eco'. Not applied automatically.",
-          "window_open_temp": "Target temperature while a window is open. For thermostats that do not support very low setpoints, use a higher value such as 10 °C."
+          "window_open_temp": "Target temperature set on a TRV while a window is open, unless that TRV is configured to be turned off when a window is open (see the per-device settings). For thermostats that do not support very low setpoints, use a higher value such as 10 °C."
         }
       },
       "presence": {

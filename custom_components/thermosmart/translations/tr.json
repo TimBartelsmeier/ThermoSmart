@@ -53,7 +53,8 @@
           "calibration_sync": "Kalibrasyon ofsetini yaz",
           "calibration_entity": "Kalibrasyon ofseti varlığı",
           "calibration_invert": "Kalibrasyon ofsetini ters çevir",
-          "valve_maintenance": "Vana egzersizi / bakımını etkinleştir"
+          "valve_maintenance": "Vana egzersizi / bakımını etkinleştir",
+          "window_off": "Pencere açıkken kapat"
         },
         "data_description": {
           "feed_external_temp": "Oda sıcaklığını TRV'ye gönderir. Aşağıda doğru dış sıcaklık giriş varlığının seçilmesini gerektirir; o olmadan hiçbir şey gönderilmez.",
@@ -61,7 +62,8 @@
           "calibration_sync": "Oda sıcaklığıyla farkı aşağıdaki kalibrasyon varlığına yazarak TRV'nin dahili sıcaklık sensörünü düzeltir. Harici sıcaklık kaynağı kullanan TRV'lerde kapatın. Bir kalibrasyon varlığı gerektirir.",
           "calibration_entity": "TRV'nin yerel kalibrasyon ofsetini tutan sayı varlığı. Kalibrasyonu kapatmak için boş bırakın.",
           "calibration_invert": "TRV ofseti ters işaretle uyguluyorsa açın.",
-          "valve_entity": "Bu TRV'nin vana açıklığını kontrol eden sayı varlığı. Yalnızca bu TRV için doğrudan vana kontrolü etkinse gereklidir; aksi halde yok sayılır ve boş bırakılabilir. ThermoSmart 0–100 (%) yazar, adında \"level\" geçen varlıklar için 0–1 yazar."
+          "valve_entity": "Bu TRV'nin vana açıklığını kontrol eden sayı varlığı. Yalnızca bu TRV için doğrudan vana kontrolü etkinse gereklidir; aksi halde yok sayılır ve boş bırakılabilir. ThermoSmart 0–100 (%) yazar, adında \"level\" geçen varlıklar için 0–1 yazar.",
+          "window_off": "Pencere açıkken cihazı kapatır (HVAC modu kapalı). Bunu kullanırsanız, TRV'nizin kapalıyken donma koruması etkin kalmaya devam ettiğinden emin olun (bazı modellerde vardır, hepsinde yoktur); aksi halde donabilir. Bu anahtarı kapatırsanız TRV ısıtma modunda kalır, ancak pencere açıkken sonraki sayfalardan birinde tanımlanan pencere açık hedef sıcaklığına ayarlanır."
         }
       },
       "state_menu": {
@@ -140,7 +142,7 @@
           "sched_we_night": "Gece sıcaklığı bu saatten itibaren geçerlidir",
           "away_temp": "Yalnızca varlık algılama yapılandırıldığında (Adım 3) otomatik olarak uygulanır. Mod seçici aracılığıyla da manuel olarak ayarlanabilir.",
           "eco_temp": "Mod seçici 'Eco' olarak manuel ayarlandığında kullanılır. Otomatik olarak etkinleştirilmez.",
-          "window_open_temp": "Pencere açıkken hedef sıcaklık. Çok düşük değerleri desteklemeyen termostatlar için 10 °C gibi daha yüksek bir değer kullanın."
+          "window_open_temp": "Pencere açıkken bir TRV'ye ayarlanan hedef sıcaklık; ancak o TRV pencere açıkken kapatılacak şekilde yapılandırılmışsa (cihaz başına ayarlara bakın) uygulanmaz. Çok düşük değerleri desteklemeyen termostatlarda 10 °C gibi daha yüksek bir değer kullanın."
         }
       },
       "presence": {
@@ -235,7 +237,8 @@
           "calibration_sync": "Kalibrasyon ofsetini yaz",
           "calibration_entity": "Kalibrasyon ofseti varlığı",
           "calibration_invert": "Kalibrasyon ofsetini ters çevir",
-          "valve_maintenance": "Vana egzersizi / bakımını etkinleştir"
+          "valve_maintenance": "Vana egzersizi / bakımını etkinleştir",
+          "window_off": "Pencere açıkken kapat"
         },
         "data_description": {
           "feed_external_temp": "Oda sıcaklığını TRV'ye gönderir. Aşağıda doğru dış sıcaklık giriş varlığının seçilmesini gerektirir; o olmadan hiçbir şey gönderilmez.",
@@ -243,7 +246,8 @@
           "calibration_sync": "Oda sıcaklığıyla farkı aşağıdaki kalibrasyon varlığına yazarak TRV'nin dahili sıcaklık sensörünü düzeltir. Harici sıcaklık kaynağı kullanan TRV'lerde kapatın. Bir kalibrasyon varlığı gerektirir.",
           "calibration_entity": "TRV'nin yerel kalibrasyon ofsetini tutan sayı varlığı. Kalibrasyonu kapatmak için boş bırakın.",
           "calibration_invert": "TRV ofseti ters işaretle uyguluyorsa açın.",
-          "valve_entity": "Bu TRV'nin vana açıklığını kontrol eden sayı varlığı. Yalnızca bu TRV için doğrudan vana kontrolü etkinse gereklidir; aksi halde yok sayılır ve boş bırakılabilir. ThermoSmart 0–100 (%) yazar, adında \"level\" geçen varlıklar için 0–1 yazar."
+          "valve_entity": "Bu TRV'nin vana açıklığını kontrol eden sayı varlığı. Yalnızca bu TRV için doğrudan vana kontrolü etkinse gereklidir; aksi halde yok sayılır ve boş bırakılabilir. ThermoSmart 0–100 (%) yazar, adında \"level\" geçen varlıklar için 0–1 yazar.",
+          "window_off": "Pencere açıkken cihazı kapatır (HVAC modu kapalı). Bunu kullanırsanız, TRV'nizin kapalıyken donma koruması etkin kalmaya devam ettiğinden emin olun (bazı modellerde vardır, hepsinde yoktur); aksi halde donabilir. Bu anahtarı kapatırsanız TRV ısıtma modunda kalır, ancak pencere açıkken sonraki sayfalardan birinde tanımlanan pencere açık hedef sıcaklığına ayarlanır."
         }
       },
       "state_menu": {
@@ -322,7 +326,7 @@
           "sched_we_night": "Gece sıcaklığı bu saatten itibaren geçerlidir",
           "away_temp": "Yalnızca varlık algılama yapılandırıldığında (Adım 3) otomatik olarak uygulanır. Mod seçici aracılığıyla da manuel olarak ayarlanabilir.",
           "eco_temp": "Mod seçici 'Eco' olarak manuel ayarlandığında kullanılır. Otomatik olarak etkinleştirilmez.",
-          "window_open_temp": "Pencere açıkken hedef sıcaklık. Çok düşük değerleri desteklemeyen termostatlar için 10 °C gibi daha yüksek bir değer kullanın."
+          "window_open_temp": "Pencere açıkken bir TRV'ye ayarlanan hedef sıcaklık; ancak o TRV pencere açıkken kapatılacak şekilde yapılandırılmışsa (cihaz başına ayarlara bakın) uygulanmaz. Çok düşük değerleri desteklemeyen termostatlarda 10 °C gibi daha yüksek bir değer kullanın."
         }
       },
       "presence": {

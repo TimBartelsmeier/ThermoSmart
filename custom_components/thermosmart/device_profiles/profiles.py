@@ -188,12 +188,13 @@ DEVICE_PRESETS: dict[str, DevicePreset] = {
         ext_temp_entity_pattern="external_temperature",
         feed_external_temp=True,
         calibration_sync=False,
+        window_off=True,
         quirk_entity_patterns=AUTO_QUIRK_PATTERNS,
         default_state_settings=[{
             "entity_pattern": "temperature_sensor",
             "value": "external",
         }],
-        info_summary="Preset loaded: external room temperature enabled and the temperature source forced to external (so no calibration offset is written); the TRV's own window detection, child lock, frost protection and schedule are switched off; valve opening degree is treated as a limit.",
+        info_summary="Preset loaded: external room temperature enabled and the temperature source forced to external (so no calibration offset is written); the TRV's own window detection, child lock, frost protection and schedule are switched off; the TRV is turned off while a window is open (its firmware keeps frost protection active when off); valve opening degree is treated as a limit.",
     ),
     "eurotronic_spirit": DevicePreset(
         "eurotronic_spirit", "Eurotronic Spirit", recommended_mode="direct_valve",

@@ -53,7 +53,8 @@
           "calibration_sync": "Zapisuj offset kalibracji",
           "calibration_entity": "Encja offsetu kalibracji",
           "calibration_invert": "Odwróć offset kalibracji",
-          "valve_maintenance": "Włącz ćwiczenie / konserwację zaworu"
+          "valve_maintenance": "Włącz ćwiczenie / konserwację zaworu",
+          "window_off": "Wyłącz przy otwartym oknie"
         },
         "data_description": {
           "feed_external_temp": "Wysyła temperaturę pomieszczenia do TRV. Wymaga wybrania poniżej właściwej encji wejściowej temperatury zewnętrznej; bez niej nic nie jest wysyłane.",
@@ -61,7 +62,8 @@
           "calibration_sync": "Koryguje wewnętrzny czujnik temperatury TRV, zapisując różnicę względem temperatury pomieszczenia w poniższej encji kalibracji. Wyłącz dla TRV używających zewnętrznego źródła temperatury. Wymaga encji kalibracji.",
           "calibration_entity": "Encja numeryczna zawierająca lokalny offset kalibracji TRV. Pozostaw puste, aby wyłączyć kalibrację.",
           "calibration_invert": "Włącz, jeśli TRV stosuje offset z przeciwnym znakiem.",
-          "valve_entity": "Encja numeryczna sterująca otwarciem zaworu tego TRV. Potrzebna tylko przy włączonym bezpośrednim sterowaniu zaworem dla tego TRV; w przeciwnym razie jest ignorowana i można ją zostawić pustą. ThermoSmart zapisuje 0–100 (%) lub 0–1 dla encji z \"level\" w nazwie."
+          "valve_entity": "Encja numeryczna sterująca otwarciem zaworu tego TRV. Potrzebna tylko przy włączonym bezpośrednim sterowaniu zaworem dla tego TRV; w przeciwnym razie jest ignorowana i można ją zostawić pustą. ThermoSmart zapisuje 0–100 (%) lub 0–1 dla encji z \"level\" w nazwie.",
+          "window_off": "Wyłącza urządzenie (tryb HVAC wyłączony), gdy okno jest otwarte. Jeśli z tego korzystasz, upewnij się, że TRV ma nadal aktywną ochronę przed zamarzaniem po wyłączeniu (niektóre modele mają, inne nie), aby nie zamarzł. Jeśli wyłączysz ten przełącznik, TRV pozostanie w trybie grzania, ale przy otwartym oknie zostanie ustawiony na temperaturę docelową otwartego okna zdefiniowaną na jednej z kolejnych stron."
         }
       },
       "state_menu": {
@@ -140,7 +142,7 @@
           "sched_we_night": "Od tej godziny obowiązuje temperatura nocna",
           "away_temp": "Stosowana automatycznie tylko gdy skonfigurowane jest wykrywanie obecności (Krok 3). Można ją również ustawić ręcznie za pomocą selektora trybu.",
           "eco_temp": "Używana, gdy selektor trybu jest ręcznie ustawiony na 'Eco'. Nie jest aktywowana automatycznie.",
-          "window_open_temp": "Temperatura docelowa, gdy okno jest otwarte. W przypadku termostatów nieobsługujących bardzo niskich wartości, użyj wyższej wartości, np. 10 °C."
+          "window_open_temp": "Temperatura docelowa ustawiana na TRV przy otwartym oknie, chyba że ten TRV jest skonfigurowany do wyłączania przy otwartym oknie (zobacz ustawienia poszczególnych urządzeń). Dla termostatów nieobsługujących bardzo niskich wartości użyj wyższej wartości, np. 10 °C."
         }
       },
       "presence": {
@@ -235,7 +237,8 @@
           "calibration_sync": "Zapisuj offset kalibracji",
           "calibration_entity": "Encja offsetu kalibracji",
           "calibration_invert": "Odwróć offset kalibracji",
-          "valve_maintenance": "Włącz ćwiczenie / konserwację zaworu"
+          "valve_maintenance": "Włącz ćwiczenie / konserwację zaworu",
+          "window_off": "Wyłącz przy otwartym oknie"
         },
         "data_description": {
           "feed_external_temp": "Wysyła temperaturę pomieszczenia do TRV. Wymaga wybrania poniżej właściwej encji wejściowej temperatury zewnętrznej; bez niej nic nie jest wysyłane.",
@@ -243,7 +246,8 @@
           "calibration_sync": "Koryguje wewnętrzny czujnik temperatury TRV, zapisując różnicę względem temperatury pomieszczenia w poniższej encji kalibracji. Wyłącz dla TRV używających zewnętrznego źródła temperatury. Wymaga encji kalibracji.",
           "calibration_entity": "Encja numeryczna zawierająca lokalny offset kalibracji TRV. Pozostaw puste, aby wyłączyć kalibrację.",
           "calibration_invert": "Włącz, jeśli TRV stosuje offset z przeciwnym znakiem.",
-          "valve_entity": "Encja numeryczna sterująca otwarciem zaworu tego TRV. Potrzebna tylko przy włączonym bezpośrednim sterowaniu zaworem dla tego TRV; w przeciwnym razie jest ignorowana i można ją zostawić pustą. ThermoSmart zapisuje 0–100 (%) lub 0–1 dla encji z \"level\" w nazwie."
+          "valve_entity": "Encja numeryczna sterująca otwarciem zaworu tego TRV. Potrzebna tylko przy włączonym bezpośrednim sterowaniu zaworem dla tego TRV; w przeciwnym razie jest ignorowana i można ją zostawić pustą. ThermoSmart zapisuje 0–100 (%) lub 0–1 dla encji z \"level\" w nazwie.",
+          "window_off": "Wyłącza urządzenie (tryb HVAC wyłączony), gdy okno jest otwarte. Jeśli z tego korzystasz, upewnij się, że TRV ma nadal aktywną ochronę przed zamarzaniem po wyłączeniu (niektóre modele mają, inne nie), aby nie zamarzł. Jeśli wyłączysz ten przełącznik, TRV pozostanie w trybie grzania, ale przy otwartym oknie zostanie ustawiony na temperaturę docelową otwartego okna zdefiniowaną na jednej z kolejnych stron."
         }
       },
       "state_menu": {
@@ -322,7 +326,7 @@
           "sched_we_night": "Od tej godziny obowiązuje temperatura nocna",
           "away_temp": "Stosowana automatycznie tylko gdy skonfigurowane jest wykrywanie obecności (Krok 3). Można ją również ustawić ręcznie za pomocą selektora trybu.",
           "eco_temp": "Używana, gdy selektor trybu jest ręcznie ustawiony na 'Eco'. Nie jest aktywowana automatycznie.",
-          "window_open_temp": "Temperatura docelowa, gdy okno jest otwarte. W przypadku termostatów nieobsługujących bardzo niskich wartości, użyj wyższej wartości, np. 10 °C."
+          "window_open_temp": "Temperatura docelowa ustawiana na TRV przy otwartym oknie, chyba że ten TRV jest skonfigurowany do wyłączania przy otwartym oknie (zobacz ustawienia poszczególnych urządzeń). Dla termostatów nieobsługujących bardzo niskich wartości użyj wyższej wartości, np. 10 °C."
         }
       },
       "presence": {

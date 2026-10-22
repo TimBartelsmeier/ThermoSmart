@@ -53,7 +53,8 @@
           "calibration_sync": "Scrie decalajul de calibrare",
           "calibration_entity": "Entitate decalaj de calibrare",
           "calibration_invert": "Inversează offsetul de calibrare",
-          "valve_maintenance": "Activare exercitare / întreținere valve"
+          "valve_maintenance": "Activare exercitare / întreținere valve",
+          "window_off": "Oprește când o fereastră este deschisă"
         },
         "data_description": {
           "feed_external_temp": "Trimite temperatura camerei către TRV. Necesită selectarea entității corecte de intrare pentru temperatura externă de mai jos; fără ea nu se trimite nimic.",
@@ -61,7 +62,8 @@
           "calibration_sync": "Corectează senzorul intern de temperatură al TRV scriind diferența față de temperatura camerei în entitatea de calibrare de mai jos. Dezactivați pentru TRV care folosesc o sursă externă de temperatură. Necesită o entitate de calibrare.",
           "calibration_entity": "Entitate numerică ce conține decalajul de calibrare local al TRV. Lăsați gol pentru a dezactiva calibrarea.",
           "calibration_invert": "Activați dacă TRV aplică decalajul cu semn opus.",
-          "valve_entity": "Entitate numerică ce controlează deschiderea supapei acestui TRV. Necesară doar dacă controlul direct al supapei este activat pentru acest TRV; altfel este ignorată și poate rămâne goală. ThermoSmart scrie 0–100 (%), sau 0–1 pentru entitățile cu \"level\" în nume."
+          "valve_entity": "Entitate numerică ce controlează deschiderea supapei acestui TRV. Necesară doar dacă controlul direct al supapei este activat pentru acest TRV; altfel este ignorată și poate rămâne goală. ThermoSmart scrie 0–100 (%), sau 0–1 pentru entitățile cu \"level\" în nume.",
+          "window_off": "Oprește dispozitivul (mod HVAC oprit) când o fereastră este deschisă. Dacă folosiți această opțiune, asigurați-vă că TRV-ul are în continuare protecția la îngheț activă când este oprit (unele modele au, altele nu), pentru a preveni înghețul. Dacă dezactivați acest comutator, TRV-ul rămâne în modul încălzire, dar este setat la temperatura țintă pentru fereastră deschisă definită pe una dintre paginile următoare."
         }
       },
       "state_menu": {
@@ -140,7 +142,7 @@
           "sched_we_night": "Temperatura de noapte se aplică de la această oră",
           "away_temp": "Aplicată automat doar când detectarea prezenței este configurată (Pasul 3). Poate fi setată și manual prin selectorul de mod.",
           "eco_temp": "Folosită când selectorul de mod este setat manual pe 'Eco'. Nu se activează automat.",
-          "window_open_temp": "Temperatura țintă cât timp o fereastră este deschisă. Pentru termostatele care nu acceptă valori foarte mici, utilizați o valoare mai ridicată, cum ar fi 10 °C."
+          "window_open_temp": "Temperatura țintă setată pe un TRV cât timp o fereastră este deschisă, cu excepția cazului în care acel TRV este configurat să fie oprit (vezi setările per dispozitiv). Pentru termostate care nu acceptă valori foarte mici, folosiți o valoare mai mare, de ex. 10 °C."
         }
       },
       "presence": {
@@ -235,7 +237,8 @@
           "calibration_sync": "Scrie decalajul de calibrare",
           "calibration_entity": "Entitate decalaj de calibrare",
           "calibration_invert": "Inversează offsetul de calibrare",
-          "valve_maintenance": "Activare exercitare / întreținere valve"
+          "valve_maintenance": "Activare exercitare / întreținere valve",
+          "window_off": "Oprește când o fereastră este deschisă"
         },
         "data_description": {
           "feed_external_temp": "Trimite temperatura camerei către TRV. Necesită selectarea entității corecte de intrare pentru temperatura externă de mai jos; fără ea nu se trimite nimic.",
@@ -243,7 +246,8 @@
           "calibration_sync": "Corectează senzorul intern de temperatură al TRV scriind diferența față de temperatura camerei în entitatea de calibrare de mai jos. Dezactivați pentru TRV care folosesc o sursă externă de temperatură. Necesită o entitate de calibrare.",
           "calibration_entity": "Entitate numerică ce conține decalajul de calibrare local al TRV. Lăsați gol pentru a dezactiva calibrarea.",
           "calibration_invert": "Activați dacă TRV aplică decalajul cu semn opus.",
-          "valve_entity": "Entitate numerică ce controlează deschiderea supapei acestui TRV. Necesară doar dacă controlul direct al supapei este activat pentru acest TRV; altfel este ignorată și poate rămâne goală. ThermoSmart scrie 0–100 (%), sau 0–1 pentru entitățile cu \"level\" în nume."
+          "valve_entity": "Entitate numerică ce controlează deschiderea supapei acestui TRV. Necesară doar dacă controlul direct al supapei este activat pentru acest TRV; altfel este ignorată și poate rămâne goală. ThermoSmart scrie 0–100 (%), sau 0–1 pentru entitățile cu \"level\" în nume.",
+          "window_off": "Oprește dispozitivul (mod HVAC oprit) când o fereastră este deschisă. Dacă folosiți această opțiune, asigurați-vă că TRV-ul are în continuare protecția la îngheț activă când este oprit (unele modele au, altele nu), pentru a preveni înghețul. Dacă dezactivați acest comutator, TRV-ul rămâne în modul încălzire, dar este setat la temperatura țintă pentru fereastră deschisă definită pe una dintre paginile următoare."
         }
       },
       "state_menu": {
@@ -322,7 +326,7 @@
           "sched_we_night": "Temperatura de noapte se aplică de la această oră",
           "away_temp": "Aplicată automat doar când detectarea prezenței este configurată (Pasul 3). Poate fi setată și manual prin selectorul de mod.",
           "eco_temp": "Folosită când selectorul de mod este setat manual pe 'Eco'. Nu se activează automat.",
-          "window_open_temp": "Temperatura țintă cât timp o fereastră este deschisă. Pentru termostatele care nu acceptă valori foarte mici, utilizați o valoare mai ridicată, cum ar fi 10 °C."
+          "window_open_temp": "Temperatura țintă setată pe un TRV cât timp o fereastră este deschisă, cu excepția cazului în care acel TRV este configurat să fie oprit (vezi setările per dispozitiv). Pentru termostate care nu acceptă valori foarte mici, folosiți o valoare mai mare, de ex. 10 °C."
         }
       },
       "presence": {

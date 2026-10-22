@@ -53,7 +53,8 @@
           "calibration_sync": "Escriu el desfasament de calibratge",
           "calibration_entity": "Entitat del desfasament de calibratge",
           "calibration_invert": "Invertir el desplaçament de calibratge",
-          "valve_maintenance": "Activar exercici / manteniment de la vàlvula"
+          "valve_maintenance": "Activar exercici / manteniment de la vàlvula",
+          "window_off": "Apaga quan hi ha una finestra oberta"
         },
         "data_description": {
           "feed_external_temp": "Envia la temperatura de l'habitació al TRV. Cal seleccionar l'entitat d'entrada de temperatura externa correcta a sota; sense ella no s'envia res.",
@@ -61,7 +62,8 @@
           "calibration_sync": "Corregeix el sensor de temperatura intern del TRV escrivint la diferència amb la temperatura ambient a l'entitat de calibratge següent. Desactiveu-ho per a TRV que usen una font de temperatura externa. Requereix una entitat de calibratge.",
           "calibration_entity": "Entitat numèrica que conté el desfasament de calibratge local del TRV. Deixeu-la buida per desactivar el calibratge.",
           "calibration_invert": "Activeu-ho si el TRV aplica el desfasament amb el signe oposat.",
-          "valve_entity": "Entitat numèrica que controla l'obertura de la vàlvula d'aquest TRV. Només cal si el control directe de la vàlvula està activat per a aquest TRV; si no, s'ignora i es pot deixar buida. ThermoSmart escriu 0–100 (%), o 0–1 per a entitats amb \"level\" al nom."
+          "valve_entity": "Entitat numèrica que controla l'obertura de la vàlvula d'aquest TRV. Només cal si el control directe de la vàlvula està activat per a aquest TRV; si no, s'ignora i es pot deixar buida. ThermoSmart escriu 0–100 (%), o 0–1 per a entitats amb \"level\" al nom.",
+          "window_off": "Apaga el dispositiu (mode HVAC apagat) quan hi ha una finestra oberta. Si ho useu, assegureu-vos que el TRV continuï tenint la protecció contra gelades activada quan està apagat (alguns models sí, d'altres no) per evitar que es congeli. Si desactiveu aquest interruptor, el TRV es mantindrà en mode de calefacció, però amb la temperatura objectiu de finestra oberta definida en una de les pàgines següents."
         }
       },
       "state_menu": {
@@ -140,7 +142,7 @@
           "sched_we_night": "La temperatura nocturna s'aplica a partir d'aquesta hora",
           "away_temp": "S'aplica automàticament només si la detecció de presència està configurada (Pas 3). Pot establir-se manualment a través del selector de mode.",
           "eco_temp": "S'utilitza quan el selector de mode s'estableix manualment en 'Eco'. No s'aplica automàticament.",
-          "window_open_temp": "Temperatura objectiu mentre una finestra és oberta. Per a termostats que no admeten valors molt baixos, useu un valor més alt com ara 10 °C."
+          "window_open_temp": "Temperatura objectiu que s'assigna a un TRV mentre hi ha una finestra oberta, tret que aquest TRV estigui configurat per apagar-se (vegeu els ajustos per dispositiu). Per a termòstats que no admeten consignes molt baixes, useu un valor més alt, com 10 °C."
         }
       },
       "presence": {
@@ -235,7 +237,8 @@
           "calibration_sync": "Escriu el desfasament de calibratge",
           "calibration_entity": "Entitat del desfasament de calibratge",
           "calibration_invert": "Invertir el desplaçament de calibratge",
-          "valve_maintenance": "Activar exercici / manteniment de la vàlvula"
+          "valve_maintenance": "Activar exercici / manteniment de la vàlvula",
+          "window_off": "Apaga quan hi ha una finestra oberta"
         },
         "data_description": {
           "feed_external_temp": "Envia la temperatura de l'habitació al TRV. Cal seleccionar l'entitat d'entrada de temperatura externa correcta a sota; sense ella no s'envia res.",
@@ -243,7 +246,8 @@
           "calibration_sync": "Corregeix el sensor de temperatura intern del TRV escrivint la diferència amb la temperatura ambient a l'entitat de calibratge següent. Desactiveu-ho per a TRV que usen una font de temperatura externa. Requereix una entitat de calibratge.",
           "calibration_entity": "Entitat numèrica que conté el desfasament de calibratge local del TRV. Deixeu-la buida per desactivar el calibratge.",
           "calibration_invert": "Activeu-ho si el TRV aplica el desfasament amb el signe oposat.",
-          "valve_entity": "Entitat numèrica que controla l'obertura de la vàlvula d'aquest TRV. Només cal si el control directe de la vàlvula està activat per a aquest TRV; si no, s'ignora i es pot deixar buida. ThermoSmart escriu 0–100 (%), o 0–1 per a entitats amb \"level\" al nom."
+          "valve_entity": "Entitat numèrica que controla l'obertura de la vàlvula d'aquest TRV. Només cal si el control directe de la vàlvula està activat per a aquest TRV; si no, s'ignora i es pot deixar buida. ThermoSmart escriu 0–100 (%), o 0–1 per a entitats amb \"level\" al nom.",
+          "window_off": "Apaga el dispositiu (mode HVAC apagat) quan hi ha una finestra oberta. Si ho useu, assegureu-vos que el TRV continuï tenint la protecció contra gelades activada quan està apagat (alguns models sí, d'altres no) per evitar que es congeli. Si desactiveu aquest interruptor, el TRV es mantindrà en mode de calefacció, però amb la temperatura objectiu de finestra oberta definida en una de les pàgines següents."
         }
       },
       "state_menu": {
@@ -322,7 +326,7 @@
           "sched_we_night": "La temperatura nocturna s'aplica a partir d'aquesta hora",
           "away_temp": "S'aplica automàticament només si la detecció de presència està configurada (Pas 3). Pot establir-se manualment a través del selector de mode.",
           "eco_temp": "S'utilitza quan el selector de mode s'estableix manualment en 'Eco'. No s'aplica automàticament.",
-          "window_open_temp": "Temperatura objectiu mentre una finestra és oberta. Per a termostats que no admeten valors molt baixos, useu un valor més alt com ara 10 °C."
+          "window_open_temp": "Temperatura objectiu que s'assigna a un TRV mentre hi ha una finestra oberta, tret que aquest TRV estigui configurat per apagar-se (vegeu els ajustos per dispositiu). Per a termòstats que no admeten consignes molt baixes, useu un valor més alt, com 10 °C."
         }
       },
       "presence": {

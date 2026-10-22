@@ -53,7 +53,8 @@
           "calibration_sync": "Kirjoita kalibrointipoikkeama",
           "calibration_entity": "Kalibrointipoikkeaman entiteetti",
           "calibration_invert": "Käännä kalibrointipoikkeama",
-          "valve_maintenance": "Ota venttiilin liikutus / huolto käyttöön"
+          "valve_maintenance": "Ota venttiilin liikutus / huolto käyttöön",
+          "window_off": "Sammuta kun ikkuna on auki"
         },
         "data_description": {
           "feed_external_temp": "Lähettää huoneen lämpötilan TRV:lle. Edellyttää oikean ulkoisen lämpötilan syöttöentiteetin valitsemista alla; ilman sitä mitään ei lähetetä.",
@@ -61,7 +62,8 @@
           "calibration_sync": "Korjaa TRV:n sisäistä lämpötila-anturia kirjoittamalla huoneen lämpötilan ero alla olevaan kalibrointientiteettiin. Poista käytöstä TRV:illä, jotka käyttävät ulkoista lämpötilalähdettä. Vaatii kalibrointientiteetin.",
           "calibration_entity": "Numeroentiteetti, joka sisältää TRV:n paikallisen kalibrointipoikkeaman. Jätä tyhjäksi poistaaksesi kalibroinnin käytöstä.",
           "calibration_invert": "Ota käyttöön, jos TRV soveltaa poikkeamaa vastakkaisella etumerkillä.",
-          "valve_entity": "Numeroentiteetti, joka ohjaa tämän TRV:n venttiilin aukeamista. Tarvitaan vain, jos suora venttiiliohjaus on käytössä tälle TRV:lle; muuten se ohitetaan ja sen voi jättää tyhjäksi. ThermoSmart kirjoittaa 0–100 (%) tai 0–1 entiteeteille, joiden nimessä on \"level\"."
+          "valve_entity": "Numeroentiteetti, joka ohjaa tämän TRV:n venttiilin aukeamista. Tarvitaan vain, jos suora venttiiliohjaus on käytössä tälle TRV:lle; muuten se ohitetaan ja sen voi jättää tyhjäksi. ThermoSmart kirjoittaa 0–100 (%) tai 0–1 entiteeteille, joiden nimessä on \"level\".",
+          "window_off": "Sammuttaa laitteen (HVAC-tila pois), kun ikkuna on auki. Jos käytät tätä, varmista, että TRV:n routasuojaus on edelleen käytössä sammutettuna (joissakin malleissa on, toisissa ei), jotta se ei jäädy. Jos poistat tämän kytkimen käytöstä, TRV pysyy lämmitystilassa mutta asetetaan sen sijaan jollakin seuraavista sivuista määritettyyn ikkuna auki -tavoitelämpötilaan."
         }
       },
       "state_menu": {
@@ -140,7 +142,7 @@
           "sched_we_night": "Yölämpötila on voimassa tästä ajasta alkaen",
           "away_temp": "Käytetään automaattisesti vain, kun läsnäolon tunnistus on määritetty (Vaihe 3). Voidaan myös asettaa manuaalisesti tilavalitsimen kautta.",
           "eco_temp": "Käytetään, kun tilavalitsin asetetaan manuaalisesti arvoon 'Eco'. Ei aktivoidu automaattisesti.",
-          "window_open_temp": "Tavoitelämpötila, kun ikkuna on auki. Termostaateille, jotka eivät tue erittäin matalia asetuksia, käytä korkeampaa arvoa, kuten 10 °C."
+          "window_open_temp": "Tavoitelämpötila, joka asetetaan TRV:lle ikkunan ollessa auki, ellei kyseistä TRV:tä ole määritetty sammutettavaksi ikkunan ollessa auki (katso laitekohtaiset asetukset). Termostaateille, jotka eivät tue hyvin matalia arvoja, käytä korkeampaa arvoa, esim. 10 °C."
         }
       },
       "presence": {
@@ -235,7 +237,8 @@
           "calibration_sync": "Kirjoita kalibrointipoikkeama",
           "calibration_entity": "Kalibrointipoikkeaman entiteetti",
           "calibration_invert": "Käännä kalibrointipoikkeama",
-          "valve_maintenance": "Ota venttiilin liikutus / huolto käyttöön"
+          "valve_maintenance": "Ota venttiilin liikutus / huolto käyttöön",
+          "window_off": "Sammuta kun ikkuna on auki"
         },
         "data_description": {
           "feed_external_temp": "Lähettää huoneen lämpötilan TRV:lle. Edellyttää oikean ulkoisen lämpötilan syöttöentiteetin valitsemista alla; ilman sitä mitään ei lähetetä.",
@@ -243,7 +246,8 @@
           "calibration_sync": "Korjaa TRV:n sisäistä lämpötila-anturia kirjoittamalla huoneen lämpötilan ero alla olevaan kalibrointientiteettiin. Poista käytöstä TRV:illä, jotka käyttävät ulkoista lämpötilalähdettä. Vaatii kalibrointientiteetin.",
           "calibration_entity": "Numeroentiteetti, joka sisältää TRV:n paikallisen kalibrointipoikkeaman. Jätä tyhjäksi poistaaksesi kalibroinnin käytöstä.",
           "calibration_invert": "Ota käyttöön, jos TRV soveltaa poikkeamaa vastakkaisella etumerkillä.",
-          "valve_entity": "Numeroentiteetti, joka ohjaa tämän TRV:n venttiilin aukeamista. Tarvitaan vain, jos suora venttiiliohjaus on käytössä tälle TRV:lle; muuten se ohitetaan ja sen voi jättää tyhjäksi. ThermoSmart kirjoittaa 0–100 (%) tai 0–1 entiteeteille, joiden nimessä on \"level\"."
+          "valve_entity": "Numeroentiteetti, joka ohjaa tämän TRV:n venttiilin aukeamista. Tarvitaan vain, jos suora venttiiliohjaus on käytössä tälle TRV:lle; muuten se ohitetaan ja sen voi jättää tyhjäksi. ThermoSmart kirjoittaa 0–100 (%) tai 0–1 entiteeteille, joiden nimessä on \"level\".",
+          "window_off": "Sammuttaa laitteen (HVAC-tila pois), kun ikkuna on auki. Jos käytät tätä, varmista, että TRV:n routasuojaus on edelleen käytössä sammutettuna (joissakin malleissa on, toisissa ei), jotta se ei jäädy. Jos poistat tämän kytkimen käytöstä, TRV pysyy lämmitystilassa mutta asetetaan sen sijaan jollakin seuraavista sivuista määritettyyn ikkuna auki -tavoitelämpötilaan."
         }
       },
       "state_menu": {
@@ -322,7 +326,7 @@
           "sched_we_night": "Yölämpötila on voimassa tästä ajasta alkaen",
           "away_temp": "Käytetään automaattisesti vain, kun läsnäolon tunnistus on määritetty (Vaihe 3). Voidaan myös asettaa manuaalisesti tilavalitsimen kautta.",
           "eco_temp": "Käytetään, kun tilavalitsin asetetaan manuaalisesti arvoon 'Eco'. Ei aktivoidu automaattisesti.",
-          "window_open_temp": "Tavoitelämpötila, kun ikkuna on auki. Termostaateille, jotka eivät tue erittäin matalia asetuksia, käytä korkeampaa arvoa, kuten 10 °C."
+          "window_open_temp": "Tavoitelämpötila, joka asetetaan TRV:lle ikkunan ollessa auki, ellei kyseistä TRV:tä ole määritetty sammutettavaksi ikkunan ollessa auki (katso laitekohtaiset asetukset). Termostaateille, jotka eivät tue hyvin matalia arvoja, käytä korkeampaa arvoa, esim. 10 °C."
         }
       },
       "presence": {

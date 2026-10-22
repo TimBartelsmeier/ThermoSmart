@@ -23,6 +23,7 @@ from .const import (
     CONF_DEV_CALIBRATION_SYNC,
     CONF_DEV_CALIBRATION_INVERT,
     CONF_DEV_VALVE_MAINTENANCE,
+    CONF_DEV_WINDOW_OFF,
     CONF_DEV_STATE_SETTINGS,
     CONTROL_MODE_INHERIT,
     CONTROL_MODE_SETPOINT,
@@ -264,6 +265,9 @@ def _schema_device_settings(detected: dict, zone_mode: str) -> vol.Schema:
         vol.Required(CONF_DEV_VALVE_MAINTENANCE, default=settings.get(
             CONF_DEV_VALVE_MAINTENANCE, True
         )): selector.BooleanSelector(),
+        vol.Required(CONF_DEV_WINDOW_OFF, default=settings.get(
+            CONF_DEV_WINDOW_OFF, False
+        )): selector.BooleanSelector(),
     })
 
 
@@ -386,6 +390,7 @@ def _detect_device_settings(hass, climate_id: str) -> dict:
         CONF_DEV_CALIBRATION_SYNC: bool(calibration_entity and preset.calibration_sync),
         CONF_DEV_CALIBRATION_INVERT: preset.calibration_inverted,
         CONF_DEV_VALVE_MAINTENANCE: preset.valve_maintenance,
+        CONF_DEV_WINDOW_OFF: preset.window_off,
         CONF_DEV_STATE_SETTINGS: state_rules,
     }
     return {

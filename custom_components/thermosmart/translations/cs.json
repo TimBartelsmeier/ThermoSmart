@@ -53,7 +53,8 @@
           "calibration_sync": "Zapisovat kalibrační offset",
           "calibration_entity": "Entita kalibračního offsetu",
           "calibration_invert": "Invertovat kalibrační offset",
-          "valve_maintenance": "Povolit cvičení / údržbu ventilu"
+          "valve_maintenance": "Povolit cvičení / údržbu ventilu",
+          "window_off": "Vypnout při otevřeném okně"
         },
         "data_description": {
           "feed_external_temp": "Posílá teplotu místnosti do TRV. Vyžaduje výběr správné entity vstupu externí teploty níže; bez ní se nic neodešle.",
@@ -61,7 +62,8 @@
           "calibration_sync": "Koriguje interní teplotní senzor TRV zápisem rozdílu oproti pokojové teplotě do kalibrační entity níže. Vypněte u TRV, které používají externí zdroj teploty. Vyžaduje kalibrační entitu.",
           "calibration_entity": "Číselná entita s lokálním kalibračním offsetem TRV. Nechte prázdné pro vypnutí kalibrace.",
           "calibration_invert": "Zapněte, pokud TRV používá offset s opačným znaménkem.",
-          "valve_entity": "Číselná entita řídící otevření ventilu tohoto TRV. Potřebná jen při zapnutém přímém řízení ventilu, jinak se ignoruje a lze ji nechat prázdnou. ThermoSmart zapisuje 0–100 (%), nebo 0–1 u entit s „level“ v názvu."
+          "valve_entity": "Číselná entita řídící otevření ventilu tohoto TRV. Potřebná jen při zapnutém přímém řízení ventilu, jinak se ignoruje a lze ji nechat prázdnou. ThermoSmart zapisuje 0–100 (%), nebo 0–1 u entit s „level“ v názvu.",
+          "window_off": "Vypne zařízení (režim HVAC vypnuto), když je otevřené okno. Pokud to použijete, ujistěte se, že má TRV po vypnutí stále aktivní ochranu proti zamrznutí (některé modely ano, jiné ne), aby nezamrzlo. Pokud tento přepínač vypnete, TRV zůstane v režimu topení, ale při otevřeném okně se nastaví cílová teplota pro otevřené okno definovaná na jedné z dalších stránek."
         }
       },
       "state_menu": {
@@ -140,7 +142,7 @@
           "sched_we_night": "Noční teplota platí od tohoto času",
           "away_temp": "Použije se automaticky pouze při nakonfigurovaném rozpoznávání přítomnosti (Krok 3). Lze nastavit i ručně přes výběr režimu.",
           "eco_temp": "Použije se, když je výběr režimu ručně nastaven na 'Eco'. Neaktivuje se automaticky.",
-          "window_open_temp": "Cílová teplota při otevřeném okně. Pro termostaty, které nepodporují velmi nízké hodnoty, použijte vyšší hodnotu, například 10 °C."
+          "window_open_temp": "Cílová teplota nastavená na TRV při otevřeném okně, pokud tento TRV není nakonfigurován na vypnutí při otevřeném okně (viz nastavení jednotlivých zařízení). U termostatů, které nepodporují velmi nízké hodnoty, použijte vyšší hodnotu, např. 10 °C."
         }
       },
       "presence": {
@@ -235,7 +237,8 @@
           "calibration_sync": "Zapisovat kalibrační offset",
           "calibration_entity": "Entita kalibračního offsetu",
           "calibration_invert": "Invertovat kalibrační offset",
-          "valve_maintenance": "Povolit cvičení / údržbu ventilu"
+          "valve_maintenance": "Povolit cvičení / údržbu ventilu",
+          "window_off": "Vypnout při otevřeném okně"
         },
         "data_description": {
           "feed_external_temp": "Posílá teplotu místnosti do TRV. Vyžaduje výběr správné entity vstupu externí teploty níže; bez ní se nic neodešle.",
@@ -243,7 +246,8 @@
           "calibration_sync": "Koriguje interní teplotní senzor TRV zápisem rozdílu oproti pokojové teplotě do kalibrační entity níže. Vypněte u TRV, které používají externí zdroj teploty. Vyžaduje kalibrační entitu.",
           "calibration_entity": "Číselná entita s lokálním kalibračním offsetem TRV. Nechte prázdné pro vypnutí kalibrace.",
           "calibration_invert": "Zapněte, pokud TRV používá offset s opačným znaménkem.",
-          "valve_entity": "Číselná entita řídící otevření ventilu tohoto TRV. Potřebná jen při zapnutém přímém řízení ventilu, jinak se ignoruje a lze ji nechat prázdnou. ThermoSmart zapisuje 0–100 (%), nebo 0–1 u entit s „level“ v názvu."
+          "valve_entity": "Číselná entita řídící otevření ventilu tohoto TRV. Potřebná jen při zapnutém přímém řízení ventilu, jinak se ignoruje a lze ji nechat prázdnou. ThermoSmart zapisuje 0–100 (%), nebo 0–1 u entit s „level“ v názvu.",
+          "window_off": "Vypne zařízení (režim HVAC vypnuto), když je otevřené okno. Pokud to použijete, ujistěte se, že má TRV po vypnutí stále aktivní ochranu proti zamrznutí (některé modely ano, jiné ne), aby nezamrzlo. Pokud tento přepínač vypnete, TRV zůstane v režimu topení, ale při otevřeném okně se nastaví cílová teplota pro otevřené okno definovaná na jedné z dalších stránek."
         }
       },
       "state_menu": {
@@ -322,7 +326,7 @@
           "sched_we_night": "Noční teplota platí od tohoto času",
           "away_temp": "Použije se automaticky pouze při nakonfigurovaném rozpoznávání přítomnosti (Krok 3). Lze nastavit i ručně přes výběr režimu.",
           "eco_temp": "Použije se, když je výběr režimu ručně nastaven na 'Eco'. Neaktivuje se automaticky.",
-          "window_open_temp": "Cílová teplota při otevřeném okně. Pro termostaty, které nepodporují velmi nízké hodnoty, použijte vyšší hodnotu, například 10 °C."
+          "window_open_temp": "Cílová teplota nastavená na TRV při otevřeném okně, pokud tento TRV není nakonfigurován na vypnutí při otevřeném okně (viz nastavení jednotlivých zařízení). U termostatů, které nepodporují velmi nízké hodnoty, použijte vyšší hodnotu, např. 10 °C."
         }
       },
       "presence": {

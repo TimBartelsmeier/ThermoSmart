@@ -53,7 +53,8 @@
           "calibration_sync": "Skriv kalibreringsforskydning",
           "calibration_entity": "Entitet til kalibreringsforskydning",
           "calibration_invert": "Inverter kalibreringsoffset",
-          "valve_maintenance": "Aktivér ventilmotion / vedligeholdelse"
+          "valve_maintenance": "Aktivér ventilmotion / vedligeholdelse",
+          "window_off": "Sluk når et vindue er åbent"
         },
         "data_description": {
           "feed_external_temp": "Sender rumtemperaturen til TRV'en. Kræver, at den korrekte enhed til ekstern temperaturindgang vælges nedenfor; uden den sendes intet.",
@@ -61,7 +62,8 @@
           "calibration_sync": "Korrigerer TRV'ens interne temperatursensor ved at skrive forskellen til rumtemperaturen til kalibreringsentiteten nedenfor. Slå fra for TRV'er med ekstern temperaturkilde. Kræver en kalibreringsentitet.",
           "calibration_entity": "Talentitet med TRV'ens lokale kalibreringsforskydning. Lad feltet stå tomt for at slå kalibrering fra.",
           "calibration_invert": "Slå til, hvis TRV'en anvender forskydningen med modsat fortegn.",
-          "valve_entity": "Talentitet, der styrer ventilåbningen på denne TRV. Kun nødvendig, hvis direkte ventilstyring er aktiveret for denne TRV; ellers ignoreres den og kan stå tom. ThermoSmart skriver 0–100 (%), eller 0–1 for entiteter med \"level\" i navnet."
+          "valve_entity": "Talentitet, der styrer ventilåbningen på denne TRV. Kun nødvendig, hvis direkte ventilstyring er aktiveret for denne TRV; ellers ignoreres den og kan stå tom. ThermoSmart skriver 0–100 (%), eller 0–1 for entiteter med \"level\" i navnet.",
+          "window_off": "Slukker enheden (HVAC-tilstand fra), når et vindue er åbent. Hvis du bruger dette, skal du sikre dig, at din TRV stadig har frostbeskyttelse aktiveret, når den er slukket (nogle modeller har, men ikke alle), så den ikke fryser. Hvis du slår denne kontakt fra, forbliver TRV'en i varmetilstand, men sættes i stedet til måltemperaturen for åbent vindue, som er defineret på en af de næste sider."
         }
       },
       "state_menu": {
@@ -140,7 +142,7 @@
           "sched_we_night": "Nattemperaturen gælder fra dette tidspunkt",
           "away_temp": "Anvendes kun automatisk, når tilstedeværelsesgenkendelse er konfigureret (Trin 3). Kan også angives manuelt via tilstandsvælgeren.",
           "eco_temp": "Bruges når tilstandsvælgeren manuelt er sat til 'Eco'. Aktiveres ikke automatisk.",
-          "window_open_temp": "Måltemperatur, mens et vindue er åbent. For termostater, der ikke understøtter meget lave indstillinger, brug en højere værdi som f.eks. 10 °C."
+          "window_open_temp": "Måltemperatur, der sættes på en TRV, mens et vindue er åbent, medmindre denne TRV er indstillet til at blive slukket ved åbent vindue (se indstillingerne pr. enhed). For termostater, der ikke understøtter meget lave værdier, brug en højere værdi som 10 °C."
         }
       },
       "presence": {
@@ -235,7 +237,8 @@
           "calibration_sync": "Skriv kalibreringsforskydning",
           "calibration_entity": "Entitet til kalibreringsforskydning",
           "calibration_invert": "Inverter kalibreringsoffset",
-          "valve_maintenance": "Aktivér ventilmotion / vedligeholdelse"
+          "valve_maintenance": "Aktivér ventilmotion / vedligeholdelse",
+          "window_off": "Sluk når et vindue er åbent"
         },
         "data_description": {
           "feed_external_temp": "Sender rumtemperaturen til TRV'en. Kræver, at den korrekte enhed til ekstern temperaturindgang vælges nedenfor; uden den sendes intet.",
@@ -243,7 +246,8 @@
           "calibration_sync": "Korrigerer TRV'ens interne temperatursensor ved at skrive forskellen til rumtemperaturen til kalibreringsentiteten nedenfor. Slå fra for TRV'er med ekstern temperaturkilde. Kræver en kalibreringsentitet.",
           "calibration_entity": "Talentitet med TRV'ens lokale kalibreringsforskydning. Lad feltet stå tomt for at slå kalibrering fra.",
           "calibration_invert": "Slå til, hvis TRV'en anvender forskydningen med modsat fortegn.",
-          "valve_entity": "Talentitet, der styrer ventilåbningen på denne TRV. Kun nødvendig, hvis direkte ventilstyring er aktiveret for denne TRV; ellers ignoreres den og kan stå tom. ThermoSmart skriver 0–100 (%), eller 0–1 for entiteter med \"level\" i navnet."
+          "valve_entity": "Talentitet, der styrer ventilåbningen på denne TRV. Kun nødvendig, hvis direkte ventilstyring er aktiveret for denne TRV; ellers ignoreres den og kan stå tom. ThermoSmart skriver 0–100 (%), eller 0–1 for entiteter med \"level\" i navnet.",
+          "window_off": "Slukker enheden (HVAC-tilstand fra), når et vindue er åbent. Hvis du bruger dette, skal du sikre dig, at din TRV stadig har frostbeskyttelse aktiveret, når den er slukket (nogle modeller har, men ikke alle), så den ikke fryser. Hvis du slår denne kontakt fra, forbliver TRV'en i varmetilstand, men sættes i stedet til måltemperaturen for åbent vindue, som er defineret på en af de næste sider."
         }
       },
       "state_menu": {
@@ -322,7 +326,7 @@
           "sched_we_night": "Nattemperaturen gælder fra dette tidspunkt",
           "away_temp": "Anvendes kun automatisk, når tilstedeværelsesgenkendelse er konfigureret (Trin 3). Kan også angives manuelt via tilstandsvælgeren.",
           "eco_temp": "Bruges når tilstandsvælgeren manuelt er sat til 'Eco'. Aktiveres ikke automatisk.",
-          "window_open_temp": "Måltemperatur, mens et vindue er åbent. For termostater, der ikke understøtter meget lave indstillinger, brug en højere værdi som f.eks. 10 °C."
+          "window_open_temp": "Måltemperatur, der sættes på en TRV, mens et vindue er åbent, medmindre denne TRV er indstillet til at blive slukket ved åbent vindue (se indstillingerne pr. enhed). For termostater, der ikke understøtter meget lave værdier, brug en højere værdi som 10 °C."
         }
       },
       "presence": {

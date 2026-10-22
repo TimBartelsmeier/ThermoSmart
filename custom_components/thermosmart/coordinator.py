@@ -171,6 +171,8 @@ class ThermoSmartCoordinator(
         self._window_delay_cancel: dict[str, Callable[[], None]] = {}
 
         self._last_written_setpoints: dict[str, float] = {}
+        # TRVs switched to HVAC off because of an open window (restored on close).
+        self._window_off_entities: set[str] = set()
         # Boost tracking per zone (keyed by zone_id; used by TRVControlMixin._apply_temperature).
         # Must be initialized before the first coordinator refresh to avoid AttributeError.
         self._boost_active: dict = {}
