@@ -38,7 +38,8 @@
         "data_description": {
           "zone_control_mode": "**Csak alapjel:** A ThermoSmart a sima célhőmérsékletet küldi, a TRV pedig maga szabályozza a szelepét.\n\n**TPI alapjel-moduláció:** A ThermoSmart kiszámítja a fűtési igényt, és a TRV-nek küldött alapjelet növeli vagy csökkenti a szelep nyitásához vagy zárásához.\n\n**Közvetlen szelepvezérlés:** A ThermoSmart a kiszámított szelepnyitást (0–100 %) a TRV szelepállás-entitásába írja, és a sima célhőmérsékletet küldi alapjelként.",
           "control_interval": "A rendszeres vezérlési ciklusok közötti minimális idő. Minden ciklus újraszámolja a fűtési igényt, és a TRV-kbe írja az alapjeleket, szelepállásokat és állapotbeállításokat. Az olyan események, mint egy ablak kinyitása vagy egy kézi felülbírálás, korábban is elindíthatnak egy további ciklust. A rövidebb időközök gyorsabb reakciót adnak, de túlterhelhetik az eszközöket vagy torlaszthatják a hálózatokat, pl. a Zigbee-t. A gyakorlatban a 2–3 perc, ésszerű hőmérséklet-változási küszöbökkel kombinálva (ezeket túl kell lépni ahhoz, hogy új értékek kerüljenek a TRV-nek elküldésre), megfelelő.",
-          "ext_temp_threshold": "A külső hőmérséklet csak akkor kerül írásra, ha a különbség eléri ezt a küszöböt, és minden olyan TRV-nél engedélyezni kell, amelynek meg kell kapnia a frissítést."
+          "ext_temp_threshold": "A külső hőmérséklet-érzékelő értéke csak akkor kerül elküldésre a TRV-nek, ha az utolsó frissítéshez képest ennél a küszöbnél jobban megváltozott. Csak konfigurált külső érzékelő esetén, és azoknál a TRV-knél hat, amelyeknél a külső hőmérséklet-bemenet engedélyezett.",
+          "temp_tolerance": "Új célhőmérséklet csak akkor kerül elküldésre a TRV-nek, ha legalább ennyivel eltér a TRV jelenlegi célhőmérsékletétől. A nagyobb érték csökkenti a rádióforgalmat, a kisebb pontosabban követi a ThermoSmartot."
         }
       },
       "device_settings": {
@@ -59,11 +60,12 @@
           "valve_maintenance": "Megakadályozza a szelepek elakadását hosszabb fűtés nélküli időszakokban. A ThermoSmart időnként automatikusan megmozgatja a szelepeket, amíg a Nyári mód vagy a Nyaralás mód aktív.",
           "calibration_sync": "Korrigálja a TRV belső hőmérséklet-érzékelőjét azzal, hogy a szobahőmérséklettől való eltérést az alábbi kalibrációs entitásba írja. Kapcsolja ki külső hőmérsékleti forrást használó TRV-knél. Kalibrációs entitás szükséges.",
           "calibration_entity": "A TRV helyi kalibrációs eltolását tároló szám entitás. Hagyja üresen a kalibráció kikapcsolásához.",
-          "calibration_invert": "Kapcsolja be, ha a TRV ellentétes előjellel alkalmazza az eltolást."
+          "calibration_invert": "Kapcsolja be, ha a TRV ellentétes előjellel alkalmazza az eltolást.",
+          "valve_entity": "A TRV szelepnyitását vezérlő szám entitás. Csak akkor szükséges, ha a közvetlen szelepvezérlés engedélyezett ennél a TRV-nél; egyébként figyelmen kívül marad és üresen hagyható. A ThermoSmart 0–100 (%) értéket ír, vagy 0–1-et azoknál az entitásoknál, amelyek nevében szerepel a \"level\"."
         }
       },
       "state_menu": {
-        "title": "3. lépés – TRV állapotbeállításai (TRV {index}/{total})",
+        "title": "3. lépés – TRV állapotbeállításai",
         "description": "**Zóna:** {zone}\n**{index}. TRV / {total}:** {device_name}\n\nAz állapotbeállítások a TRV kiválasztott entitásait (select, number vagy switch) az Ön által megadott értéken tartják. Minden vezérlési ciklusban vagy vezérlési eseménynél a ThermoSmart ellenőrzi őket, és csak akkor állít be értéket, ha az eltér. Hagyja üresen a listát, ha nincs rá szüksége.\n\n**Jelenleg beállítva:**\n\n{state_rules}\n\nVálasszon műveletet. Ha végzett, válassza a **Kész ezzel a TRV-vel** lehetőséget.",
         "menu_options": {
           "state_add_device": "A TRV egy entitásának hozzáadása",
@@ -77,6 +79,9 @@
         "description": "**{index}. TRV / {total}:** {device_name}\n\nVálassza ki azt az entitást, amelyet a ThermoSmartnak egy adott értéken kell tartania. {scope}\n\nAz értéket a következő oldalon adhatja meg.",
         "data": {
           "entity_id": "Entitás"
+        },
+        "data_description": {
+          "entity_id": "Hagyja üresen és küldje el a visszalépéshez hozzáadás nélkül."
         }
       },
       "state_add_any": {
@@ -84,16 +89,21 @@
         "description": "**{index}. TRV / {total}:** {device_name}\n\nVálassza ki azt az entitást, amelyet a ThermoSmartnak egy adott értéken kell tartania. {scope}\n\nAz értéket a következő oldalon adhatja meg.",
         "data": {
           "entity_id": "Entitás"
+        },
+        "data_description": {
+          "entity_id": "Hagyja üresen és küldje el a visszalépéshez hozzáadás nélkül."
         }
       },
       "state_value": {
         "title": "3. lépés – Állapotbeállítás értéke (TRV {index}/{total})",
         "description": "**{index}. TRV / {total}:** {device_name}\n\nAdja meg az értéket, amelyet a ThermoSmart a(z) **{entity}** entitásra érvényesít.\n\nJelenlegi érték: {current}",
         "data": {
-          "value": "Érvényesítendő érték"
+          "value": "Érvényesítendő érték",
+          "cancel": "Mégse – ne mentse ezt a beállítást"
         },
         "data_description": {
-          "value": "Ha az entitás eltér ettől az értéktől, a ThermoSmart a következő vezérlési ciklusban vagy eseménynél beállítja."
+          "value": "Ha az entitás eltér ettől az értéktől, a ThermoSmart a következő vezérlési ciklusban vagy eseménynél beállítja.",
+          "cancel": "Jelölje be és küldje el, hogy mentés nélkül visszatérjen a listához."
         }
       },
       "state_remove": {
@@ -101,6 +111,9 @@
         "description": "**{index}. TRV / {total}:** {device_name}\n\nVálassza ki azokat az állapotbeállításokat, amelyek érvényesítését a ThermoSmartnak meg kell szüntetnie ennél a TRV-nél.",
         "data": {
           "remove": "Eltávolítandó beállítások"
+        },
+        "data_description": {
+          "remove": "Hagyja üresen és küldje el a visszalépéshez eltávolítás nélkül."
         }
       },
       "schedule": {
@@ -207,7 +220,8 @@
         "data_description": {
           "zone_control_mode": "**Csak alapjel:** A ThermoSmart a sima célhőmérsékletet küldi, a TRV pedig maga szabályozza a szelepét.\n\n**TPI alapjel-moduláció:** A ThermoSmart kiszámítja a fűtési igényt, és a TRV-nek küldött alapjelet növeli vagy csökkenti a szelep nyitásához vagy zárásához.\n\n**Közvetlen szelepvezérlés:** A ThermoSmart a kiszámított szelepnyitást (0–100 %) a TRV szelepállás-entitásába írja, és a sima célhőmérsékletet küldi alapjelként.",
           "control_interval": "A rendszeres vezérlési ciklusok közötti minimális idő. Minden ciklus újraszámolja a fűtési igényt, és a TRV-kbe írja az alapjeleket, szelepállásokat és állapotbeállításokat. Az olyan események, mint egy ablak kinyitása vagy egy kézi felülbírálás, korábban is elindíthatnak egy további ciklust. A rövidebb időközök gyorsabb reakciót adnak, de túlterhelhetik az eszközöket vagy torlaszthatják a hálózatokat, pl. a Zigbee-t. A gyakorlatban a 2–3 perc, ésszerű hőmérséklet-változási küszöbökkel kombinálva (ezeket túl kell lépni ahhoz, hogy új értékek kerüljenek a TRV-nek elküldésre), megfelelő.",
-          "ext_temp_threshold": "A külső hőmérséklet csak akkor kerül írásra, ha a különbség eléri ezt a küszöböt, és minden olyan TRV-nél engedélyezni kell, amelynek meg kell kapnia a frissítést."
+          "ext_temp_threshold": "A külső hőmérséklet-érzékelő értéke csak akkor kerül elküldésre a TRV-nek, ha az utolsó frissítéshez képest ennél a küszöbnél jobban megváltozott. Csak konfigurált külső érzékelő esetén, és azoknál a TRV-knél hat, amelyeknél a külső hőmérséklet-bemenet engedélyezett.",
+          "temp_tolerance": "Új célhőmérséklet csak akkor kerül elküldésre a TRV-nek, ha legalább ennyivel eltér a TRV jelenlegi célhőmérsékletétől. A nagyobb érték csökkenti a rádióforgalmat, a kisebb pontosabban követi a ThermoSmartot."
         }
       },
       "device_settings": {
@@ -228,11 +242,12 @@
           "valve_maintenance": "Megakadályozza a szelepek elakadását hosszabb fűtés nélküli időszakokban. A ThermoSmart időnként automatikusan megmozgatja a szelepeket, amíg a Nyári mód vagy a Nyaralás mód aktív.",
           "calibration_sync": "Korrigálja a TRV belső hőmérséklet-érzékelőjét azzal, hogy a szobahőmérséklettől való eltérést az alábbi kalibrációs entitásba írja. Kapcsolja ki külső hőmérsékleti forrást használó TRV-knél. Kalibrációs entitás szükséges.",
           "calibration_entity": "A TRV helyi kalibrációs eltolását tároló szám entitás. Hagyja üresen a kalibráció kikapcsolásához.",
-          "calibration_invert": "Kapcsolja be, ha a TRV ellentétes előjellel alkalmazza az eltolást."
+          "calibration_invert": "Kapcsolja be, ha a TRV ellentétes előjellel alkalmazza az eltolást.",
+          "valve_entity": "A TRV szelepnyitását vezérlő szám entitás. Csak akkor szükséges, ha a közvetlen szelepvezérlés engedélyezett ennél a TRV-nél; egyébként figyelmen kívül marad és üresen hagyható. A ThermoSmart 0–100 (%) értéket ír, vagy 0–1-et azoknál az entitásoknál, amelyek nevében szerepel a \"level\"."
         }
       },
       "state_menu": {
-        "title": "TRV állapotbeállításai (TRV {index}/{total})",
+        "title": "TRV állapotbeállításai",
         "description": "**Zóna:** {zone}\n**{index}. TRV / {total}:** {device_name}\n\nAz állapotbeállítások a TRV kiválasztott entitásait (select, number vagy switch) az Ön által megadott értéken tartják. Minden vezérlési ciklusban vagy vezérlési eseménynél a ThermoSmart ellenőrzi őket, és csak akkor állít be értéket, ha az eltér. Hagyja üresen a listát, ha nincs rá szüksége.\n\n**Jelenleg beállítva:**\n\n{state_rules}\n\nVálasszon műveletet. Ha végzett, válassza a **Kész ezzel a TRV-vel** lehetőséget; a módosítások az utolsó TRV után kerülnek mentésre.",
         "menu_options": {
           "state_add_device": "A TRV egy entitásának hozzáadása",
@@ -246,6 +261,9 @@
         "description": "**{index}. TRV / {total}:** {device_name}\n\nVálassza ki azt az entitást, amelyet a ThermoSmartnak egy adott értéken kell tartania. {scope}\n\nAz értéket a következő oldalon adhatja meg.",
         "data": {
           "entity_id": "Entitás"
+        },
+        "data_description": {
+          "entity_id": "Hagyja üresen és küldje el a visszalépéshez hozzáadás nélkül."
         }
       },
       "state_add_any": {
@@ -253,16 +271,21 @@
         "description": "**{index}. TRV / {total}:** {device_name}\n\nVálassza ki azt az entitást, amelyet a ThermoSmartnak egy adott értéken kell tartania. {scope}\n\nAz értéket a következő oldalon adhatja meg.",
         "data": {
           "entity_id": "Entitás"
+        },
+        "data_description": {
+          "entity_id": "Hagyja üresen és küldje el a visszalépéshez hozzáadás nélkül."
         }
       },
       "state_value": {
         "title": "Állapotbeállítás értéke (TRV {index}/{total})",
         "description": "**{index}. TRV / {total}:** {device_name}\n\nAdja meg az értéket, amelyet a ThermoSmart a(z) **{entity}** entitásra érvényesít.\n\nJelenlegi érték: {current}",
         "data": {
-          "value": "Érvényesítendő érték"
+          "value": "Érvényesítendő érték",
+          "cancel": "Mégse – ne mentse ezt a beállítást"
         },
         "data_description": {
-          "value": "Ha az entitás eltér ettől az értéktől, a ThermoSmart a következő vezérlési ciklusban vagy eseménynél beállítja."
+          "value": "Ha az entitás eltér ettől az értéktől, a ThermoSmart a következő vezérlési ciklusban vagy eseménynél beállítja.",
+          "cancel": "Jelölje be és küldje el, hogy mentés nélkül visszatérjen a listához."
         }
       },
       "state_remove": {
@@ -270,6 +293,9 @@
         "description": "**{index}. TRV / {total}:** {device_name}\n\nVálassza ki azokat az állapotbeállításokat, amelyek érvényesítését a ThermoSmartnak meg kell szüntetnie ennél a TRV-nél.",
         "data": {
           "remove": "Eltávolítandó beállítások"
+        },
+        "data_description": {
+          "remove": "Hagyja üresen és küldje el a visszalépéshez eltávolítás nélkül."
         }
       },
       "schedule": {

@@ -540,6 +540,8 @@ class _DeviceSettingsMixin:
     async def _state_pick(self, step_id: str, user_input: dict | None, restrict: bool):
         eid = self._ds_current_eid()
         if user_input is not None:
+            if not user_input.get("entity_id"):
+                return await self.async_step_state_menu()
             self._rule_entity = user_input["entity_id"]
             return await self.async_step_state_value()
         config: dict = {"domain": _STATE_DOMAINS}
@@ -556,7 +558,7 @@ class _DeviceSettingsMixin:
         return self.async_show_form(
             step_id=step_id,
             data_schema=vol.Schema({
-                vol.Required("entity_id"): selector.EntitySelector(
+                vol.Optional("entity_id"): selector.EntitySelector(
                     selector.EntitySelectorConfig(**config)
                 ),
             }),
@@ -573,6 +575,8 @@ class _DeviceSettingsMixin:
         entity_id = self._rule_entity
         domain = entity_id.split(".", 1)[0]
         if user_input is not None:
+            if user_input.get("cancel"):
+                return await self.async_step_state_menu()
             value = user_input["value"]
             if domain == "switch":
                 value = "on" if value else "off"
@@ -584,10 +588,18 @@ class _DeviceSettingsMixin:
             return await self.async_step_state_menu()
         state = self.hass.states.get(entity_id)
         value_selector, default = _state_value_selector(domain, state)
+        existing = next(
+            (r["value"] for r in self._rules or [] if r.get("entity_id") == entity_id), None
+        )
+        if existing is not None:
+            default = existing == "on" if domain == "switch" else existing
         key = vol.Required("value") if default is None else vol.Required("value", default=default)
         return self.async_show_form(
             step_id="state_value",
-            data_schema=vol.Schema({key: value_selector}),
+            data_schema=vol.Schema({
+                key: value_selector,
+                vol.Optional("cancel", default=False): selector.BooleanSelector(),
+            }),
             description_placeholders={
                 **self._ds_placeholders(self._ds_current_eid()),
                 "entity": f"{_friendly_name(self.hass, entity_id)} ({entity_id})",
@@ -610,7 +622,7 @@ class _DeviceSettingsMixin:
         return self.async_show_form(
             step_id="state_remove",
             data_schema=vol.Schema({
-                vol.Required("remove"): selector.SelectSelector(selector.SelectSelectorConfig(
+                vol.Optional("remove", default=[]): selector.SelectSelector(selector.SelectSelectorConfig(
                     options=[{"value": v, "label": l} for v, l in labels],
                     multiple=True, mode=selector.SelectSelectorMode.LIST,
                 )),

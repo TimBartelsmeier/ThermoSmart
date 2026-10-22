@@ -38,7 +38,8 @@
         "data_description": {
           "zone_control_mode": "**Vain asetusarvo:** ThermoSmart lähettää pelkän tavoitelämpötilan ja TRV säätää venttiiliään itse.\n\n**TPI-asetusarvon modulointi:** ThermoSmart laskee lämmöntarpeen ja nostaa tai laskee TRV:lle lähetettävää asetusarvoa venttiilin avaamiseksi tai sulkemiseksi.\n\n**Suora venttiiliohjaus:** ThermoSmart kirjoittaa lasketun venttiilin aukeaman (0–100 %) TRV:n venttiilin asentoentiteettiin ja lähettää pelkän tavoitelämpötilan asetusarvona.",
           "control_interval": "Vähimmäisaika säännöllisten ohjausjaksojen välillä. Jokainen jakso laskee lämmöntarpeen uudelleen ja kirjoittaa asetusarvot, venttiilin asennot ja tila-asetukset TRV:ille. Tapahtumat, kuten ikkunan avaaminen tai manuaalinen ohitus, voivat käynnistää ylimääräisen jakson aiemmin. Lyhyemmät välit tarkoittavat nopeampia reaktioita, mutta voivat myös ylikuormittaa laitteita tai ruuhkauttaa verkkoja, esim. Zigbeetä. Käytännössä 2–3 minuuttia yhdessä kohtuullisten lämpötilamuutosten rajojen kanssa, jotka on ylitettävä, jotta uudet arvot lähetetään TRV:lle, pitäisi riittää.",
-          "ext_temp_threshold": "Ulkoinen lämpötila kirjoitetaan vasta, kun ero saavuttaa tämän rajan, ja se on otettava käyttöön jokaiselle TRV:lle, jonka tulee vastaanottaa päivitys."
+          "ext_temp_threshold": "Ulkoisen lämpötila-anturin arvo lähetetään TRV:lle vasta, kun se on muuttunut yli tämän kynnyksen edellisestä päivityksestä. Vaikuttaa vain, kun ulkoinen anturi on määritetty, ja TRV:illä, joilla ulkoinen lämpötilasyöte on käytössä.",
+          "temp_tolerance": "Uusi tavoitelämpötila lähetetään TRV:lle vain, jos se poikkeaa TRV:n nykyisestä tavoitelämpötilasta vähintään tämän arvon verran. Suuremmat arvot vähentävät radioliikennettä, pienemmät saavat TRV:n seuraamaan ThermoSmartia tarkemmin."
         }
       },
       "device_settings": {
@@ -59,11 +60,12 @@
           "valve_maintenance": "Estää venttiilien jumiutumisen pitkien lämmittämättömien jaksojen aikana. ThermoSmart liikuttaa venttiileitä ajoittain automaattisesti, kun kesätila tai lomatila on käytössä.",
           "calibration_sync": "Korjaa TRV:n sisäistä lämpötila-anturia kirjoittamalla huoneen lämpötilan ero alla olevaan kalibrointientiteettiin. Poista käytöstä TRV:illä, jotka käyttävät ulkoista lämpötilalähdettä. Vaatii kalibrointientiteetin.",
           "calibration_entity": "Numeroentiteetti, joka sisältää TRV:n paikallisen kalibrointipoikkeaman. Jätä tyhjäksi poistaaksesi kalibroinnin käytöstä.",
-          "calibration_invert": "Ota käyttöön, jos TRV soveltaa poikkeamaa vastakkaisella etumerkillä."
+          "calibration_invert": "Ota käyttöön, jos TRV soveltaa poikkeamaa vastakkaisella etumerkillä.",
+          "valve_entity": "Numeroentiteetti, joka ohjaa tämän TRV:n venttiilin aukeamista. Tarvitaan vain, jos suora venttiiliohjaus on käytössä tälle TRV:lle; muuten se ohitetaan ja sen voi jättää tyhjäksi. ThermoSmart kirjoittaa 0–100 (%) tai 0–1 entiteeteille, joiden nimessä on \"level\"."
         }
       },
       "state_menu": {
-        "title": "Vaihe 3 – TRV:n tila-asetukset (TRV {index}/{total})",
+        "title": "Vaihe 3 – TRV:n tila-asetukset",
         "description": "**Vyöhyke:** {zone}\n**TRV {index}/{total}:** {device_name}\n\nTila-asetukset pitävät tämän TRV:n valitut entiteetit (select, number tai switch) määrittämässäsi arvossa. Jokaisella ohjausjaksolla tai ohjaustapahtumassa ThermoSmart tarkistaa ne ja asettaa arvon vain, jos se poikkeaa. Jätä luettelo tyhjäksi, jos et tarvitse tätä.\n\n**Tällä hetkellä määritetty:**\n\n{state_rules}\n\nValitse toiminto. Valitse **Valmis tämän TRV:n osalta**, kun olet valmis.",
         "menu_options": {
           "state_add_device": "Lisää tämän TRV:n entiteetti",
@@ -77,6 +79,9 @@
         "description": "**TRV {index}/{total}:** {device_name}\n\nValitse entiteetti, jonka ThermoSmartin tulee pitää tietyssä arvossa. {scope}\n\nValitset arvon seuraavalla sivulla.",
         "data": {
           "entity_id": "Entiteetti"
+        },
+        "data_description": {
+          "entity_id": "Jätä tyhjäksi ja lähetä palataksesi lisäämättä mitään."
         }
       },
       "state_add_any": {
@@ -84,16 +89,21 @@
         "description": "**TRV {index}/{total}:** {device_name}\n\nValitse entiteetti, jonka ThermoSmartin tulee pitää tietyssä arvossa. {scope}\n\nValitset arvon seuraavalla sivulla.",
         "data": {
           "entity_id": "Entiteetti"
+        },
+        "data_description": {
+          "entity_id": "Jätä tyhjäksi ja lähetä palataksesi lisäämättä mitään."
         }
       },
       "state_value": {
         "title": "Vaihe 3 – Tila-asetuksen arvo (TRV {index}/{total})",
         "description": "**TRV {index}/{total}:** {device_name}\n\nMääritä arvo, jonka ThermoSmart pakottaa entiteetille **{entity}**.\n\nNykyinen arvo: {current}",
         "data": {
-          "value": "Pakotettava arvo"
+          "value": "Pakotettava arvo",
+          "cancel": "Peruuta – älä tallenna tätä asetusta"
         },
         "data_description": {
-          "value": "Jos entiteetti poikkeaa tästä arvosta, ThermoSmart asettaa sen seuraavalla ohjausjaksolla tai tapahtumassa."
+          "value": "Jos entiteetti poikkeaa tästä arvosta, ThermoSmart asettaa sen seuraavalla ohjausjaksolla tai tapahtumassa.",
+          "cancel": "Valitse ja lähetä palataksesi luetteloon tallentamatta."
         }
       },
       "state_remove": {
@@ -101,6 +111,9 @@
         "description": "**TRV {index}/{total}:** {device_name}\n\nValitse tila-asetukset, joiden pakottamisen ThermoSmartin tulee lopettaa tälle TRV:lle.",
         "data": {
           "remove": "Poistettavat asetukset"
+        },
+        "data_description": {
+          "remove": "Jätä tyhjäksi ja lähetä palataksesi poistamatta mitään."
         }
       },
       "schedule": {
@@ -207,7 +220,8 @@
         "data_description": {
           "zone_control_mode": "**Vain asetusarvo:** ThermoSmart lähettää pelkän tavoitelämpötilan ja TRV säätää venttiiliään itse.\n\n**TPI-asetusarvon modulointi:** ThermoSmart laskee lämmöntarpeen ja nostaa tai laskee TRV:lle lähetettävää asetusarvoa venttiilin avaamiseksi tai sulkemiseksi.\n\n**Suora venttiiliohjaus:** ThermoSmart kirjoittaa lasketun venttiilin aukeaman (0–100 %) TRV:n venttiilin asentoentiteettiin ja lähettää pelkän tavoitelämpötilan asetusarvona.",
           "control_interval": "Vähimmäisaika säännöllisten ohjausjaksojen välillä. Jokainen jakso laskee lämmöntarpeen uudelleen ja kirjoittaa asetusarvot, venttiilin asennot ja tila-asetukset TRV:ille. Tapahtumat, kuten ikkunan avaaminen tai manuaalinen ohitus, voivat käynnistää ylimääräisen jakson aiemmin. Lyhyemmät välit tarkoittavat nopeampia reaktioita, mutta voivat myös ylikuormittaa laitteita tai ruuhkauttaa verkkoja, esim. Zigbeetä. Käytännössä 2–3 minuuttia yhdessä kohtuullisten lämpötilamuutosten rajojen kanssa, jotka on ylitettävä, jotta uudet arvot lähetetään TRV:lle, pitäisi riittää.",
-          "ext_temp_threshold": "Ulkoinen lämpötila kirjoitetaan vasta, kun ero saavuttaa tämän rajan, ja se on otettava käyttöön jokaiselle TRV:lle, jonka tulee vastaanottaa päivitys."
+          "ext_temp_threshold": "Ulkoisen lämpötila-anturin arvo lähetetään TRV:lle vasta, kun se on muuttunut yli tämän kynnyksen edellisestä päivityksestä. Vaikuttaa vain, kun ulkoinen anturi on määritetty, ja TRV:illä, joilla ulkoinen lämpötilasyöte on käytössä.",
+          "temp_tolerance": "Uusi tavoitelämpötila lähetetään TRV:lle vain, jos se poikkeaa TRV:n nykyisestä tavoitelämpötilasta vähintään tämän arvon verran. Suuremmat arvot vähentävät radioliikennettä, pienemmät saavat TRV:n seuraamaan ThermoSmartia tarkemmin."
         }
       },
       "device_settings": {
@@ -228,11 +242,12 @@
           "valve_maintenance": "Estää venttiilien jumiutumisen pitkien lämmittämättömien jaksojen aikana. ThermoSmart liikuttaa venttiileitä ajoittain automaattisesti, kun kesätila tai lomatila on käytössä.",
           "calibration_sync": "Korjaa TRV:n sisäistä lämpötila-anturia kirjoittamalla huoneen lämpötilan ero alla olevaan kalibrointientiteettiin. Poista käytöstä TRV:illä, jotka käyttävät ulkoista lämpötilalähdettä. Vaatii kalibrointientiteetin.",
           "calibration_entity": "Numeroentiteetti, joka sisältää TRV:n paikallisen kalibrointipoikkeaman. Jätä tyhjäksi poistaaksesi kalibroinnin käytöstä.",
-          "calibration_invert": "Ota käyttöön, jos TRV soveltaa poikkeamaa vastakkaisella etumerkillä."
+          "calibration_invert": "Ota käyttöön, jos TRV soveltaa poikkeamaa vastakkaisella etumerkillä.",
+          "valve_entity": "Numeroentiteetti, joka ohjaa tämän TRV:n venttiilin aukeamista. Tarvitaan vain, jos suora venttiiliohjaus on käytössä tälle TRV:lle; muuten se ohitetaan ja sen voi jättää tyhjäksi. ThermoSmart kirjoittaa 0–100 (%) tai 0–1 entiteeteille, joiden nimessä on \"level\"."
         }
       },
       "state_menu": {
-        "title": "TRV:n tila-asetukset (TRV {index}/{total})",
+        "title": "TRV:n tila-asetukset",
         "description": "**Vyöhyke:** {zone}\n**TRV {index}/{total}:** {device_name}\n\nTila-asetukset pitävät tämän TRV:n valitut entiteetit (select, number tai switch) määrittämässäsi arvossa. Jokaisella ohjausjaksolla tai ohjaustapahtumassa ThermoSmart tarkistaa ne ja asettaa arvon vain, jos se poikkeaa. Jätä luettelo tyhjäksi, jos et tarvitse tätä.\n\n**Tällä hetkellä määritetty:**\n\n{state_rules}\n\nValitse toiminto. Valitse **Valmis tämän TRV:n osalta**, kun olet valmis; muutokset tallennetaan viimeisen TRV:n jälkeen.",
         "menu_options": {
           "state_add_device": "Lisää tämän TRV:n entiteetti",
@@ -246,6 +261,9 @@
         "description": "**TRV {index}/{total}:** {device_name}\n\nValitse entiteetti, jonka ThermoSmartin tulee pitää tietyssä arvossa. {scope}\n\nValitset arvon seuraavalla sivulla.",
         "data": {
           "entity_id": "Entiteetti"
+        },
+        "data_description": {
+          "entity_id": "Jätä tyhjäksi ja lähetä palataksesi lisäämättä mitään."
         }
       },
       "state_add_any": {
@@ -253,16 +271,21 @@
         "description": "**TRV {index}/{total}:** {device_name}\n\nValitse entiteetti, jonka ThermoSmartin tulee pitää tietyssä arvossa. {scope}\n\nValitset arvon seuraavalla sivulla.",
         "data": {
           "entity_id": "Entiteetti"
+        },
+        "data_description": {
+          "entity_id": "Jätä tyhjäksi ja lähetä palataksesi lisäämättä mitään."
         }
       },
       "state_value": {
         "title": "Tila-asetuksen arvo (TRV {index}/{total})",
         "description": "**TRV {index}/{total}:** {device_name}\n\nMääritä arvo, jonka ThermoSmart pakottaa entiteetille **{entity}**.\n\nNykyinen arvo: {current}",
         "data": {
-          "value": "Pakotettava arvo"
+          "value": "Pakotettava arvo",
+          "cancel": "Peruuta – älä tallenna tätä asetusta"
         },
         "data_description": {
-          "value": "Jos entiteetti poikkeaa tästä arvosta, ThermoSmart asettaa sen seuraavalla ohjausjaksolla tai tapahtumassa."
+          "value": "Jos entiteetti poikkeaa tästä arvosta, ThermoSmart asettaa sen seuraavalla ohjausjaksolla tai tapahtumassa.",
+          "cancel": "Valitse ja lähetä palataksesi luetteloon tallentamatta."
         }
       },
       "state_remove": {
@@ -270,6 +293,9 @@
         "description": "**TRV {index}/{total}:** {device_name}\n\nValitse tila-asetukset, joiden pakottamisen ThermoSmartin tulee lopettaa tälle TRV:lle.",
         "data": {
           "remove": "Poistettavat asetukset"
+        },
+        "data_description": {
+          "remove": "Jätä tyhjäksi ja lähetä palataksesi poistamatta mitään."
         }
       },
       "schedule": {

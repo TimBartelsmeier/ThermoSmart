@@ -38,7 +38,8 @@
         "data_description": {
           "zone_control_mode": "**Tylko wartość zadana:** ThermoSmart wysyła zwykłą temperaturę docelową, a TRV samodzielnie reguluje swój zawór.\n\n**Modulacja wartości zadanej TPI:** ThermoSmart oblicza zapotrzebowanie na ciepło i podnosi lub obniża wartość zadaną wysyłaną do TRV, aby otworzyć lub zamknąć zawór.\n\n**Bezpośrednie sterowanie zaworem:** ThermoSmart zapisuje obliczone otwarcie zaworu (0–100 %) w encji pozycji zaworu TRV i wysyła zwykłą temperaturę docelową jako wartość zadaną.",
           "control_interval": "Minimalny czas między regularnymi cyklami sterowania. Każdy cykl ponownie oblicza zapotrzebowanie na ciepło i zapisuje wartości zadane, pozycje zaworów oraz ustawienia stanu w TRV. Zdarzenia, takie jak otwarcie okna lub ręczne nadpisanie, mogą wcześniej wywołać dodatkowy cykl. Krótsze odstępy zapewniają szybsze reakcje, ale mogą też przeciążać urządzenia lub zapychać sieci, np. Zigbee. W praktyce 2–3 minuty w połączeniu z rozsądnymi progami zmian temperatury, które muszą zostać przekroczone, aby nowe wartości zostały wysłane do TRV, powinny wystarczyć.",
-          "ext_temp_threshold": "Temperatura zewnętrzna jest zapisywana dopiero po osiągnięciu przez różnicę tego progu i musi być włączona dla każdego TRV, który ma otrzymywać aktualizację."
+          "ext_temp_threshold": "Wartość z zewnętrznego czujnika temperatury jest wysyłana do TRV dopiero po zmianie o więcej niż ten próg względem ostatniej aktualizacji. Działa tylko po skonfigurowaniu zewnętrznego czujnika i dla TRV z włączonym zewnętrznym wejściem temperatury.",
+          "temp_tolerance": "Nowa temperatura docelowa jest wysyłana do TRV tylko wtedy, gdy różni się od bieżącej temperatury docelowej TRV o co najmniej tę wartość. Większe wartości zmniejszają ruch radiowy, mniejsze sprawiają, że TRV ściślej podąża za ThermoSmart."
         }
       },
       "device_settings": {
@@ -59,11 +60,12 @@
           "valve_maintenance": "Zapobiega zacięciu się zaworów podczas długich okresów bez ogrzewania. ThermoSmart od czasu do czasu automatycznie porusza zaworami, gdy aktywny jest tryb Lato lub Urlop.",
           "calibration_sync": "Koryguje wewnętrzny czujnik temperatury TRV, zapisując różnicę względem temperatury pomieszczenia w poniższej encji kalibracji. Wyłącz dla TRV używających zewnętrznego źródła temperatury. Wymaga encji kalibracji.",
           "calibration_entity": "Encja numeryczna zawierająca lokalny offset kalibracji TRV. Pozostaw puste, aby wyłączyć kalibrację.",
-          "calibration_invert": "Włącz, jeśli TRV stosuje offset z przeciwnym znakiem."
+          "calibration_invert": "Włącz, jeśli TRV stosuje offset z przeciwnym znakiem.",
+          "valve_entity": "Encja numeryczna sterująca otwarciem zaworu tego TRV. Potrzebna tylko przy włączonym bezpośrednim sterowaniu zaworem dla tego TRV; w przeciwnym razie jest ignorowana i można ją zostawić pustą. ThermoSmart zapisuje 0–100 (%) lub 0–1 dla encji z \"level\" w nazwie."
         }
       },
       "state_menu": {
-        "title": "Krok 3 – Ustawienia stanu TRV (TRV {index}/{total})",
+        "title": "Krok 3 – Ustawienia stanu TRV",
         "description": "**Strefa:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nUstawienia stanu utrzymują wybrane encje tego TRV (select, number lub switch) na zdefiniowanej przez Ciebie wartości. W każdym cyklu lub zdarzeniu sterowania ThermoSmart je sprawdza i ustawia wartość tylko wtedy, gdy się różni. Pozostaw listę pustą, jeśli tego nie potrzebujesz.\n\n**Aktualnie skonfigurowane:**\n\n{state_rules}\n\nWybierz działanie. Wybierz **Zakończ dla tego TRV** po zakończeniu.",
         "menu_options": {
           "state_add_device": "Dodaj encję tego TRV",
@@ -77,6 +79,9 @@
         "description": "**TRV {index} z {total}:** {device_name}\n\nWybierz encję, którą ThermoSmart ma utrzymywać na określonej wartości. {scope}\n\nWartość wybierzesz na następnej stronie.",
         "data": {
           "entity_id": "Encja"
+        },
+        "data_description": {
+          "entity_id": "Zostaw puste i wyślij, aby wrócić bez dodawania."
         }
       },
       "state_add_any": {
@@ -84,16 +89,21 @@
         "description": "**TRV {index} z {total}:** {device_name}\n\nWybierz encję, którą ThermoSmart ma utrzymywać na określonej wartości. {scope}\n\nWartość wybierzesz na następnej stronie.",
         "data": {
           "entity_id": "Encja"
+        },
+        "data_description": {
+          "entity_id": "Zostaw puste i wyślij, aby wrócić bez dodawania."
         }
       },
       "state_value": {
         "title": "Krok 3 – Wartość ustawienia stanu (TRV {index}/{total})",
         "description": "**TRV {index} z {total}:** {device_name}\n\nOkreśl wartość, którą ThermoSmart wymusza dla **{entity}**.\n\nAktualna wartość: {current}",
         "data": {
-          "value": "Wartość do wymuszenia"
+          "value": "Wartość do wymuszenia",
+          "cancel": "Anuluj – nie zapisuj tego ustawienia"
         },
         "data_description": {
-          "value": "Jeśli encja różni się od tej wartości, ThermoSmart ustawi ją w następnym cyklu lub zdarzeniu sterowania."
+          "value": "Jeśli encja różni się od tej wartości, ThermoSmart ustawi ją w następnym cyklu lub zdarzeniu sterowania.",
+          "cancel": "Zaznacz i wyślij, aby wrócić do listy bez zapisywania."
         }
       },
       "state_remove": {
@@ -101,6 +111,9 @@
         "description": "**TRV {index} z {total}:** {device_name}\n\nWybierz ustawienia stanu, których ThermoSmart ma przestać wymuszać dla tego TRV.",
         "data": {
           "remove": "Ustawienia do usunięcia"
+        },
+        "data_description": {
+          "remove": "Zostaw puste i wyślij, aby wrócić bez usuwania."
         }
       },
       "schedule": {
@@ -207,7 +220,8 @@
         "data_description": {
           "zone_control_mode": "**Tylko wartość zadana:** ThermoSmart wysyła zwykłą temperaturę docelową, a TRV samodzielnie reguluje swój zawór.\n\n**Modulacja wartości zadanej TPI:** ThermoSmart oblicza zapotrzebowanie na ciepło i podnosi lub obniża wartość zadaną wysyłaną do TRV, aby otworzyć lub zamknąć zawór.\n\n**Bezpośrednie sterowanie zaworem:** ThermoSmart zapisuje obliczone otwarcie zaworu (0–100 %) w encji pozycji zaworu TRV i wysyła zwykłą temperaturę docelową jako wartość zadaną.",
           "control_interval": "Minimalny czas między regularnymi cyklami sterowania. Każdy cykl ponownie oblicza zapotrzebowanie na ciepło i zapisuje wartości zadane, pozycje zaworów oraz ustawienia stanu w TRV. Zdarzenia, takie jak otwarcie okna lub ręczne nadpisanie, mogą wcześniej wywołać dodatkowy cykl. Krótsze odstępy zapewniają szybsze reakcje, ale mogą też przeciążać urządzenia lub zapychać sieci, np. Zigbee. W praktyce 2–3 minuty w połączeniu z rozsądnymi progami zmian temperatury, które muszą zostać przekroczone, aby nowe wartości zostały wysłane do TRV, powinny wystarczyć.",
-          "ext_temp_threshold": "Temperatura zewnętrzna jest zapisywana dopiero po osiągnięciu przez różnicę tego progu i musi być włączona dla każdego TRV, który ma otrzymywać aktualizację."
+          "ext_temp_threshold": "Wartość z zewnętrznego czujnika temperatury jest wysyłana do TRV dopiero po zmianie o więcej niż ten próg względem ostatniej aktualizacji. Działa tylko po skonfigurowaniu zewnętrznego czujnika i dla TRV z włączonym zewnętrznym wejściem temperatury.",
+          "temp_tolerance": "Nowa temperatura docelowa jest wysyłana do TRV tylko wtedy, gdy różni się od bieżącej temperatury docelowej TRV o co najmniej tę wartość. Większe wartości zmniejszają ruch radiowy, mniejsze sprawiają, że TRV ściślej podąża za ThermoSmart."
         }
       },
       "device_settings": {
@@ -228,11 +242,12 @@
           "valve_maintenance": "Zapobiega zacięciu się zaworów podczas długich okresów bez ogrzewania. ThermoSmart od czasu do czasu automatycznie porusza zaworami, gdy aktywny jest tryb Lato lub Urlop.",
           "calibration_sync": "Koryguje wewnętrzny czujnik temperatury TRV, zapisując różnicę względem temperatury pomieszczenia w poniższej encji kalibracji. Wyłącz dla TRV używających zewnętrznego źródła temperatury. Wymaga encji kalibracji.",
           "calibration_entity": "Encja numeryczna zawierająca lokalny offset kalibracji TRV. Pozostaw puste, aby wyłączyć kalibrację.",
-          "calibration_invert": "Włącz, jeśli TRV stosuje offset z przeciwnym znakiem."
+          "calibration_invert": "Włącz, jeśli TRV stosuje offset z przeciwnym znakiem.",
+          "valve_entity": "Encja numeryczna sterująca otwarciem zaworu tego TRV. Potrzebna tylko przy włączonym bezpośrednim sterowaniu zaworem dla tego TRV; w przeciwnym razie jest ignorowana i można ją zostawić pustą. ThermoSmart zapisuje 0–100 (%) lub 0–1 dla encji z \"level\" w nazwie."
         }
       },
       "state_menu": {
-        "title": "Ustawienia stanu TRV (TRV {index}/{total})",
+        "title": "Ustawienia stanu TRV",
         "description": "**Strefa:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nUstawienia stanu utrzymują wybrane encje tego TRV (select, number lub switch) na zdefiniowanej przez Ciebie wartości. W każdym cyklu lub zdarzeniu sterowania ThermoSmart je sprawdza i ustawia wartość tylko wtedy, gdy się różni. Pozostaw listę pustą, jeśli tego nie potrzebujesz.\n\n**Aktualnie skonfigurowane:**\n\n{state_rules}\n\nWybierz działanie. Wybierz **Zakończ dla tego TRV** po zakończeniu; zmiany zostaną zapisane po ostatnim TRV.",
         "menu_options": {
           "state_add_device": "Dodaj encję tego TRV",
@@ -246,6 +261,9 @@
         "description": "**TRV {index} z {total}:** {device_name}\n\nWybierz encję, którą ThermoSmart ma utrzymywać na określonej wartości. {scope}\n\nWartość wybierzesz na następnej stronie.",
         "data": {
           "entity_id": "Encja"
+        },
+        "data_description": {
+          "entity_id": "Zostaw puste i wyślij, aby wrócić bez dodawania."
         }
       },
       "state_add_any": {
@@ -253,16 +271,21 @@
         "description": "**TRV {index} z {total}:** {device_name}\n\nWybierz encję, którą ThermoSmart ma utrzymywać na określonej wartości. {scope}\n\nWartość wybierzesz na następnej stronie.",
         "data": {
           "entity_id": "Encja"
+        },
+        "data_description": {
+          "entity_id": "Zostaw puste i wyślij, aby wrócić bez dodawania."
         }
       },
       "state_value": {
         "title": "Wartość ustawienia stanu (TRV {index}/{total})",
         "description": "**TRV {index} z {total}:** {device_name}\n\nOkreśl wartość, którą ThermoSmart wymusza dla **{entity}**.\n\nAktualna wartość: {current}",
         "data": {
-          "value": "Wartość do wymuszenia"
+          "value": "Wartość do wymuszenia",
+          "cancel": "Anuluj – nie zapisuj tego ustawienia"
         },
         "data_description": {
-          "value": "Jeśli encja różni się od tej wartości, ThermoSmart ustawi ją w następnym cyklu lub zdarzeniu sterowania."
+          "value": "Jeśli encja różni się od tej wartości, ThermoSmart ustawi ją w następnym cyklu lub zdarzeniu sterowania.",
+          "cancel": "Zaznacz i wyślij, aby wrócić do listy bez zapisywania."
         }
       },
       "state_remove": {
@@ -270,6 +293,9 @@
         "description": "**TRV {index} z {total}:** {device_name}\n\nWybierz ustawienia stanu, których ThermoSmart ma przestać wymuszać dla tego TRV.",
         "data": {
           "remove": "Ustawienia do usunięcia"
+        },
+        "data_description": {
+          "remove": "Zostaw puste i wyślij, aby wrócić bez usuwania."
         }
       },
       "schedule": {

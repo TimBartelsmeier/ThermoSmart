@@ -38,7 +38,8 @@
         "data_description": {
           "zone_control_mode": "**Pouze žádaná hodnota:** ThermoSmart posílá čistou cílovou teplotu a TRV reguluje svůj ventil samo.\n\n**Modulace žádané hodnoty TPI:** ThermoSmart vypočítá potřebu topení a zvyšuje nebo snižuje žádanou hodnotu odesílanou do TRV, aby otevřel nebo zavřel jeho ventil.\n\n**Přímé řízení ventilu:** ThermoSmart zapisuje vypočítané otevření ventilu (0–100 %) do entity polohy ventilu TRV a jako žádanou hodnotu posílá čistou cílovou teplotu.",
           "control_interval": "Minimální doba mezi pravidelnými řídicími cykly. Každý cyklus znovu vypočítá potřebu topení a zapíše žádané hodnoty, polohy ventilů a stavová nastavení do TRV. Události, jako je otevření okna nebo ruční přepsání, mohou vyvolat další cyklus dříve. Kratší intervaly znamenají rychlejší reakce, ale mohou také přetížit zařízení nebo zahltit sítě, např. Zigbee. V praxi by mělo stačit 2–3 minuty v kombinaci s rozumnými prahovými hodnotami změn teploty, které musí být překročeny, aby se nové hodnoty odeslaly do TRV.",
-          "ext_temp_threshold": "Externí teplota se zapíše až poté, co rozdíl dosáhne tohoto prahu, a musí být povolena pro každé TRV, které má aktualizaci přijímat."
+          "ext_temp_threshold": "Hodnota z externího teplotního senzoru se do TRV odešle až poté, co se oproti poslední aktualizaci změnila o více než tento práh. Má účinek pouze při nakonfigurovaném externím senzoru a u TRV s povoleným externím teplotním vstupem.",
+          "temp_tolerance": "Nová nastavená teplota se do TRV odešle jen tehdy, pokud se od aktuální nastavené teploty TRV liší nejméně o tuto hodnotu. Vyšší hodnoty snižují provoz v rádiové síti, nižší hodnoty nutí TRV sledovat ThermoSmart přesněji."
         }
       },
       "device_settings": {
@@ -59,11 +60,12 @@
           "valve_maintenance": "Zabraňuje zaseknutí ventilů při delších obdobích bez topení. ThermoSmart příležitostně automaticky pohybuje ventily, když je aktivní letní nebo dovolenkový režim.",
           "calibration_sync": "Koriguje interní teplotní senzor TRV zápisem rozdílu oproti pokojové teplotě do kalibrační entity níže. Vypněte u TRV, které používají externí zdroj teploty. Vyžaduje kalibrační entitu.",
           "calibration_entity": "Číselná entita s lokálním kalibračním offsetem TRV. Nechte prázdné pro vypnutí kalibrace.",
-          "calibration_invert": "Zapněte, pokud TRV používá offset s opačným znaménkem."
+          "calibration_invert": "Zapněte, pokud TRV používá offset s opačným znaménkem.",
+          "valve_entity": "Číselná entita řídící otevření ventilu tohoto TRV. Potřebná jen při zapnutém přímém řízení ventilu, jinak se ignoruje a lze ji nechat prázdnou. ThermoSmart zapisuje 0–100 (%), nebo 0–1 u entit s „level“ v názvu."
         }
       },
       "state_menu": {
-        "title": "Krok 3 – Stavová nastavení TRV (TRV {index}/{total})",
+        "title": "Krok 3 – Stavová nastavení TRV",
         "description": "**Zóna:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nStavová nastavení udržují vybrané entity tohoto TRV (select, number nebo switch) na hodnotě, kterou definujete. Při každém řídicím cyklu nebo řídicí události je ThermoSmart zkontroluje a hodnotu nastaví, pouze pokud se liší. Pokud to nepotřebujete, nechte seznam prázdný.\n\n**Aktuálně nakonfigurováno:**\n\n{state_rules}\n\nVyberte akci. Po dokončení zvolte **Hotovo s tímto TRV**.",
         "menu_options": {
           "state_add_device": "Přidat entitu tohoto TRV",
@@ -77,6 +79,9 @@
         "description": "**TRV {index} z {total}:** {device_name}\n\nVyberte entitu, kterou má ThermoSmart udržovat na určité hodnotě. {scope}\n\nHodnotu vyberete na další stránce.",
         "data": {
           "entity_id": "Entita"
+        },
+        "data_description": {
+          "entity_id": "Nechte prázdné a odešlete pro návrat bez přidání."
         }
       },
       "state_add_any": {
@@ -84,16 +89,21 @@
         "description": "**TRV {index} z {total}:** {device_name}\n\nVyberte entitu, kterou má ThermoSmart udržovat na určité hodnotě. {scope}\n\nHodnotu vyberete na další stránce.",
         "data": {
           "entity_id": "Entita"
+        },
+        "data_description": {
+          "entity_id": "Nechte prázdné a odešlete pro návrat bez přidání."
         }
       },
       "state_value": {
         "title": "Krok 3 – Hodnota stavového nastavení (TRV {index}/{total})",
         "description": "**TRV {index} z {total}:** {device_name}\n\nDefinujte hodnotu, kterou ThermoSmart vynucuje pro **{entity}**.\n\nAktuální hodnota: {current}",
         "data": {
-          "value": "Vynucovaná hodnota"
+          "value": "Vynucovaná hodnota",
+          "cancel": "Zrušit – toto nastavení neukládat"
         },
         "data_description": {
-          "value": "Pokud se entita liší od této hodnoty, ThermoSmart ji nastaví při dalším řídicím cyklu nebo události."
+          "value": "Pokud se entita liší od této hodnoty, ThermoSmart ji nastaví při dalším řídicím cyklu nebo události.",
+          "cancel": "Zaškrtněte a odešlete pro návrat do seznamu bez uložení."
         }
       },
       "state_remove": {
@@ -101,6 +111,9 @@
         "description": "**TRV {index} z {total}:** {device_name}\n\nVyberte stavová nastavení, která má ThermoSmart pro toto TRV přestat vynucovat.",
         "data": {
           "remove": "Nastavení k odebrání"
+        },
+        "data_description": {
+          "remove": "Nechte prázdné a odešlete pro návrat bez odebrání."
         }
       },
       "schedule": {
@@ -207,7 +220,8 @@
         "data_description": {
           "zone_control_mode": "**Pouze žádaná hodnota:** ThermoSmart posílá čistou cílovou teplotu a TRV reguluje svůj ventil samo.\n\n**Modulace žádané hodnoty TPI:** ThermoSmart vypočítá potřebu topení a zvyšuje nebo snižuje žádanou hodnotu odesílanou do TRV, aby otevřel nebo zavřel jeho ventil.\n\n**Přímé řízení ventilu:** ThermoSmart zapisuje vypočítané otevření ventilu (0–100 %) do entity polohy ventilu TRV a jako žádanou hodnotu posílá čistou cílovou teplotu.",
           "control_interval": "Minimální doba mezi pravidelnými řídicími cykly. Každý cyklus znovu vypočítá potřebu topení a zapíše žádané hodnoty, polohy ventilů a stavová nastavení do TRV. Události, jako je otevření okna nebo ruční přepsání, mohou vyvolat další cyklus dříve. Kratší intervaly znamenají rychlejší reakce, ale mohou také přetížit zařízení nebo zahltit sítě, např. Zigbee. V praxi by mělo stačit 2–3 minuty v kombinaci s rozumnými prahovými hodnotami změn teploty, které musí být překročeny, aby se nové hodnoty odeslaly do TRV.",
-          "ext_temp_threshold": "Externí teplota se zapíše až poté, co rozdíl dosáhne tohoto prahu, a musí být povolena pro každé TRV, které má aktualizaci přijímat."
+          "ext_temp_threshold": "Hodnota z externího teplotního senzoru se do TRV odešle až poté, co se oproti poslední aktualizaci změnila o více než tento práh. Má účinek pouze při nakonfigurovaném externím senzoru a u TRV s povoleným externím teplotním vstupem.",
+          "temp_tolerance": "Nová nastavená teplota se do TRV odešle jen tehdy, pokud se od aktuální nastavené teploty TRV liší nejméně o tuto hodnotu. Vyšší hodnoty snižují provoz v rádiové síti, nižší hodnoty nutí TRV sledovat ThermoSmart přesněji."
         }
       },
       "device_settings": {
@@ -228,11 +242,12 @@
           "valve_maintenance": "Zabraňuje zaseknutí ventilů při delších obdobích bez topení. ThermoSmart příležitostně automaticky pohybuje ventily, když je aktivní letní nebo dovolenkový režim.",
           "calibration_sync": "Koriguje interní teplotní senzor TRV zápisem rozdílu oproti pokojové teplotě do kalibrační entity níže. Vypněte u TRV, které používají externí zdroj teploty. Vyžaduje kalibrační entitu.",
           "calibration_entity": "Číselná entita s lokálním kalibračním offsetem TRV. Nechte prázdné pro vypnutí kalibrace.",
-          "calibration_invert": "Zapněte, pokud TRV používá offset s opačným znaménkem."
+          "calibration_invert": "Zapněte, pokud TRV používá offset s opačným znaménkem.",
+          "valve_entity": "Číselná entita řídící otevření ventilu tohoto TRV. Potřebná jen při zapnutém přímém řízení ventilu, jinak se ignoruje a lze ji nechat prázdnou. ThermoSmart zapisuje 0–100 (%), nebo 0–1 u entit s „level“ v názvu."
         }
       },
       "state_menu": {
-        "title": "Stavová nastavení TRV (TRV {index}/{total})",
+        "title": "Stavová nastavení TRV",
         "description": "**Zóna:** {zone}\n**TRV {index} z {total}:** {device_name}\n\nStavová nastavení udržují vybrané entity tohoto TRV (select, number nebo switch) na hodnotě, kterou definujete. Při každém řídicím cyklu nebo řídicí události je ThermoSmart zkontroluje a hodnotu nastaví, pouze pokud se liší. Pokud to nepotřebujete, nechte seznam prázdný.\n\n**Aktuálně nakonfigurováno:**\n\n{state_rules}\n\nVyberte akci. Po dokončení zvolte **Hotovo s tímto TRV**; změny se uloží po posledním TRV.",
         "menu_options": {
           "state_add_device": "Přidat entitu tohoto TRV",
@@ -246,6 +261,9 @@
         "description": "**TRV {index} z {total}:** {device_name}\n\nVyberte entitu, kterou má ThermoSmart udržovat na určité hodnotě. {scope}\n\nHodnotu vyberete na další stránce.",
         "data": {
           "entity_id": "Entita"
+        },
+        "data_description": {
+          "entity_id": "Nechte prázdné a odešlete pro návrat bez přidání."
         }
       },
       "state_add_any": {
@@ -253,16 +271,21 @@
         "description": "**TRV {index} z {total}:** {device_name}\n\nVyberte entitu, kterou má ThermoSmart udržovat na určité hodnotě. {scope}\n\nHodnotu vyberete na další stránce.",
         "data": {
           "entity_id": "Entita"
+        },
+        "data_description": {
+          "entity_id": "Nechte prázdné a odešlete pro návrat bez přidání."
         }
       },
       "state_value": {
         "title": "Hodnota stavového nastavení (TRV {index}/{total})",
         "description": "**TRV {index} z {total}:** {device_name}\n\nDefinujte hodnotu, kterou ThermoSmart vynucuje pro **{entity}**.\n\nAktuální hodnota: {current}",
         "data": {
-          "value": "Vynucovaná hodnota"
+          "value": "Vynucovaná hodnota",
+          "cancel": "Zrušit – toto nastavení neukládat"
         },
         "data_description": {
-          "value": "Pokud se entita liší od této hodnoty, ThermoSmart ji nastaví při dalším řídicím cyklu nebo události."
+          "value": "Pokud se entita liší od této hodnoty, ThermoSmart ji nastaví při dalším řídicím cyklu nebo události.",
+          "cancel": "Zaškrtněte a odešlete pro návrat do seznamu bez uložení."
         }
       },
       "state_remove": {
@@ -270,6 +293,9 @@
         "description": "**TRV {index} z {total}:** {device_name}\n\nVyberte stavová nastavení, která má ThermoSmart pro toto TRV přestat vynucovat.",
         "data": {
           "remove": "Nastavení k odebrání"
+        },
+        "data_description": {
+          "remove": "Nechte prázdné a odešlete pro návrat bez odebrání."
         }
       },
       "schedule": {

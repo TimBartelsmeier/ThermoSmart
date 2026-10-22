@@ -38,7 +38,8 @@
         "data_description": {
           "zone_control_mode": "**Yalnızca set noktası:** ThermoSmart düz hedef sıcaklığı gönderir ve TRV vanasını kendisi ayarlar.\n\n**TPI set noktası modülasyonu:** ThermoSmart ısıtma talebini hesaplar ve vanayı açmak veya kapatmak için TRV'ye gönderilen set noktasını yükseltir veya düşürür.\n\n**Doğrudan vana kontrolü:** ThermoSmart hesaplanan vana açıklığını (0–100 %) TRV'nin vana konumu varlığına yazar ve düz hedefi set noktası olarak gönderir.",
           "control_interval": "Düzenli kontrol döngüleri arasındaki minimum süre. Her döngü ısıtma talebini yeniden hesaplar ve set noktalarını, vana konumlarını ve durum ayarlarını TRV'lere yazar. Pencere açma veya manuel geçersiz kılma gibi olaylar daha erken ek bir döngüyü tetikleyebilir. Daha kısa aralıklar daha hızlı tepki verir ancak cihazları aşırı yükleyebilir veya Zigbee gibi ağları tıkayabilir. Pratikte, yeni değerlerin TRV'ye gönderilmesi için aşılması gereken makul sıcaklık değişim eşikleriyle birlikte 2–3 dakika yeterli olmalıdır.",
-          "ext_temp_threshold": "Dış sıcaklık yalnızca fark bu eşiğe ulaştıktan sonra yazılır ve güncellemeyi alması gereken her TRV için etkinleştirilmelidir."
+          "ext_temp_threshold": "Harici sıcaklık sensörünün değeri, son güncellemeye göre bu eşikten fazla değiştikten sonra TRV'ye gönderilir. Yalnızca harici sensör yapılandırıldığında ve harici sıcaklık girişi etkin olan TRV'ler için etkilidir.",
+          "temp_tolerance": "Yeni bir hedef sıcaklık TRV'ye yalnızca TRV'nin mevcut hedef sıcaklığından en az bu değer kadar farklıysa gönderilir. Büyük değerler telsiz trafiğini azaltır, küçük değerler TRV'nin ThermoSmart'ı daha yakından izlemesini sağlar."
         }
       },
       "device_settings": {
@@ -59,11 +60,12 @@
           "valve_maintenance": "Uzun ısıtmasız dönemlerde vanaların sıkışmasını önler. Yaz Modu veya Tatil Modu etkinken ThermoSmart vanaları ara sıra otomatik olarak hareket ettirir.",
           "calibration_sync": "Oda sıcaklığıyla farkı aşağıdaki kalibrasyon varlığına yazarak TRV'nin dahili sıcaklık sensörünü düzeltir. Harici sıcaklık kaynağı kullanan TRV'lerde kapatın. Bir kalibrasyon varlığı gerektirir.",
           "calibration_entity": "TRV'nin yerel kalibrasyon ofsetini tutan sayı varlığı. Kalibrasyonu kapatmak için boş bırakın.",
-          "calibration_invert": "TRV ofseti ters işaretle uyguluyorsa açın."
+          "calibration_invert": "TRV ofseti ters işaretle uyguluyorsa açın.",
+          "valve_entity": "Bu TRV'nin vana açıklığını kontrol eden sayı varlığı. Yalnızca bu TRV için doğrudan vana kontrolü etkinse gereklidir; aksi halde yok sayılır ve boş bırakılabilir. ThermoSmart 0–100 (%) yazar, adında \"level\" geçen varlıklar için 0–1 yazar."
         }
       },
       "state_menu": {
-        "title": "Adım 3 – TRV durum ayarları (TRV {index}/{total})",
+        "title": "Adım 3 – TRV durum ayarları",
         "description": "**Bölge:** {zone}\n**TRV {index} / {total}:** {device_name}\n\nDurum ayarları, bu TRV'nin seçilen varlıklarını (select, number veya switch) sizin tanımladığınız bir değerde tutar. Her kontrol döngüsünde veya kontrol olayında ThermoSmart bunları denetler ve yalnızca farklıysa bir değer ayarlar. Buna ihtiyacınız yoksa listeyi boş bırakın.\n\n**Şu anda yapılandırılmış olanlar:**\n\n{state_rules}\n\nBir eylem seçin. İşiniz bittiğinde **Bu TRV ile işim bitti** seçeneğini seçin.",
         "menu_options": {
           "state_add_device": "Bu TRV'nin bir varlığını ekle",
@@ -77,6 +79,9 @@
         "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın belirli bir değerde tutması gereken varlığı seçin. {scope}\n\nDeğeri sonraki sayfada seçersiniz.",
         "data": {
           "entity_id": "Varlık"
+        },
+        "data_description": {
+          "entity_id": "Hiçbir şey eklemeden dönmek için boş bırakıp gönderin."
         }
       },
       "state_add_any": {
@@ -84,16 +89,21 @@
         "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın belirli bir değerde tutması gereken varlığı seçin. {scope}\n\nDeğeri sonraki sayfada seçersiniz.",
         "data": {
           "entity_id": "Varlık"
+        },
+        "data_description": {
+          "entity_id": "Hiçbir şey eklemeden dönmek için boş bırakıp gönderin."
         }
       },
       "state_value": {
         "title": "Adım 3 – Durum ayarı değeri (TRV {index}/{total})",
         "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın **{entity}** için uygulayacağı değeri tanımlayın.\n\nGeçerli değer: {current}",
         "data": {
-          "value": "Uygulanacak değer"
+          "value": "Uygulanacak değer",
+          "cancel": "İptal – bu ayarı kaydetme"
         },
         "data_description": {
-          "value": "Varlık bu değerden farklıysa ThermoSmart bir sonraki kontrol döngüsünde veya olayında onu ayarlar."
+          "value": "Varlık bu değerden farklıysa ThermoSmart bir sonraki kontrol döngüsünde veya olayında onu ayarlar.",
+          "cancel": "Kaydetmeden listeye dönmek için işaretleyip gönderin."
         }
       },
       "state_remove": {
@@ -101,6 +111,9 @@
         "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın bu TRV için uygulamayı bırakması gereken durum ayarlarını seçin.",
         "data": {
           "remove": "Kaldırılacak ayarlar"
+        },
+        "data_description": {
+          "remove": "Hiçbir şey kaldırmadan dönmek için boş bırakıp gönderin."
         }
       },
       "schedule": {
@@ -207,7 +220,8 @@
         "data_description": {
           "zone_control_mode": "**Yalnızca set noktası:** ThermoSmart düz hedef sıcaklığı gönderir ve TRV vanasını kendisi ayarlar.\n\n**TPI set noktası modülasyonu:** ThermoSmart ısıtma talebini hesaplar ve vanayı açmak veya kapatmak için TRV'ye gönderilen set noktasını yükseltir veya düşürür.\n\n**Doğrudan vana kontrolü:** ThermoSmart hesaplanan vana açıklığını (0–100 %) TRV'nin vana konumu varlığına yazar ve düz hedefi set noktası olarak gönderir.",
           "control_interval": "Düzenli kontrol döngüleri arasındaki minimum süre. Her döngü ısıtma talebini yeniden hesaplar ve set noktalarını, vana konumlarını ve durum ayarlarını TRV'lere yazar. Pencere açma veya manuel geçersiz kılma gibi olaylar daha erken ek bir döngüyü tetikleyebilir. Daha kısa aralıklar daha hızlı tepki verir ancak cihazları aşırı yükleyebilir veya Zigbee gibi ağları tıkayabilir. Pratikte, yeni değerlerin TRV'ye gönderilmesi için aşılması gereken makul sıcaklık değişim eşikleriyle birlikte 2–3 dakika yeterli olmalıdır.",
-          "ext_temp_threshold": "Dış sıcaklık yalnızca fark bu eşiğe ulaştıktan sonra yazılır ve güncellemeyi alması gereken her TRV için etkinleştirilmelidir."
+          "ext_temp_threshold": "Harici sıcaklık sensörünün değeri, son güncellemeye göre bu eşikten fazla değiştikten sonra TRV'ye gönderilir. Yalnızca harici sensör yapılandırıldığında ve harici sıcaklık girişi etkin olan TRV'ler için etkilidir.",
+          "temp_tolerance": "Yeni bir hedef sıcaklık TRV'ye yalnızca TRV'nin mevcut hedef sıcaklığından en az bu değer kadar farklıysa gönderilir. Büyük değerler telsiz trafiğini azaltır, küçük değerler TRV'nin ThermoSmart'ı daha yakından izlemesini sağlar."
         }
       },
       "device_settings": {
@@ -228,11 +242,12 @@
           "valve_maintenance": "Uzun ısıtmasız dönemlerde vanaların sıkışmasını önler. Yaz Modu veya Tatil Modu etkinken ThermoSmart vanaları ara sıra otomatik olarak hareket ettirir.",
           "calibration_sync": "Oda sıcaklığıyla farkı aşağıdaki kalibrasyon varlığına yazarak TRV'nin dahili sıcaklık sensörünü düzeltir. Harici sıcaklık kaynağı kullanan TRV'lerde kapatın. Bir kalibrasyon varlığı gerektirir.",
           "calibration_entity": "TRV'nin yerel kalibrasyon ofsetini tutan sayı varlığı. Kalibrasyonu kapatmak için boş bırakın.",
-          "calibration_invert": "TRV ofseti ters işaretle uyguluyorsa açın."
+          "calibration_invert": "TRV ofseti ters işaretle uyguluyorsa açın.",
+          "valve_entity": "Bu TRV'nin vana açıklığını kontrol eden sayı varlığı. Yalnızca bu TRV için doğrudan vana kontrolü etkinse gereklidir; aksi halde yok sayılır ve boş bırakılabilir. ThermoSmart 0–100 (%) yazar, adında \"level\" geçen varlıklar için 0–1 yazar."
         }
       },
       "state_menu": {
-        "title": "TRV durum ayarları (TRV {index}/{total})",
+        "title": "TRV durum ayarları",
         "description": "**Bölge:** {zone}\n**TRV {index} / {total}:** {device_name}\n\nDurum ayarları, bu TRV'nin seçilen varlıklarını (select, number veya switch) sizin tanımladığınız bir değerde tutar. Her kontrol döngüsünde veya kontrol olayında ThermoSmart bunları denetler ve yalnızca farklıysa bir değer ayarlar. Buna ihtiyacınız yoksa listeyi boş bırakın.\n\n**Şu anda yapılandırılmış olanlar:**\n\n{state_rules}\n\nBir eylem seçin. İşiniz bittiğinde **Bu TRV ile işim bitti** seçeneğini seçin; değişiklikler son TRV'den sonra kaydedilir.",
         "menu_options": {
           "state_add_device": "Bu TRV'nin bir varlığını ekle",
@@ -246,6 +261,9 @@
         "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın belirli bir değerde tutması gereken varlığı seçin. {scope}\n\nDeğeri sonraki sayfada seçersiniz.",
         "data": {
           "entity_id": "Varlık"
+        },
+        "data_description": {
+          "entity_id": "Hiçbir şey eklemeden dönmek için boş bırakıp gönderin."
         }
       },
       "state_add_any": {
@@ -253,16 +271,21 @@
         "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın belirli bir değerde tutması gereken varlığı seçin. {scope}\n\nDeğeri sonraki sayfada seçersiniz.",
         "data": {
           "entity_id": "Varlık"
+        },
+        "data_description": {
+          "entity_id": "Hiçbir şey eklemeden dönmek için boş bırakıp gönderin."
         }
       },
       "state_value": {
         "title": "Durum ayarı değeri (TRV {index}/{total})",
         "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın **{entity}** için uygulayacağı değeri tanımlayın.\n\nGeçerli değer: {current}",
         "data": {
-          "value": "Uygulanacak değer"
+          "value": "Uygulanacak değer",
+          "cancel": "İptal – bu ayarı kaydetme"
         },
         "data_description": {
-          "value": "Varlık bu değerden farklıysa ThermoSmart bir sonraki kontrol döngüsünde veya olayında onu ayarlar."
+          "value": "Varlık bu değerden farklıysa ThermoSmart bir sonraki kontrol döngüsünde veya olayında onu ayarlar.",
+          "cancel": "Kaydetmeden listeye dönmek için işaretleyip gönderin."
         }
       },
       "state_remove": {
@@ -270,6 +293,9 @@
         "description": "**TRV {index} / {total}:** {device_name}\n\nThermoSmart'ın bu TRV için uygulamayı bırakması gereken durum ayarlarını seçin.",
         "data": {
           "remove": "Kaldırılacak ayarlar"
+        },
+        "data_description": {
+          "remove": "Hiçbir şey kaldırmadan dönmek için boş bırakıp gönderin."
         }
       },
       "schedule": {

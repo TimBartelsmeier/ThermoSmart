@@ -622,3 +622,31 @@ class TestStateSettingsSubFlow:
         await flow.async_configure(flow_id, {"next_step_id": "state_remove"})
         menu = await flow.async_configure(flow_id, {"remove": ["select.mode"]})
         assert "state_remove" not in menu["menu_options"]
+
+    async def test_abort_paths_return_to_menu_without_changes(
+        self, hass, enable_custom_integrations
+    ):
+        flow_id, _ = await self._to_state_menu(hass)
+        flow = hass.config_entries.flow
+
+        await flow.async_configure(flow_id, {"next_step_id": "state_add_any"})
+        menu = await flow.async_configure(flow_id, {})
+        assert menu["step_id"] == "state_menu"
+
+        await flow.async_configure(flow_id, {"next_step_id": "state_add_any"})
+        await flow.async_configure(flow_id, {"entity_id": "select.mode"})
+        menu = await flow.async_configure(flow_id, {"value": "external", "cancel": True})
+        assert menu["step_id"] == "state_menu"
+        assert "No state settings" in menu["description_placeholders"]["state_rules"]
+
+    async def test_existing_rule_value_is_prefilled_when_edited(
+        self, hass, enable_custom_integrations
+    ):
+        flow_id, _ = await self._to_state_menu(hass)
+        flow = hass.config_entries.flow
+        await flow.async_configure(flow_id, {"next_step_id": "state_add_any"})
+        await flow.async_configure(flow_id, {"entity_id": "select.mode"})
+        await flow.async_configure(flow_id, {"value": "external"})
+        await flow.async_configure(flow_id, {"next_step_id": "state_add_any"})
+        form = await flow.async_configure(flow_id, {"entity_id": "select.mode"})
+        assert next(iter(form["data_schema"].schema)).default() == "external"

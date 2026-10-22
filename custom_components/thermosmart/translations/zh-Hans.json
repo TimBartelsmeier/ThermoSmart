@@ -38,7 +38,8 @@
         "data_description": {
           "zone_control_mode": "**仅设定点：** ThermoSmart 发送普通目标温度，TRV 自行调节其阀门。\n\n**TPI 设定点调制：** ThermoSmart 计算供暖需求，并升高或降低发送给 TRV 的设定点，以打开或关闭其阀门。\n\n**直接阀门控制：** ThermoSmart 将计算出的阀门开度（0–100 %）写入 TRV 的阀门位置实体，并将普通目标作为设定点发送。",
           "control_interval": "常规控制周期之间的最短时间。每个周期都会重新计算供暖需求，并将设定点、阀门位置和状态设置写入 TRV。打开窗户或手动覆盖等事件可能会提前触发额外的周期。较短的间隔反应更快，但也可能使设备过载或使网络（例如 Zigbee）拥塞。实际上，2–3 分钟再配合合理的温度变化阈值（必须超过该阈值才会向 TRV 发送新值）就足够了。",
-          "ext_temp_threshold": "仅当差值达到此阈值后才会写入外部温度，并且必须为每个应接收更新的 TRV 启用。"
+          "ext_temp_threshold": "仅当外部温度传感器的值相对上次更新变化超过此阈值时才会发送给 TRV。仅在配置了外部传感器且 TRV 启用了外部温度输入时有效。",
+          "temp_tolerance": "仅当新的设定温度与 TRV 当前设定温度相差至少此值时才会发送给 TRV。值越大，无线通信越少；值越小，TRV 越紧密地跟随 ThermoSmart。"
         }
       },
       "device_settings": {
@@ -59,11 +60,12 @@
           "valve_maintenance": "防止阀门在长时间不供暖期间卡死。当夏季模式或假期模式激活时，ThermoSmart 会偶尔自动移动阀门。",
           "calibration_sync": "通过将与室温的差值写入下方的校准实体来校正 TRV 内部温度传感器。使用外部温度源的 TRV 请关闭。需要校准实体。",
           "calibration_entity": "保存 TRV 本地校准偏移的数值实体。留空则禁用校准。",
-          "calibration_invert": "如果 TRV 以相反符号应用偏移，请启用。"
+          "calibration_invert": "如果 TRV 以相反符号应用偏移，请启用。",
+          "valve_entity": "控制此 TRV 阀门开度的数值实体。仅在为此 TRV 启用直接阀门控制时需要，否则将被忽略，可留空。ThermoSmart 写入 0–100（%），名称中含 \"level\" 的实体则写入 0–1。"
         }
       },
       "state_menu": {
-        "title": "第 3 步 – TRV 状态设置 (TRV {index}/{total})",
+        "title": "第 3 步 – TRV 状态设置",
         "description": "**区域:** {zone}\n**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n状态设置会将此 TRV 的所选实体（select、number 或 switch）保持在您定义的值。在每个控制周期或控制事件中，ThermoSmart 都会检查它们，并且仅在值不同时才进行设置。如果不需要，请将列表留空。\n\n**当前已配置：**\n\n{state_rules}\n\n请选择操作。完成后选择 **完成此 TRV**。",
         "menu_options": {
           "state_add_device": "添加此 TRV 的实体",
@@ -77,6 +79,9 @@
         "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n选择 ThermoSmart 应保持在特定值的实体。{scope}\n\n您将在下一页选择该值。",
         "data": {
           "entity_id": "实体"
+        },
+        "data_description": {
+          "entity_id": "留空并提交即可返回而不添加任何内容。"
         }
       },
       "state_add_any": {
@@ -84,16 +89,21 @@
         "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n选择 ThermoSmart 应保持在特定值的实体。{scope}\n\n您将在下一页选择该值。",
         "data": {
           "entity_id": "实体"
+        },
+        "data_description": {
+          "entity_id": "留空并提交即可返回而不添加任何内容。"
         }
       },
       "state_value": {
         "title": "第 3 步 – 状态设置值 (TRV {index}/{total})",
         "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n定义 ThermoSmart 为 **{entity}** 强制执行的值。\n\n当前值：{current}",
         "data": {
-          "value": "要强制执行的值"
+          "value": "要强制执行的值",
+          "cancel": "取消 – 不保存此设置"
         },
         "data_description": {
-          "value": "如果实体与此值不同，ThermoSmart 将在下一个控制周期或事件中进行设置。"
+          "value": "如果实体与此值不同，ThermoSmart 将在下一个控制周期或事件中进行设置。",
+          "cancel": "勾选并提交即可返回列表而不保存。"
         }
       },
       "state_remove": {
@@ -101,6 +111,9 @@
         "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n选择 ThermoSmart 应停止对此 TRV 强制执行的状态设置。",
         "data": {
           "remove": "要删除的设置"
+        },
+        "data_description": {
+          "remove": "留空并提交即可返回而不移除任何内容。"
         }
       },
       "schedule": {
@@ -207,7 +220,8 @@
         "data_description": {
           "zone_control_mode": "**仅设定点：** ThermoSmart 发送普通目标温度，TRV 自行调节其阀门。\n\n**TPI 设定点调制：** ThermoSmart 计算供暖需求，并升高或降低发送给 TRV 的设定点，以打开或关闭其阀门。\n\n**直接阀门控制：** ThermoSmart 将计算出的阀门开度（0–100 %）写入 TRV 的阀门位置实体，并将普通目标作为设定点发送。",
           "control_interval": "常规控制周期之间的最短时间。每个周期都会重新计算供暖需求，并将设定点、阀门位置和状态设置写入 TRV。打开窗户或手动覆盖等事件可能会提前触发额外的周期。较短的间隔反应更快，但也可能使设备过载或使网络（例如 Zigbee）拥塞。实际上，2–3 分钟再配合合理的温度变化阈值（必须超过该阈值才会向 TRV 发送新值）就足够了。",
-          "ext_temp_threshold": "仅当差值达到此阈值后才会写入外部温度，并且必须为每个应接收更新的 TRV 启用。"
+          "ext_temp_threshold": "仅当外部温度传感器的值相对上次更新变化超过此阈值时才会发送给 TRV。仅在配置了外部传感器且 TRV 启用了外部温度输入时有效。",
+          "temp_tolerance": "仅当新的设定温度与 TRV 当前设定温度相差至少此值时才会发送给 TRV。值越大，无线通信越少；值越小，TRV 越紧密地跟随 ThermoSmart。"
         }
       },
       "device_settings": {
@@ -228,11 +242,12 @@
           "valve_maintenance": "防止阀门在长时间不供暖期间卡死。当夏季模式或假期模式激活时，ThermoSmart 会偶尔自动移动阀门。",
           "calibration_sync": "通过将与室温的差值写入下方的校准实体来校正 TRV 内部温度传感器。使用外部温度源的 TRV 请关闭。需要校准实体。",
           "calibration_entity": "保存 TRV 本地校准偏移的数值实体。留空则禁用校准。",
-          "calibration_invert": "如果 TRV 以相反符号应用偏移，请启用。"
+          "calibration_invert": "如果 TRV 以相反符号应用偏移，请启用。",
+          "valve_entity": "控制此 TRV 阀门开度的数值实体。仅在为此 TRV 启用直接阀门控制时需要，否则将被忽略，可留空。ThermoSmart 写入 0–100（%），名称中含 \"level\" 的实体则写入 0–1。"
         }
       },
       "state_menu": {
-        "title": "TRV 状态设置 (TRV {index}/{total})",
+        "title": "TRV 状态设置",
         "description": "**区域:** {zone}\n**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n状态设置会将此 TRV 的所选实体（select、number 或 switch）保持在您定义的值。在每个控制周期或控制事件中，ThermoSmart 都会检查它们，并且仅在值不同时才进行设置。如果不需要，请将列表留空。\n\n**当前已配置：**\n\n{state_rules}\n\n请选择操作。完成后选择 **完成此 TRV**；更改将在最后一个 TRV 之后保存。",
         "menu_options": {
           "state_add_device": "添加此 TRV 的实体",
@@ -246,6 +261,9 @@
         "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n选择 ThermoSmart 应保持在特定值的实体。{scope}\n\n您将在下一页选择该值。",
         "data": {
           "entity_id": "实体"
+        },
+        "data_description": {
+          "entity_id": "留空并提交即可返回而不添加任何内容。"
         }
       },
       "state_add_any": {
@@ -253,16 +271,21 @@
         "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n选择 ThermoSmart 应保持在特定值的实体。{scope}\n\n您将在下一页选择该值。",
         "data": {
           "entity_id": "实体"
+        },
+        "data_description": {
+          "entity_id": "留空并提交即可返回而不添加任何内容。"
         }
       },
       "state_value": {
         "title": "状态设置值 (TRV {index}/{total})",
         "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n定义 ThermoSmart 为 **{entity}** 强制执行的值。\n\n当前值：{current}",
         "data": {
-          "value": "要强制执行的值"
+          "value": "要强制执行的值",
+          "cancel": "取消 – 不保存此设置"
         },
         "data_description": {
-          "value": "如果实体与此值不同，ThermoSmart 将在下一个控制周期或事件中进行设置。"
+          "value": "如果实体与此值不同，ThermoSmart 将在下一个控制周期或事件中进行设置。",
+          "cancel": "勾选并提交即可返回列表而不保存。"
         }
       },
       "state_remove": {
@@ -270,6 +293,9 @@
         "description": "**第 {index} 个 TRV，共 {total} 个:** {device_name}\n\n选择 ThermoSmart 应停止对此 TRV 强制执行的状态设置。",
         "data": {
           "remove": "要删除的设置"
+        },
+        "data_description": {
+          "remove": "留空并提交即可返回而不移除任何内容。"
         }
       },
       "schedule": {
