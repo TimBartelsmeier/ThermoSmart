@@ -14,7 +14,7 @@
         "description": "Configurează selectorul global al modului Vară (Automat / Activat / Dezactivat) și comutatorul de Vacanță. Nu este necesar un termostat. Ambele comenzi se aplică tuturor zonelor simultan."
       },
       "add_zone": {
-        "title": "Pasul 1 / 4 – Dispozitive și senzori",
+        "title": "Pasul 1 – Dispozitive și senzori",
         "description": "Selectați TRV-urile și senzorii pentru această zonă de încălzire. Entitățile de calibrare și comutatoarele quirk sunt detectate automat.",
         "data": {
           "name": "Numele zonei (ex. Living)",
@@ -23,19 +23,103 @@
           "humidity_sensors": "Senzori de umiditate interior",
           "window_sensors": "Senzori de fereastră (binary_sensor)",
           "window_open_delay": "Încălzire oprită – întârziere după deschiderea ferestrei",
-          "window_close_delay": "Încălzire pornită – întârziere după închiderea ferestrei",
-          "valve_maintenance": "Activare întreținere valve (duminică 03:00 – doar modul Vară sau Vacanță)",
-          "manage_temp_source": "Utilizați automat temperatura camerei externe pentru TRV-uri compatibile",
-          "calibration_invert": "Inversare offset calibrare (pentru TRV-uri precum ME167 care inversează semnul)"
+          "window_close_delay": "Încălzire pornită – întârziere după închiderea ferestrei"
+        }
+      },
+      "control_options": {
+        "title": "Pasul 2 – Strategia de control a zonei",
+        "description": "Alegeți o setare implicită pentru zonă. Setările per dispozitiv (paginile următoare) pot suprascrie această strategie.\n\nDispozitive detectate:\n\n{detected_devices}",
+        "data": {
+          "zone_control_mode": "Mod de control al zonei",
+          "control_interval": "Interval minim al ciclului de control",
+          "temp_tolerance": "Toleranță de temperatură",
+          "ext_temp_threshold": "Prag de scriere a temperaturii externe"
         },
         "data_description": {
-          "valve_maintenance": "Previne blocarea ventilelor în perioadele prelungite fără încălzire. ThermoSmart mișcă ocazional ventilele automat când modul Vară sau Vacanță este activ.",
-          "manage_temp_source": "ThermoSmart continuă să utilizeze senzorii de temperatură externi pentru propria logică de control. Când este activat, ThermoSmart comută și TRV-urile compatibile la sursa lor externă de temperatură și revine la senzorul intern al TRV dacă senzorii externi devin indisponibili.",
-          "calibration_invert": "Inversează semnul offsetului de calibrare pentru modele TRV specifice la care direcția offsetului diferă de comportamentul standard. Activați doar dacă dispozitivul dvs. o necesită."
+          "zone_control_mode": "**Doar punct de reglaj:** ThermoSmart trimite temperatura țintă simplă, iar TRV își reglează singur ventilul.\n\n**Modulare TPI a punctului de reglaj:** ThermoSmart calculează necesarul de încălzire și crește sau scade punctul de reglaj trimis către TRV pentru a deschide sau închide ventilul.\n\n**Control direct al ventilului:** ThermoSmart scrie deschiderea calculată a ventilului (0–100 %) în entitatea de poziție a ventilului TRV și trimite ținta simplă ca punct de reglaj.",
+          "control_interval": "Timpul minim dintre ciclurile de control regulate. Fiecare ciclu recalculează necesarul de încălzire și scrie punctele de reglaj, pozițiile ventilelor și setările de stare în TRV-uri. Evenimente precum deschiderea unei ferestre sau o suprascriere manuală pot declanșa mai devreme un ciclu suplimentar. Intervalele mai scurte duc la reacții mai rapide, dar pot suprasolicita dispozitivele sau aglomera rețelele, de ex. Zigbee. În practică, 2–3 minute, împreună cu praguri rezonabile pentru modificările de temperatură (care trebuie depășite pentru ca noile valori să fie trimise către TRV), ar trebui să fie suficiente.",
+          "ext_temp_threshold": "Valoarea senzorului extern de temperatură este trimisă către TRV doar după ce s-a schimbat cu mai mult decât acest prag față de ultima actualizare. Are efect doar când este configurat un senzor extern și pentru TRV cu intrarea de temperatură externă activată.",
+          "temp_tolerance": "O nouă temperatură țintă este trimisă către TRV doar dacă diferă de cea curentă a TRV cu cel puțin această valoare. Valorile mai mari reduc traficul radio, cele mai mici fac TRV să urmeze mai îndeaproape ThermoSmart."
+        }
+      },
+      "device_settings": {
+        "title": "Pasul 3 – Setări TRV (TRV {index}/{total})",
+        "description": "**Zonă:** {zone}\n**TRV {index} din {total}:** {device_name}\n\nAceste setări se aplică doar acestui TRV. În continuare puteți defini setările de stare pentru acest TRV.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Mod de control",
+          "valve_entity": "Entitate de control al ventilului",
+          "feed_external_temp": "Trimite temperatura camerei către TRV",
+          "ext_temp_entity": "Entitate de intrare pentru temperatura externă",
+          "calibration_sync": "Scrie decalajul de calibrare",
+          "calibration_entity": "Entitate decalaj de calibrare",
+          "calibration_invert": "Inversează offsetul de calibrare",
+          "valve_maintenance": "Activare exercitare / întreținere valve",
+          "window_off": "Oprește când o fereastră este deschisă"
+        },
+        "data_description": {
+          "feed_external_temp": "Trimite temperatura camerei către TRV. Necesită selectarea entității corecte de intrare pentru temperatura externă de mai jos; fără ea nu se trimite nimic.",
+          "valve_maintenance": "Previne blocarea ventilelor în perioadele prelungite fără încălzire. ThermoSmart mișcă ocazional ventilele automat cât timp modul Vară sau modul Vacanță este activ.",
+          "calibration_sync": "Corectează senzorul intern de temperatură al TRV scriind diferența față de temperatura camerei în entitatea de calibrare de mai jos. Dezactivați pentru TRV care folosesc o sursă externă de temperatură. Necesită o entitate de calibrare.",
+          "calibration_entity": "Entitate numerică ce conține decalajul de calibrare local al TRV. Lăsați gol pentru a dezactiva calibrarea.",
+          "calibration_invert": "Activați dacă TRV aplică decalajul cu semn opus.",
+          "valve_entity": "Entitate numerică ce controlează deschiderea supapei acestui TRV. Necesară doar dacă controlul direct al supapei este activat pentru acest TRV; altfel este ignorată și poate rămâne goală. ThermoSmart scrie 0–100 (%), sau 0–1 pentru entitățile cu \"level\" în nume.",
+          "window_off": "Oprește dispozitivul (mod HVAC oprit) când o fereastră este deschisă. Dacă folosiți această opțiune, asigurați-vă că TRV-ul are în continuare protecția la îngheț activă când este oprit (unele modele au, altele nu), pentru a preveni înghețul. Dacă dezactivați acest comutator, TRV-ul rămâne în modul încălzire, dar este setat la temperatura țintă pentru fereastră deschisă definită pe una dintre paginile următoare."
+        }
+      },
+      "state_menu": {
+        "title": "Pasul 3 – Setări de stare TRV",
+        "description": "**Zonă:** {zone}\n**TRV {index} din {total}:** {device_name}\n\nSetările de stare mențin entitățile alese ale acestui TRV (select, number sau switch) la o valoare definită de dvs. La fiecare ciclu sau eveniment de control, ThermoSmart le verifică și setează o valoare doar dacă diferă. Lăsați lista goală dacă nu aveți nevoie de asta.\n\n**Configurat în prezent:**\n\n{state_rules}\n\nAlegeți o acțiune. Selectați **Gata cu acest TRV** când ați terminat.",
+        "menu_options": {
+          "state_add_device": "Adaugă o entitate a acestui TRV",
+          "state_add_any": "Adaugă orice altă entitate",
+          "state_remove": "Elimină setări",
+          "state_done": "Gata cu acest TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Pasul 3 – Adăugare setare de stare (TRV {index}/{total})",
+        "description": "**TRV {index} din {total}:** {device_name}\n\nSelectați entitatea pe care ThermoSmart trebuie să o mențină la o valoare specifică. {scope}\n\nValoarea o alegeți pe pagina următoare.",
+        "data": {
+          "entity_id": "Entitate"
+        },
+        "data_description": {
+          "entity_id": "Lăsați gol și trimiteți pentru a reveni fără a adăuga nimic."
+        }
+      },
+      "state_add_any": {
+        "title": "Pasul 3 – Adăugare setare de stare (TRV {index}/{total})",
+        "description": "**TRV {index} din {total}:** {device_name}\n\nSelectați entitatea pe care ThermoSmart trebuie să o mențină la o valoare specifică. {scope}\n\nValoarea o alegeți pe pagina următoare.",
+        "data": {
+          "entity_id": "Entitate"
+        },
+        "data_description": {
+          "entity_id": "Lăsați gol și trimiteți pentru a reveni fără a adăuga nimic."
+        }
+      },
+      "state_value": {
+        "title": "Pasul 3 – Valoarea setării de stare (TRV {index}/{total})",
+        "description": "**TRV {index} din {total}:** {device_name}\n\nDefiniți valoarea pe care ThermoSmart o impune pentru **{entity}**.\n\nValoare curentă: {current}",
+        "data": {
+          "value": "Valoare de impus",
+          "cancel": "Anulare – nu salva această setare"
+        },
+        "data_description": {
+          "value": "Dacă entitatea diferă de această valoare, ThermoSmart o setează la următorul ciclu sau eveniment de control.",
+          "cancel": "Bifați și trimiteți pentru a reveni la listă fără salvare."
+        }
+      },
+      "state_remove": {
+        "title": "Pasul 3 – Eliminare setări de stare (TRV {index}/{total})",
+        "description": "**TRV {index} din {total}:** {device_name}\n\nSelectați setările de stare pe care ThermoSmart trebuie să nu le mai impună pentru acest TRV.",
+        "data": {
+          "remove": "Setări de eliminat"
+        },
+        "data_description": {
+          "remove": "Lăsați gol și trimiteți pentru a reveni fără a elimina nimic."
         }
       },
       "schedule": {
-        "title": "Pasul 2 / 4 – Temperaturi și program",
+        "title": "Pasul 4 – Temperaturi și program",
         "description": "Flux zilnic: Noapte → Confort → Noapte\n\nCând toate persoanele sunt absente, ThermoSmart trece automat la temperatura de absență – indiferent de program.",
         "data": {
           "comfort_temp": "Temperatură de confort (când cineva este acasă)",
@@ -44,7 +128,6 @@
           "vacation_temp": "Temperatură de vacanță (protecție la îngheț)",
           "eco_temp": "Temperatură Eco (economie de energie, între noapte și confort)",
           "window_open_temp": "Temperatură fereastră deschisă",
-          "temp_tolerance": "Toleranță temperatură – prag de actualizare a punctului de reglaj",
           "schedule_enabled": "Activare program orar",
           "sched_wd_morning": "Zi lucrătoare: Confort de la",
           "sched_wd_night": "Zi lucrătoare: Noapte de la",
@@ -59,12 +142,11 @@
           "sched_we_night": "Temperatura de noapte se aplică de la această oră",
           "away_temp": "Aplicată automat doar când detectarea prezenței este configurată (Pasul 3). Poate fi setată și manual prin selectorul de mod.",
           "eco_temp": "Folosită când selectorul de mod este setat manual pe 'Eco'. Nu se activează automat.",
-          "window_open_temp": "Temperatura țintă cât timp o fereastră este deschisă. Pentru termostatele care nu acceptă valori foarte mici, utilizați o valoare mai ridicată, cum ar fi 10 °C.",
-          "temp_tolerance": "Modificare minimă a punctului de reglaj TRV calculat înainte ca ThermoSmart să trimită o nouă actualizare. Reduce scrierile inutile în termostat. 0,5 °C funcționează bine pentru majoritatea camerelor."
+          "window_open_temp": "Temperatura țintă setată pe un TRV cât timp o fereastră este deschisă, cu excepția cazului în care acel TRV este configurat să fie oprit (vezi setările per dispozitiv). Pentru termostate care nu acceptă valori foarte mici, folosiți o valoare mai mare, de ex. 10 °C."
         }
       },
       "presence": {
-        "title": "Pasul 3 / 4 – Prezență și învățare",
+        "title": "Pasul 5 – Prezență",
         "description": "Cine este acasă? ThermoSmart trece automat în modul absență când toți pleacă.",
         "data": {
           "presence_persons": "Persoane pentru detectarea prezenței",
@@ -72,7 +154,7 @@
         }
       },
       "weather": {
-        "title": "Pasul 4 / 4 – Vreme și senzori exteriori",
+        "title": "Pasul 6 – Vreme și senzori exteriori",
         "description": "Toate câmpurile sunt opționale – senzorii proprii au prioritate față de entitatea meteo. Sistemul funcționează și fără date meteo.",
         "data": {
           "weather_entity": "Entitate meteo (ex. weather.home)",
@@ -105,8 +187,11 @@
     "step": {
       "init": {
         "title": "Setări",
+        "description": "Alegeți ce parte a zonei **{zone}** doriți să editați. Fiecare secțiune este salvată separat.",
         "menu_options": {
           "devices": "Dispozitive și senzori",
+          "control_options": "Strategia de control a zonei (mod implicit, interval, praguri)",
+          "device_settings": "Setări per TRV (suprascriere mod, entități, setări de stare)",
           "schedule": "Temperaturi și program",
           "presence": "Prezență și învățare",
           "weather": "Vreme și senzori exteriori"
@@ -122,15 +207,99 @@
           "humidity_sensors": "Senzori de umiditate interior",
           "window_sensors": "Senzori de fereastră",
           "window_open_delay": "Încălzire oprită – întârziere după deschiderea ferestrei",
-          "window_close_delay": "Încălzire pornită – întârziere după închiderea ferestrei",
-          "valve_maintenance": "Activare întreținere valve (doar modul Vară / Vacanță)",
-          "manage_temp_source": "Utilizați automat temperatura camerei externe pentru TRV-uri compatibile",
-          "calibration_invert": "Inversare offset calibrare (ME167 și similare)"
+          "window_close_delay": "Încălzire pornită – întârziere după închiderea ferestrei"
+        }
+      },
+      "control_options": {
+        "title": "Strategia de control a zonei",
+        "description": "Zona **{zone}**: alegeți o setare implicită pentru zonă. Setările per dispozitiv pot suprascrie această strategie.",
+        "data": {
+          "zone_control_mode": "Mod de control al zonei",
+          "control_interval": "Interval minim al ciclului de control",
+          "temp_tolerance": "Toleranță de temperatură",
+          "ext_temp_threshold": "Prag de scriere a temperaturii externe"
         },
         "data_description": {
-          "valve_maintenance": "Previne blocarea ventilelor în perioadele prelungite fără încălzire. ThermoSmart mișcă ocazional ventilele automat când modul Vară sau Vacanță este activ.",
-          "manage_temp_source": "ThermoSmart continuă să utilizeze senzorii de temperatură externi pentru propria logică de control. Când este activat, ThermoSmart comută și TRV-urile compatibile la sursa lor externă de temperatură și revine la senzorul intern al TRV dacă senzorii externi devin indisponibili.",
-          "calibration_invert": "Inversează semnul offsetului de calibrare pentru modele TRV specifice la care direcția offsetului diferă de comportamentul standard. Activați doar dacă dispozitivul dvs. o necesită."
+          "zone_control_mode": "**Doar punct de reglaj:** ThermoSmart trimite temperatura țintă simplă, iar TRV își reglează singur ventilul.\n\n**Modulare TPI a punctului de reglaj:** ThermoSmart calculează necesarul de încălzire și crește sau scade punctul de reglaj trimis către TRV pentru a deschide sau închide ventilul.\n\n**Control direct al ventilului:** ThermoSmart scrie deschiderea calculată a ventilului (0–100 %) în entitatea de poziție a ventilului TRV și trimite ținta simplă ca punct de reglaj.",
+          "control_interval": "Timpul minim dintre ciclurile de control regulate. Fiecare ciclu recalculează necesarul de încălzire și scrie punctele de reglaj, pozițiile ventilelor și setările de stare în TRV-uri. Evenimente precum deschiderea unei ferestre sau o suprascriere manuală pot declanșa mai devreme un ciclu suplimentar. Intervalele mai scurte duc la reacții mai rapide, dar pot suprasolicita dispozitivele sau aglomera rețelele, de ex. Zigbee. În practică, 2–3 minute, împreună cu praguri rezonabile pentru modificările de temperatură (care trebuie depășite pentru ca noile valori să fie trimise către TRV), ar trebui să fie suficiente.",
+          "ext_temp_threshold": "Valoarea senzorului extern de temperatură este trimisă către TRV doar după ce s-a schimbat cu mai mult decât acest prag față de ultima actualizare. Are efect doar când este configurat un senzor extern și pentru TRV cu intrarea de temperatură externă activată.",
+          "temp_tolerance": "O nouă temperatură țintă este trimisă către TRV doar dacă diferă de cea curentă a TRV cu cel puțin această valoare. Valorile mai mari reduc traficul radio, cele mai mici fac TRV să urmeze mai îndeaproape ThermoSmart."
+        }
+      },
+      "device_settings": {
+        "title": "Setări TRV (TRV {index}/{total})",
+        "description": "**Zonă:** {zone}\n**TRV {index} din {total}:** {device_name}\n\nAceste setări se aplică doar acestui TRV. În continuare puteți edita setările de stare pentru acest TRV. Nimic nu este salvat până nu parcurgeți ultimul TRV.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Mod de control",
+          "valve_entity": "Entitate de control al ventilului",
+          "feed_external_temp": "Trimite temperatura camerei către TRV",
+          "ext_temp_entity": "Entitate de intrare pentru temperatura externă",
+          "calibration_sync": "Scrie decalajul de calibrare",
+          "calibration_entity": "Entitate decalaj de calibrare",
+          "calibration_invert": "Inversează offsetul de calibrare",
+          "valve_maintenance": "Activare exercitare / întreținere valve",
+          "window_off": "Oprește când o fereastră este deschisă"
+        },
+        "data_description": {
+          "feed_external_temp": "Trimite temperatura camerei către TRV. Necesită selectarea entității corecte de intrare pentru temperatura externă de mai jos; fără ea nu se trimite nimic.",
+          "valve_maintenance": "Previne blocarea ventilelor în perioadele prelungite fără încălzire. ThermoSmart mișcă ocazional ventilele automat cât timp modul Vară sau modul Vacanță este activ.",
+          "calibration_sync": "Corectează senzorul intern de temperatură al TRV scriind diferența față de temperatura camerei în entitatea de calibrare de mai jos. Dezactivați pentru TRV care folosesc o sursă externă de temperatură. Necesită o entitate de calibrare.",
+          "calibration_entity": "Entitate numerică ce conține decalajul de calibrare local al TRV. Lăsați gol pentru a dezactiva calibrarea.",
+          "calibration_invert": "Activați dacă TRV aplică decalajul cu semn opus.",
+          "valve_entity": "Entitate numerică ce controlează deschiderea supapei acestui TRV. Necesară doar dacă controlul direct al supapei este activat pentru acest TRV; altfel este ignorată și poate rămâne goală. ThermoSmart scrie 0–100 (%), sau 0–1 pentru entitățile cu \"level\" în nume.",
+          "window_off": "Oprește dispozitivul (mod HVAC oprit) când o fereastră este deschisă. Dacă folosiți această opțiune, asigurați-vă că TRV-ul are în continuare protecția la îngheț activă când este oprit (unele modele au, altele nu), pentru a preveni înghețul. Dacă dezactivați acest comutator, TRV-ul rămâne în modul încălzire, dar este setat la temperatura țintă pentru fereastră deschisă definită pe una dintre paginile următoare."
+        }
+      },
+      "state_menu": {
+        "title": "Setări de stare TRV",
+        "description": "**Zonă:** {zone}\n**TRV {index} din {total}:** {device_name}\n\nSetările de stare mențin entitățile alese ale acestui TRV (select, number sau switch) la o valoare definită de dvs. La fiecare ciclu sau eveniment de control, ThermoSmart le verifică și setează o valoare doar dacă diferă. Lăsați lista goală dacă nu aveți nevoie de asta.\n\n**Configurat în prezent:**\n\n{state_rules}\n\nAlegeți o acțiune. Selectați **Gata cu acest TRV** când ați terminat; modificările sunt salvate după ultimul TRV.",
+        "menu_options": {
+          "state_add_device": "Adaugă o entitate a acestui TRV",
+          "state_add_any": "Adaugă orice altă entitate",
+          "state_remove": "Elimină setări",
+          "state_done": "Gata cu acest TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Adăugare setare de stare (TRV {index}/{total})",
+        "description": "**TRV {index} din {total}:** {device_name}\n\nSelectați entitatea pe care ThermoSmart trebuie să o mențină la o valoare specifică. {scope}\n\nValoarea o alegeți pe pagina următoare.",
+        "data": {
+          "entity_id": "Entitate"
+        },
+        "data_description": {
+          "entity_id": "Lăsați gol și trimiteți pentru a reveni fără a adăuga nimic."
+        }
+      },
+      "state_add_any": {
+        "title": "Adăugare setare de stare (TRV {index}/{total})",
+        "description": "**TRV {index} din {total}:** {device_name}\n\nSelectați entitatea pe care ThermoSmart trebuie să o mențină la o valoare specifică. {scope}\n\nValoarea o alegeți pe pagina următoare.",
+        "data": {
+          "entity_id": "Entitate"
+        },
+        "data_description": {
+          "entity_id": "Lăsați gol și trimiteți pentru a reveni fără a adăuga nimic."
+        }
+      },
+      "state_value": {
+        "title": "Valoarea setării de stare (TRV {index}/{total})",
+        "description": "**TRV {index} din {total}:** {device_name}\n\nDefiniți valoarea pe care ThermoSmart o impune pentru **{entity}**.\n\nValoare curentă: {current}",
+        "data": {
+          "value": "Valoare de impus",
+          "cancel": "Anulare – nu salva această setare"
+        },
+        "data_description": {
+          "value": "Dacă entitatea diferă de această valoare, ThermoSmart o setează la următorul ciclu sau eveniment de control.",
+          "cancel": "Bifați și trimiteți pentru a reveni la listă fără salvare."
+        }
+      },
+      "state_remove": {
+        "title": "Eliminare setări de stare (TRV {index}/{total})",
+        "description": "**TRV {index} din {total}:** {device_name}\n\nSelectați setările de stare pe care ThermoSmart trebuie să nu le mai impună pentru acest TRV.",
+        "data": {
+          "remove": "Setări de eliminat"
+        },
+        "data_description": {
+          "remove": "Lăsați gol și trimiteți pentru a reveni fără a elimina nimic."
         }
       },
       "schedule": {
@@ -143,7 +312,6 @@
           "vacation_temp": "Temperatură de vacanță",
           "eco_temp": "Temperatură Eco",
           "window_open_temp": "Temperatură fereastră deschisă",
-          "temp_tolerance": "Toleranță temperatură",
           "schedule_enabled": "Activare program orar",
           "sched_wd_morning": "Zi lucrătoare: Confort de la",
           "sched_wd_night": "Zi lucrătoare: Noapte de la",
@@ -158,12 +326,11 @@
           "sched_we_night": "Temperatura de noapte se aplică de la această oră",
           "away_temp": "Aplicată automat doar când detectarea prezenței este configurată (Pasul 3). Poate fi setată și manual prin selectorul de mod.",
           "eco_temp": "Folosită când selectorul de mod este setat manual pe 'Eco'. Nu se activează automat.",
-          "window_open_temp": "Temperatura țintă cât timp o fereastră este deschisă. Pentru termostatele care nu acceptă valori foarte mici, utilizați o valoare mai ridicată, cum ar fi 10 °C.",
-          "temp_tolerance": "Modificare minimă a punctului de reglaj TRV calculat înainte ca ThermoSmart să trimită o nouă actualizare. Reduce scrierile inutile în termostat. 0,5 °C funcționează bine pentru majoritatea camerelor."
+          "window_open_temp": "Temperatura țintă setată pe un TRV cât timp o fereastră este deschisă, cu excepția cazului în care acel TRV este configurat să fie oprit (vezi setările per dispozitiv). Pentru termostate care nu acceptă valori foarte mici, folosiți o valoare mai mare, de ex. 10 °C."
         }
       },
       "presence": {
-        "title": "Prezență și învățare",
+        "title": "Prezență",
         "description": "Cine este acasă? ThermoSmart trece automat în modul absență când toți pleacă.",
         "data": {
           "presence_persons": "Persoane pentru detectarea prezenței",
@@ -311,6 +478,39 @@
       },
       "trv_observations": {
         "name": "Observații TRV"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Doar temperatură țintă (TRV autonom)",
+        "tpi_boost": "Modulare TPI a temperaturii țintă (creștere calculată)",
+        "direct_valve": "Control direct al supapei (0–100%)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Moștenește din zonă (Doar temperatură țintă)",
+        "setpoint": "Doar temperatură țintă",
+        "tpi_boost": "Modulare TPI a temperaturii țintă",
+        "direct_valve": "Control direct al supapei"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Moștenește din zonă (Modulare TPI a temperaturii țintă)",
+        "setpoint": "Doar temperatură țintă",
+        "tpi_boost": "Modulare TPI a temperaturii țintă",
+        "direct_valve": "Control direct al supapei"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Moștenește din zonă (Control direct al supapei)",
+        "setpoint": "Doar temperatură țintă",
+        "tpi_boost": "Modulare TPI a temperaturii țintă",
+        "direct_valve": "Control direct al supapei"
       }
     }
   }

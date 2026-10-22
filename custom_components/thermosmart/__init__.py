@@ -314,7 +314,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if cfg.get("entry_type") != "system":
         entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
         if coordinator := entry_data.get("coordinator"):
-            await coordinator._async_restore_temp_source()
             # cancel any in-flight valve-maintenance task (guarded — must never
             # block unload, and a maintenance cycle must never outlive its entry)
             try:

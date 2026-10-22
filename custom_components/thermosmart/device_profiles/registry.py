@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import logging
 
-from .capabilities import DeviceProfile
-from .profiles import ALL_PROFILES, GENERIC
+from ..const import AUTO_QUIRK_PATTERNS
+from .capabilities import DevicePreset, DeviceProfile
+from .profiles import ALL_PROFILES, DEVICE_PRESETS, GENERIC
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,3 +86,34 @@ def get_profile(model: str | None, manufacturer: str | None) -> DeviceProfile:
         model, manufacturer,
     )
     return GENERIC
+
+
+# Zigbee profiles without a dedicated preset that still expose TRV-internal
+# logic switches (window detection, child lock, ...) competing with ThermoSmart.
+_QUIRK_PROFILE_IDS = frozenset({
+    "moes_tv02", "aqara_trv", "danfoss_ally", "bosch_bth", "innr_cozb0001", "beca_bht_002",
+})
+
+
+def get_preset(model: str | None, manufacturer: str | None) -> DevicePreset:
+    """Return editable configuration defaults for a detected device."""
+    profile = get_profile(model, manufacturer)
+    return DEVICE_PRESETS.get(
+        profile.identifier,
+        DevicePreset(
+            preset_id=profile.identifier,
+            display_name=profile.display_name,
+            recommended_mode="tpi_boost" if profile.is_active else "inherit",
+            calibration_inverted=profile.calibration_inverted,
+            calibration_sync=profile.calibration_sync,
+            quirk_entity_patterns=(
+                AUTO_QUIRK_PATTERNS if profile.identifier in _QUIRK_PROFILE_IDS else ()
+            ),
+            hvac_mode_before_write=profile.hvac_mode_before_write,
+            setpoint_delay_seconds=profile.setpoint_delay_seconds,
+            info_summary=(
+                f"Preset loaded: {profile.display_name}; "
+                "available inputs are auto-detected."
+            ),
+        ),
+    )

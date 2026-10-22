@@ -14,7 +14,7 @@
         "description": "Konfigurerar de globala Sommar- och semesterläges-knapparna. Ingen termostat krävs. De globala knapparna styr alla zoner samtidigt."
       },
       "add_zone": {
-        "title": "Steg 1 / 4 – Enheter & Sensorer",
+        "title": "Steg 1 – Enheter & Sensorer",
         "description": "Välj TRV:er och sensorer för denna uppvärmningszon. Kalibreringsentiteter och quirk-brytare upptäcks automatiskt.",
         "data": {
           "name": "Zonnamn (t.ex. Vardagsrum)",
@@ -23,19 +23,103 @@
           "humidity_sensors": "Inomhusluftfuktighetssensorer",
           "window_sensors": "Fönstensensorer (binary_sensor)",
           "window_open_delay": "Uppvärmning av – fördröjning efter fönster öppnas",
-          "window_close_delay": "Uppvärmning på – fördröjning efter fönster stängs",
-          "valve_maintenance": "Aktivera ventilunderhåll (söndag 03:00 – endast i Sommar- eller Semesterläge)",
-          "manage_temp_source": "Använd automatiskt extern rumstemperatur för TRV:er som stöds",
-          "calibration_invert": "Invertera kalibrerings-offset (för TRV:er som ME167 som inverterar tecknet)"
+          "window_close_delay": "Uppvärmning på – fördröjning efter fönster stängs"
+        }
+      },
+      "control_options": {
+        "title": "Steg 2 – Zonens styrstrategi",
+        "description": "Välj ett standardvärde för zonen. Inställningar per enhet (nästa sidor) kan åsidosätta denna strategi.\n\nUpptäckta enheter:\n\n{detected_devices}",
+        "data": {
+          "zone_control_mode": "Zonstyrningsläge",
+          "control_interval": "Minsta intervall för styrcykel",
+          "temp_tolerance": "Temperaturtolerans",
+          "ext_temp_threshold": "Tröskel för skrivning av externa temperaturer"
         },
         "data_description": {
-          "valve_maintenance": "Förhindrar att ventiler fastnar under längre perioder utan uppvärmning. ThermoSmart rör ventilerna då och då automatiskt när Sommar- eller Semesterläget är aktivt.",
-          "manage_temp_source": "ThermoSmart fortsätter att använda externa temperatursensorer för sin egen styrlogik. När det är aktiverat växlar ThermoSmart även stödda TRV:er till deras externa temperaturkälla och faller tillbaka till den interna TRV-sensorn om externa sensorer blir otillgängliga.",
-          "calibration_invert": "Inverterar kalibrerings-offset-tecknet för specifika TRV-modeller vars offsetriktning skiljer sig från standardbeteendet. Aktivera bara om din enhet kräver det."
+          "zone_control_mode": "**Endast börvärde:** ThermoSmart skickar den vanliga måltemperaturen och TRV reglerar sin ventil på egen hand.\n\n**TPI-modulering av börvärde:** ThermoSmart beräknar värmebehovet och höjer eller sänker börvärdet som skickas till TRV för att öppna eller stänga dess ventil.\n\n**Direkt ventilstyrning:** ThermoSmart skriver den beräknade ventilöppningen (0–100 %) till TRV:ns ventilpositionsentitet och skickar den vanliga målet som börvärde.",
+          "control_interval": "Minsta tid mellan regelbundna styrcykler. Varje cykel räknar om värmebehovet och skriver börvärden, ventilpositioner och tillståndsinställningar till TRV:erna. Händelser som att öppna ett fönster eller en manuell överstyrning kan utlösa en extra cykel tidigare. Kortare intervall ger snabbare reaktioner men kan också överbelasta enheter eller täppa till nätverk, t.ex. Zigbee. I praktiken bör 2–3 minuter i kombination med rimliga tröskelvärden för temperaturändringar, som måste överskridas för att nya värden ska skickas till TRV, fungera bra.",
+          "ext_temp_threshold": "Värdet från den externa temperatursensorn skickas till TRV:n först efter att det ändrats mer än detta tröskelvärde sedan senaste uppdateringen. Gäller bara när en extern sensor är konfigurerad och för TRV:er med extern temperaturingång aktiverad.",
+          "temp_tolerance": "Ett nytt börvärde skickas till TRV:n bara om det avviker minst så här mycket från TRV:ns nuvarande börvärde. Större värden minskar radiotrafiken, mindre värden gör att TRV:n följer ThermoSmart tätare."
+        }
+      },
+      "device_settings": {
+        "title": "Steg 3 – TRV-inställningar (TRV {index}/{total})",
+        "description": "**Zon:** {zone}\n**TRV {index} av {total}:** {device_name}\n\nDessa inställningar gäller endast denna TRV. Därefter kan du definiera tillståndsinställningar för denna TRV.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Styrläge",
+          "valve_entity": "Entitet för ventilstyrning",
+          "feed_external_temp": "Skicka rumstemperatur till TRV",
+          "ext_temp_entity": "Entitet för extern temperaturingång",
+          "calibration_sync": "Skriv kalibreringsoffset",
+          "calibration_entity": "Entitet för kalibreringsoffset",
+          "calibration_invert": "Invertera kalibreringsoffset",
+          "valve_maintenance": "Aktivera ventilmotion / underhåll",
+          "window_off": "Stäng av när ett fönster är öppet"
+        },
+        "data_description": {
+          "feed_external_temp": "Skickar rumstemperaturen till TRV. Kräver att rätt entitet för extern temperaturingång väljs nedan; ingenting skickas utan den.",
+          "valve_maintenance": "Förhindrar att ventiler fastnar under längre perioder utan uppvärmning. ThermoSmart rör ventilerna automatiskt då och då medan Sommarläge eller Semesterläge är aktivt.",
+          "calibration_sync": "Korrigerar TRV:ns interna temperatursensor genom att skriva skillnaden mot rumstemperaturen till kalibreringsentiteten nedan. Stäng av för TRV:er med extern temperaturkälla. Kräver en kalibreringsentitet.",
+          "calibration_entity": "Nummerentitet med TRV:ns lokala kalibreringsoffset. Lämna tom för att stänga av kalibrering.",
+          "calibration_invert": "Aktivera om TRV:n använder offseten med motsatt tecken.",
+          "valve_entity": "Nummerentitet som styr ventilöppningen på denna TRV. Behövs bara om direkt ventilstyrning är aktiverad för denna TRV; annars ignoreras den och kan lämnas tom. ThermoSmart skriver 0–100 (%), eller 0–1 för entiteter med \"level\" i namnet.",
+          "window_off": "Stänger av enheten (HVAC-läge av) när ett fönster är öppet. Om du använder detta bör du se till att din TRV fortfarande har frostskydd aktiverat när den är avstängd (vissa modeller har det, men inte alla) för att undvika frysning. Om du stänger av den här växlingen hålls TRV:n i värmeläge men ställs i stället in på måltemperaturen för öppet fönster som definieras på någon av nästa sidor."
+        }
+      },
+      "state_menu": {
+        "title": "Steg 3 – TRV-tillståndsinställningar",
+        "description": "**Zon:** {zone}\n**TRV {index} av {total}:** {device_name}\n\nTillståndsinställningar håller valda entiteter på denna TRV (select, number eller switch) på ett värde som du definierar. Vid varje styrcykel eller styrhändelse kontrollerar ThermoSmart dem och sätter ett värde endast om det skiljer sig. Lämna listan tom om du inte behöver detta.\n\n**Konfigurerat just nu:**\n\n{state_rules}\n\nVälj en åtgärd. Välj **Klar med denna TRV** när du är klar.",
+        "menu_options": {
+          "state_add_device": "Lägg till en entitet för denna TRV",
+          "state_add_any": "Lägg till valfri annan entitet",
+          "state_remove": "Ta bort inställningar",
+          "state_done": "Klar med denna TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Steg 3 – Lägg till tillståndsinställning (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nVälj den entitet som ThermoSmart ska hålla på ett specifikt värde. {scope}\n\nDu väljer värdet på nästa sida.",
+        "data": {
+          "entity_id": "Entitet"
+        },
+        "data_description": {
+          "entity_id": "Lämna tomt och skicka för att gå tillbaka utan att lägga till något."
+        }
+      },
+      "state_add_any": {
+        "title": "Steg 3 – Lägg till tillståndsinställning (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nVälj den entitet som ThermoSmart ska hålla på ett specifikt värde. {scope}\n\nDu väljer värdet på nästa sida.",
+        "data": {
+          "entity_id": "Entitet"
+        },
+        "data_description": {
+          "entity_id": "Lämna tomt och skicka för att gå tillbaka utan att lägga till något."
+        }
+      },
+      "state_value": {
+        "title": "Steg 3 – Värde för tillståndsinställning (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nDefiniera värdet som ThermoSmart tillämpar för **{entity}**.\n\nNuvarande värde: {current}",
+        "data": {
+          "value": "Värde att tillämpa",
+          "cancel": "Avbryt – spara inte den här inställningen"
+        },
+        "data_description": {
+          "value": "Om entiteten skiljer sig från detta värde sätter ThermoSmart det vid nästa styrcykel eller styrhändelse.",
+          "cancel": "Bocka i och skicka för att återgå till listan utan att spara."
+        }
+      },
+      "state_remove": {
+        "title": "Steg 3 – Ta bort tillståndsinställningar (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nVälj de tillståndsinställningar som ThermoSmart ska sluta tillämpa för denna TRV.",
+        "data": {
+          "remove": "Inställningar att ta bort"
+        },
+        "data_description": {
+          "remove": "Lämna tomt och skicka för att gå tillbaka utan att ta bort något."
         }
       },
       "schedule": {
-        "title": "Steg 2 / 4 – Temperaturer & Schema",
+        "title": "Steg 4 – Temperaturer & Schema",
         "description": "Dagligt flöde: Natt → Komfort → Natt\n\nNär alla personer är borta växlar ThermoSmart automatiskt till borta-temperaturen – oavsett schemat.",
         "data": {
           "comfort_temp": "Komforttemperatur (när någon är hemma)",
@@ -44,7 +128,6 @@
           "vacation_temp": "Semestertemperatur (frostskydd)",
           "eco_temp": "Eco-temperatur (energisparande, mellan natt och komfort)",
           "window_open_temp": "Temperatur vid öppet fönster",
-          "temp_tolerance": "Temperaturtolerans – tröskel för börvärdesuppdatering",
           "schedule_enabled": "Aktivera tidsschema",
           "sched_wd_morning": "Vardag: Komfort från",
           "sched_wd_night": "Vardag: Natt från",
@@ -59,12 +142,11 @@
           "sched_we_night": "Natttemperaturen gäller från denna tid",
           "away_temp": "Tillämpas automatiskt bara om närvarodetektering är konfigurerad (Steg 3). Kan också ställas in manuellt via lägesväljaren.",
           "eco_temp": "Används när lägesväljaren manuellt är satt till 'Eco'. Aktiveras inte automatiskt.",
-          "window_open_temp": "Måltemperatur när ett fönster är öppet. För termostater som inte stödjer mycket låga börvärden, använd ett högre värde som t.ex. 10 °C.",
-          "temp_tolerance": "Minsta förändring av det beräknade TRV-börvärdet innan ThermoSmart skickar en ny uppdatering. Minskar onödiga skrivningar till termostaten. 0,5 °C fungerar bra för de flesta rum."
+          "window_open_temp": "Måltemperatur som ställs in på en TRV medan ett fönster är öppet, om inte den TRV:n är konfigurerad att stängas av (se inställningarna per enhet). För termostater som inte stöder mycket låga värden, använd ett högre värde som 10 °C."
         }
       },
       "presence": {
-        "title": "Steg 3 / 4 – Närvaro & Inlärning",
+        "title": "Steg 5 – Närvaro",
         "description": "Vem är hemma? ThermoSmart växlar automatiskt till borta-läge när alla lämnar.",
         "data": {
           "presence_persons": "Personer för närvarodetektering",
@@ -72,7 +154,7 @@
         }
       },
       "weather": {
-        "title": "Steg 4 / 4 – Väder & Utomhussensorer",
+        "title": "Steg 6 – Väder & Utomhussensorer",
         "description": "Alla fält valfria – egna sensorer har företräde framför väderentiteten. Systemet fungerar även utan väderdata.",
         "data": {
           "weather_entity": "Väderentitet (t.ex. weather.home)",
@@ -105,8 +187,11 @@
     "step": {
       "init": {
         "title": "Inställningar",
+        "description": "Välj vilken del av zon **{zone}** som ska redigeras. Varje avsnitt sparas separat.",
         "menu_options": {
           "devices": "Enheter & Sensorer",
+          "control_options": "Zonens styrstrategi (standardläge, intervall, tröskelvärden)",
+          "device_settings": "Inställningar per TRV (lägesåsidosättning, entiteter, tillståndsinställningar)",
           "schedule": "Temperaturer & Schema",
           "presence": "Närvaro & Inlärning",
           "weather": "Väder & Utomhussensorer"
@@ -122,15 +207,99 @@
           "humidity_sensors": "Inomhusluftfuktighetssensorer",
           "window_sensors": "Fönstensensorer",
           "window_open_delay": "Uppvärmning av – fördröjning efter fönster öppnas",
-          "window_close_delay": "Uppvärmning på – fördröjning efter fönster stängs",
-          "valve_maintenance": "Aktivera ventilunderhåll (endast Sommar- / Semesterläge)",
-          "manage_temp_source": "Använd automatiskt extern rumstemperatur för TRV:er som stöds",
-          "calibration_invert": "Invertera kalibrerings-offset (ME167 och liknande)"
+          "window_close_delay": "Uppvärmning på – fördröjning efter fönster stängs"
+        }
+      },
+      "control_options": {
+        "title": "Zonens styrstrategi",
+        "description": "Zon **{zone}**: välj ett standardvärde för zonen. Inställningar per enhet kan åsidosätta denna strategi.",
+        "data": {
+          "zone_control_mode": "Zonstyrningsläge",
+          "control_interval": "Minsta intervall för styrcykel",
+          "temp_tolerance": "Temperaturtolerans",
+          "ext_temp_threshold": "Tröskel för skrivning av externa temperaturer"
         },
         "data_description": {
-          "valve_maintenance": "Förhindrar att ventiler fastnar under längre perioder utan uppvärmning. ThermoSmart rör ventilerna då och då automatiskt när Sommar- eller Semesterläget är aktivt.",
-          "manage_temp_source": "ThermoSmart fortsätter att använda externa temperatursensorer för sin egen styrlogik. När det är aktiverat växlar ThermoSmart även stödda TRV:er till deras externa temperaturkälla och faller tillbaka till den interna TRV-sensorn om externa sensorer blir otillgängliga.",
-          "calibration_invert": "Inverterar kalibrerings-offset-tecknet för specifika TRV-modeller vars offsetriktning skiljer sig från standardbeteendet. Aktivera bara om din enhet kräver det."
+          "zone_control_mode": "**Endast börvärde:** ThermoSmart skickar den vanliga måltemperaturen och TRV reglerar sin ventil på egen hand.\n\n**TPI-modulering av börvärde:** ThermoSmart beräknar värmebehovet och höjer eller sänker börvärdet som skickas till TRV för att öppna eller stänga dess ventil.\n\n**Direkt ventilstyrning:** ThermoSmart skriver den beräknade ventilöppningen (0–100 %) till TRV:ns ventilpositionsentitet och skickar den vanliga målet som börvärde.",
+          "control_interval": "Minsta tid mellan regelbundna styrcykler. Varje cykel räknar om värmebehovet och skriver börvärden, ventilpositioner och tillståndsinställningar till TRV:erna. Händelser som att öppna ett fönster eller en manuell överstyrning kan utlösa en extra cykel tidigare. Kortare intervall ger snabbare reaktioner men kan också överbelasta enheter eller täppa till nätverk, t.ex. Zigbee. I praktiken bör 2–3 minuter i kombination med rimliga tröskelvärden för temperaturändringar, som måste överskridas för att nya värden ska skickas till TRV, fungera bra.",
+          "ext_temp_threshold": "Värdet från den externa temperatursensorn skickas till TRV:n först efter att det ändrats mer än detta tröskelvärde sedan senaste uppdateringen. Gäller bara när en extern sensor är konfigurerad och för TRV:er med extern temperaturingång aktiverad.",
+          "temp_tolerance": "Ett nytt börvärde skickas till TRV:n bara om det avviker minst så här mycket från TRV:ns nuvarande börvärde. Större värden minskar radiotrafiken, mindre värden gör att TRV:n följer ThermoSmart tätare."
+        }
+      },
+      "device_settings": {
+        "title": "TRV-inställningar (TRV {index}/{total})",
+        "description": "**Zon:** {zone}\n**TRV {index} av {total}:** {device_name}\n\nDessa inställningar gäller endast denna TRV. Därefter kan du redigera tillståndsinställningar för denna TRV. Inget sparas förrän du har gått igenom den sista TRV:n.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Styrläge",
+          "valve_entity": "Entitet för ventilstyrning",
+          "feed_external_temp": "Skicka rumstemperatur till TRV",
+          "ext_temp_entity": "Entitet för extern temperaturingång",
+          "calibration_sync": "Skriv kalibreringsoffset",
+          "calibration_entity": "Entitet för kalibreringsoffset",
+          "calibration_invert": "Invertera kalibreringsoffset",
+          "valve_maintenance": "Aktivera ventilmotion / underhåll",
+          "window_off": "Stäng av när ett fönster är öppet"
+        },
+        "data_description": {
+          "feed_external_temp": "Skickar rumstemperaturen till TRV. Kräver att rätt entitet för extern temperaturingång väljs nedan; ingenting skickas utan den.",
+          "valve_maintenance": "Förhindrar att ventiler fastnar under längre perioder utan uppvärmning. ThermoSmart rör ventilerna automatiskt då och då medan Sommarläge eller Semesterläge är aktivt.",
+          "calibration_sync": "Korrigerar TRV:ns interna temperatursensor genom att skriva skillnaden mot rumstemperaturen till kalibreringsentiteten nedan. Stäng av för TRV:er med extern temperaturkälla. Kräver en kalibreringsentitet.",
+          "calibration_entity": "Nummerentitet med TRV:ns lokala kalibreringsoffset. Lämna tom för att stänga av kalibrering.",
+          "calibration_invert": "Aktivera om TRV:n använder offseten med motsatt tecken.",
+          "valve_entity": "Nummerentitet som styr ventilöppningen på denna TRV. Behövs bara om direkt ventilstyrning är aktiverad för denna TRV; annars ignoreras den och kan lämnas tom. ThermoSmart skriver 0–100 (%), eller 0–1 för entiteter med \"level\" i namnet.",
+          "window_off": "Stänger av enheten (HVAC-läge av) när ett fönster är öppet. Om du använder detta bör du se till att din TRV fortfarande har frostskydd aktiverat när den är avstängd (vissa modeller har det, men inte alla) för att undvika frysning. Om du stänger av den här växlingen hålls TRV:n i värmeläge men ställs i stället in på måltemperaturen för öppet fönster som definieras på någon av nästa sidor."
+        }
+      },
+      "state_menu": {
+        "title": "TRV-tillståndsinställningar",
+        "description": "**Zon:** {zone}\n**TRV {index} av {total}:** {device_name}\n\nTillståndsinställningar håller valda entiteter på denna TRV (select, number eller switch) på ett värde som du definierar. Vid varje styrcykel eller styrhändelse kontrollerar ThermoSmart dem och sätter ett värde endast om det skiljer sig. Lämna listan tom om du inte behöver detta.\n\n**Konfigurerat just nu:**\n\n{state_rules}\n\nVälj en åtgärd. Välj **Klar med denna TRV** när du är klar; ändringar sparas efter den sista TRV:n.",
+        "menu_options": {
+          "state_add_device": "Lägg till en entitet för denna TRV",
+          "state_add_any": "Lägg till valfri annan entitet",
+          "state_remove": "Ta bort inställningar",
+          "state_done": "Klar med denna TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Lägg till tillståndsinställning (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nVälj den entitet som ThermoSmart ska hålla på ett specifikt värde. {scope}\n\nDu väljer värdet på nästa sida.",
+        "data": {
+          "entity_id": "Entitet"
+        },
+        "data_description": {
+          "entity_id": "Lämna tomt och skicka för att gå tillbaka utan att lägga till något."
+        }
+      },
+      "state_add_any": {
+        "title": "Lägg till tillståndsinställning (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nVälj den entitet som ThermoSmart ska hålla på ett specifikt värde. {scope}\n\nDu väljer värdet på nästa sida.",
+        "data": {
+          "entity_id": "Entitet"
+        },
+        "data_description": {
+          "entity_id": "Lämna tomt och skicka för att gå tillbaka utan att lägga till något."
+        }
+      },
+      "state_value": {
+        "title": "Värde för tillståndsinställning (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nDefiniera värdet som ThermoSmart tillämpar för **{entity}**.\n\nNuvarande värde: {current}",
+        "data": {
+          "value": "Värde att tillämpa",
+          "cancel": "Avbryt – spara inte den här inställningen"
+        },
+        "data_description": {
+          "value": "Om entiteten skiljer sig från detta värde sätter ThermoSmart det vid nästa styrcykel eller styrhändelse.",
+          "cancel": "Bocka i och skicka för att återgå till listan utan att spara."
+        }
+      },
+      "state_remove": {
+        "title": "Ta bort tillståndsinställningar (TRV {index}/{total})",
+        "description": "**TRV {index} av {total}:** {device_name}\n\nVälj de tillståndsinställningar som ThermoSmart ska sluta tillämpa för denna TRV.",
+        "data": {
+          "remove": "Inställningar att ta bort"
+        },
+        "data_description": {
+          "remove": "Lämna tomt och skicka för att gå tillbaka utan att ta bort något."
         }
       },
       "schedule": {
@@ -143,7 +312,6 @@
           "vacation_temp": "Semestertemperatur",
           "eco_temp": "Eco-temperatur",
           "window_open_temp": "Temperatur vid öppet fönster",
-          "temp_tolerance": "Temperaturtolerans",
           "schedule_enabled": "Aktivera tidsschema",
           "sched_wd_morning": "Vardag: Komfort från",
           "sched_wd_night": "Vardag: Natt från",
@@ -158,12 +326,11 @@
           "sched_we_night": "Natttemperaturen gäller från denna tid",
           "away_temp": "Tillämpas automatiskt bara om närvarodetektering är konfigurerad (Steg 3). Kan också ställas in manuellt via lägesväljaren.",
           "eco_temp": "Används när lägesväljaren manuellt är satt till 'Eco'. Aktiveras inte automatiskt.",
-          "window_open_temp": "Måltemperatur när ett fönster är öppet. För termostater som inte stödjer mycket låga börvärden, använd ett högre värde som t.ex. 10 °C.",
-          "temp_tolerance": "Minsta förändring av det beräknade TRV-börvärdet innan ThermoSmart skickar en ny uppdatering. Minskar onödiga skrivningar till termostaten. 0,5 °C fungerar bra för de flesta rum."
+          "window_open_temp": "Måltemperatur som ställs in på en TRV medan ett fönster är öppet, om inte den TRV:n är konfigurerad att stängas av (se inställningarna per enhet). För termostater som inte stöder mycket låga värden, använd ett högre värde som 10 °C."
         }
       },
       "presence": {
-        "title": "Närvaro & Inlärning",
+        "title": "Närvaro",
         "description": "Vem är hemma? ThermoSmart växlar automatiskt till borta-läge när alla lämnar.",
         "data": {
           "presence_persons": "Personer för närvarodetektering",
@@ -311,6 +478,39 @@
       },
       "trv_observations": {
         "name": "TRV-observationer"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Endast börvärde (TRV autonom)",
+        "tpi_boost": "TPI-modulering av börvärde (beräknad boost)",
+        "direct_valve": "Direkt ventilstyrning (0–100 %)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Ärv från zonen (Endast börvärde)",
+        "setpoint": "Endast börvärde",
+        "tpi_boost": "TPI-modulering av börvärde",
+        "direct_valve": "Direkt ventilstyrning"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Ärv från zonen (TPI-modulering av börvärde)",
+        "setpoint": "Endast börvärde",
+        "tpi_boost": "TPI-modulering av börvärde",
+        "direct_valve": "Direkt ventilstyrning"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Ärv från zonen (Direkt ventilstyrning)",
+        "setpoint": "Endast börvärde",
+        "tpi_boost": "TPI-modulering av börvärde",
+        "direct_valve": "Direkt ventilstyrning"
       }
     }
   }

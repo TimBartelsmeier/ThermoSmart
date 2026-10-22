@@ -14,7 +14,7 @@
         "description": "Configura o seletor de modo Verão (Automático / Ligado / Desligado) e o interruptor de Férias. Não é necessário termostato. Ambos os controlos aplicam-se a todas as zonas simultaneamente."
       },
       "add_zone": {
-        "title": "Passo 1 / 4 – Dispositivos e sensores",
+        "title": "Passo 1 – Dispositivos e sensores",
         "description": "Seleciona as válvulas TRV e sensores para esta zona de aquecimento. As entidades de calibração e os interruptores de quirk são detetados automaticamente.",
         "data": {
           "name": "Nome da zona (ex. Sala)",
@@ -23,19 +23,103 @@
           "humidity_sensors": "Sensores de humidade interior",
           "window_sensors": "Sensores de janela (binary_sensor)",
           "window_open_delay": "Aquecimento desligado – atraso após abertura da janela",
-          "window_close_delay": "Aquecimento ligado – atraso após fecho da janela",
-          "valve_maintenance": "Ativar manutenção de válvulas (domingo 03:00 – apenas modo Verão ou Férias)",
-          "manage_temp_source": "Usar automaticamente a temperatura ambiente externa para TRV compatíveis",
-          "calibration_invert": "Inverter offset de calibração (para válvulas TRV como ME167 que invertem o sinal)"
+          "window_close_delay": "Aquecimento ligado – atraso após fecho da janela"
+        }
+      },
+      "control_options": {
+        "title": "Passo 2 – Estratégia de controlo da zona",
+        "description": "Escolha um valor predefinido para a zona. As definições por dispositivo (páginas seguintes) podem substituir esta estratégia.\n\nDispositivos detetados:\n\n{detected_devices}",
+        "data": {
+          "zone_control_mode": "Modo de controlo da zona",
+          "control_interval": "Intervalo mínimo do ciclo de controlo",
+          "temp_tolerance": "Tolerância de temperatura",
+          "ext_temp_threshold": "Limiar de escrita da temperatura externa"
         },
         "data_description": {
+          "zone_control_mode": "**Apenas setpoint:** o ThermoSmart envia a temperatura alvo simples e o TRV regula a sua válvula por si próprio.\n\n**Modulação de setpoint TPI:** o ThermoSmart calcula a necessidade de aquecimento e aumenta ou diminui o setpoint enviado ao TRV para abrir ou fechar a válvula.\n\n**Controlo direto da válvula:** o ThermoSmart escreve a abertura calculada da válvula (0–100 %) na entidade de posição da válvula do TRV e envia a temperatura alvo simples como setpoint.",
+          "control_interval": "Tempo mínimo entre ciclos de controlo regulares. Cada ciclo recalcula a necessidade de aquecimento e escreve setpoints, posições das válvulas e definições de estado nos TRV. Eventos como a abertura de uma janela ou uma substituição manual podem acionar um ciclo extra mais cedo. Intervalos mais curtos provocam reações mais rápidas, mas também podem sobrecarregar dispositivos ou congestionar redes, por exemplo Zigbee. Na prática, 2-3 minutos combinados com limiares razoáveis para alterações de temperatura, que têm de ser ultrapassados para que novos valores sejam enviados ao TRV, devem ser adequados.",
+          "ext_temp_threshold": "O valor do sensor de temperatura externo só é enviado ao TRV depois de ter mudado mais do que este limite desde a última atualização. Só tem efeito quando um sensor externo está configurado e para TRV com a entrada de temperatura externa ativada.",
+          "temp_tolerance": "Uma nova temperatura alvo só é enviada ao TRV se diferir da temperatura alvo atual do TRV em pelo menos este valor. Valores maiores reduzem o tráfego de rádio; valores menores fazem o TRV seguir o ThermoSmart mais de perto."
+        }
+      },
+      "device_settings": {
+        "title": "Passo 3 – Definições do TRV (TRV {index}/{total})",
+        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nEstas definições aplicam-se apenas a este TRV. A seguir pode definir as definições de estado deste TRV.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Modo de controlo",
+          "valve_entity": "Entidade de controlo da válvula",
+          "feed_external_temp": "Enviar temperatura ambiente ao TRV",
+          "ext_temp_entity": "Entidade de entrada da temperatura externa",
+          "calibration_sync": "Escrever desvio de calibração",
+          "calibration_entity": "Entidade do desvio de calibração",
+          "calibration_invert": "Inverter offset de calibração",
+          "valve_maintenance": "Ativar exercício / manutenção da válvula",
+          "window_off": "Desligar quando uma janela está aberta"
+        },
+        "data_description": {
+          "feed_external_temp": "Envia a temperatura ambiente ao TRV. Requer a seleção da entidade de entrada de temperatura externa correta abaixo; sem ela, nada é enviado.",
           "valve_maintenance": "Evita que as válvulas travem durante períodos prolongados sem aquecimento. O ThermoSmart move ocasionalmente as válvulas automaticamente quando o modo Verão ou Férias está ativo.",
-          "manage_temp_source": "O ThermoSmart continua a usar sensores de temperatura externos para a sua própria lógica de controlo. Quando ativado, o ThermoSmart também muda os TRV compatíveis para a sua fonte de temperatura externa e reverte para o sensor interno do TRV se os sensores externos ficarem indisponíveis.",
-          "calibration_invert": "Inverte o sinal do offset de calibração para modelos TRV específicos cuja direção do offset difere do comportamento padrão. Ative apenas se necessário para o dispositivo utilizado."
+          "calibration_sync": "Corrige o sensor de temperatura interno do TRV escrevendo a diferença para a temperatura ambiente na entidade de calibração abaixo. Desative para TRV que usam uma fonte de temperatura externa. Requer uma entidade de calibração.",
+          "calibration_entity": "Entidade numérica com o desvio de calibração local do TRV. Deixe vazio para desativar a calibração.",
+          "calibration_invert": "Ative se o TRV aplicar o desvio com o sinal oposto.",
+          "valve_entity": "Entidade numérica que controla a abertura da válvula deste TRV. Só é necessária se o controlo direto da válvula estiver ativado para este TRV; caso contrário é ignorada e pode ficar vazia. O ThermoSmart escreve 0–100 (%), ou 0–1 para entidades com \"level\" no nome.",
+          "window_off": "Desliga o dispositivo (modo HVAC desligado) quando uma janela está aberta. Se usar isto, certifique-se de que o TRV mantém a proteção contra congelamento ativa quando desligado (alguns modelos têm, outros não) para evitar o congelamento. Se desativar este interruptor, o TRV é mantido em modo de aquecimento, mas definido para a temperatura alvo de janela aberta definida numa das páginas seguintes."
+        }
+      },
+      "state_menu": {
+        "title": "Passo 3 – Definições de estado do TRV",
+        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nAs definições de estado mantêm entidades escolhidas deste TRV (select, number ou switch) num valor que definir. Em cada ciclo ou evento de controlo, o ThermoSmart verifica-as e define um valor apenas se diferir. Deixe a lista vazia se não precisar disto.\n\n**Atualmente configuradas:**\n\n{state_rules}\n\nEscolha uma ação. Selecione **Concluído com este TRV** quando terminar.",
+        "menu_options": {
+          "state_add_device": "Adicionar uma entidade deste TRV",
+          "state_add_any": "Adicionar qualquer outra entidade",
+          "state_remove": "Remover definições",
+          "state_done": "Concluído com este TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Passo 3 – Adicionar definição de estado (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nSelecione a entidade que o ThermoSmart deve manter num valor específico. {scope}\n\nEscolha o valor na página seguinte.",
+        "data": {
+          "entity_id": "Entidade"
+        },
+        "data_description": {
+          "entity_id": "Deixe vazio e envie para voltar sem adicionar nada."
+        }
+      },
+      "state_add_any": {
+        "title": "Passo 3 – Adicionar definição de estado (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nSelecione a entidade que o ThermoSmart deve manter num valor específico. {scope}\n\nEscolha o valor na página seguinte.",
+        "data": {
+          "entity_id": "Entidade"
+        },
+        "data_description": {
+          "entity_id": "Deixe vazio e envie para voltar sem adicionar nada."
+        }
+      },
+      "state_value": {
+        "title": "Passo 3 – Valor da definição de estado (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nDefina o valor que o ThermoSmart impõe para **{entity}**.\n\nValor atual: {current}",
+        "data": {
+          "value": "Valor a impor",
+          "cancel": "Cancelar – não guardar esta definição"
+        },
+        "data_description": {
+          "value": "Se a entidade diferir deste valor, o ThermoSmart define-o no próximo ciclo ou evento de controlo.",
+          "cancel": "Marque e envie para voltar à lista sem guardar."
+        }
+      },
+      "state_remove": {
+        "title": "Passo 3 – Remover definições de estado (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nSelecione as definições de estado que o ThermoSmart deve deixar de impor a este TRV.",
+        "data": {
+          "remove": "Definições a remover"
+        },
+        "data_description": {
+          "remove": "Deixe vazio e envie para voltar sem remover nada."
         }
       },
       "schedule": {
-        "title": "Passo 2 / 4 – Temperaturas e horário",
+        "title": "Passo 4 – Temperaturas e horário",
         "description": "Fluxo diário: Noite → Conforto → Noite\n\nQuando todas as pessoas estão ausentes, o ThermoSmart muda automaticamente para a temperatura de ausência, independentemente do horário.",
         "data": {
           "comfort_temp": "Temperatura de conforto (quando alguém está em casa)",
@@ -44,7 +128,6 @@
           "vacation_temp": "Temperatura de férias (proteção anticongelante)",
           "eco_temp": "Temperatura eco (poupança de energia, entre noturna e conforto)",
           "window_open_temp": "Temperatura com janela aberta",
-          "temp_tolerance": "Tolerância de temperatura – limiar de atualização do setpoint",
           "schedule_enabled": "Ativar horário",
           "sched_wd_morning": "Dia de semana: Conforto desde",
           "sched_wd_night": "Dia de semana: Noite desde",
@@ -59,12 +142,11 @@
           "sched_we_night": "A temperatura noturna aplica-se a partir desta hora",
           "away_temp": "Aplicada automaticamente apenas quando a deteção de presença está configurada (Passo 3). Pode também ser definida manualmente através do seletor de modo.",
           "eco_temp": "Usada quando o seletor de modo é definido manualmente para 'Eco'. Não é ativada automaticamente.",
-          "window_open_temp": "Temperatura alvo enquanto uma janela está aberta. Para termostatos que não suportam valores muito baixos, use um valor mais alto como 10 °C.",
-          "temp_tolerance": "Alteração mínima no setpoint TRV calculado antes de o ThermoSmart enviar uma nova atualização. Reduz as escritas desnecessárias no termostato. 0,5 °C funciona bem para a maioria dos quartos."
+          "window_open_temp": "Temperatura alvo definida num TRV enquanto uma janela está aberta, a menos que esse TRV esteja configurado para ser desligado (consulte as definições por dispositivo). Para termóstatos que não suportam valores muito baixos, use um valor mais alto, como 10 °C."
         }
       },
       "presence": {
-        "title": "Passo 3 / 4 – Presença e aprendizagem",
+        "title": "Passo 5 – Presença e aprendizagem",
         "description": "Quem está em casa? O ThermoSmart muda automaticamente para o modo ausência quando todos saem.",
         "data": {
           "presence_persons": "Pessoas para deteção de presença",
@@ -72,7 +154,7 @@
         }
       },
       "weather": {
-        "title": "Passo 4 / 4 – Tempo e sensores exteriores",
+        "title": "Passo 6 – Tempo e sensores exteriores",
         "description": "Todos os campos são opcionais – os sensores próprios têm prioridade sobre a entidade meteorológica. O sistema também funciona sem dados meteorológicos.",
         "data": {
           "weather_entity": "Entidade meteorológica (ex. weather.home)",
@@ -105,8 +187,11 @@
     "step": {
       "init": {
         "title": "Configurações",
+        "description": "Escolha que parte da zona **{zone}** editar. Cada secção é guardada separadamente.",
         "menu_options": {
           "devices": "Dispositivos e sensores",
+          "control_options": "Estratégia de controlo da zona (modo predefinido, intervalo, limiares)",
+          "device_settings": "Definições por TRV (substituição de modo, entidades, definições de estado)",
           "schedule": "Temperaturas e horário",
           "presence": "Presença e aprendizagem",
           "weather": "Tempo e sensores exteriores"
@@ -122,15 +207,99 @@
           "humidity_sensors": "Sensores de humidade interior",
           "window_sensors": "Sensores de janela",
           "window_open_delay": "Aquecimento desligado – atraso após abertura da janela",
-          "window_close_delay": "Aquecimento ligado – atraso após fecho da janela",
-          "valve_maintenance": "Ativar manutenção de válvulas (apenas modo Verão / Férias)",
-          "manage_temp_source": "Usar automaticamente a temperatura ambiente externa para TRV compatíveis",
-          "calibration_invert": "Inverter offset de calibração (ME167 e similares)"
+          "window_close_delay": "Aquecimento ligado – atraso após fecho da janela"
+        }
+      },
+      "control_options": {
+        "title": "Estratégia de controlo da zona",
+        "description": "Zona **{zone}**: escolha um valor predefinido para a zona. As definições por dispositivo podem substituir esta estratégia.",
+        "data": {
+          "zone_control_mode": "Modo de controlo da zona",
+          "control_interval": "Intervalo mínimo do ciclo de controlo",
+          "temp_tolerance": "Tolerância de temperatura",
+          "ext_temp_threshold": "Limiar de escrita da temperatura externa"
         },
         "data_description": {
+          "zone_control_mode": "**Apenas setpoint:** o ThermoSmart envia a temperatura alvo simples e o TRV regula a sua válvula por si próprio.\n\n**Modulação de setpoint TPI:** o ThermoSmart calcula a necessidade de aquecimento e aumenta ou diminui o setpoint enviado ao TRV para abrir ou fechar a válvula.\n\n**Controlo direto da válvula:** o ThermoSmart escreve a abertura calculada da válvula (0–100 %) na entidade de posição da válvula do TRV e envia a temperatura alvo simples como setpoint.",
+          "control_interval": "Tempo mínimo entre ciclos de controlo regulares. Cada ciclo recalcula a necessidade de aquecimento e escreve setpoints, posições das válvulas e definições de estado nos TRV. Eventos como a abertura de uma janela ou uma substituição manual podem acionar um ciclo extra mais cedo. Intervalos mais curtos provocam reações mais rápidas, mas também podem sobrecarregar dispositivos ou congestionar redes, por exemplo Zigbee. Na prática, 2-3 minutos combinados com limiares razoáveis para alterações de temperatura, que têm de ser ultrapassados para que novos valores sejam enviados ao TRV, devem ser adequados.",
+          "ext_temp_threshold": "O valor do sensor de temperatura externo só é enviado ao TRV depois de ter mudado mais do que este limite desde a última atualização. Só tem efeito quando um sensor externo está configurado e para TRV com a entrada de temperatura externa ativada.",
+          "temp_tolerance": "Uma nova temperatura alvo só é enviada ao TRV se diferir da temperatura alvo atual do TRV em pelo menos este valor. Valores maiores reduzem o tráfego de rádio; valores menores fazem o TRV seguir o ThermoSmart mais de perto."
+        }
+      },
+      "device_settings": {
+        "title": "Definições do TRV (TRV {index}/{total})",
+        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nEstas definições aplicam-se apenas a este TRV. A seguir pode editar as definições de estado deste TRV. Nada é guardado até percorrer o último TRV.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Modo de controlo",
+          "valve_entity": "Entidade de controlo da válvula",
+          "feed_external_temp": "Enviar temperatura ambiente ao TRV",
+          "ext_temp_entity": "Entidade de entrada da temperatura externa",
+          "calibration_sync": "Escrever desvio de calibração",
+          "calibration_entity": "Entidade do desvio de calibração",
+          "calibration_invert": "Inverter offset de calibração",
+          "valve_maintenance": "Ativar exercício / manutenção da válvula",
+          "window_off": "Desligar quando uma janela está aberta"
+        },
+        "data_description": {
+          "feed_external_temp": "Envia a temperatura ambiente ao TRV. Requer a seleção da entidade de entrada de temperatura externa correta abaixo; sem ela, nada é enviado.",
           "valve_maintenance": "Evita que as válvulas travem durante períodos prolongados sem aquecimento. O ThermoSmart move ocasionalmente as válvulas automaticamente quando o modo Verão ou Férias está ativo.",
-          "manage_temp_source": "O ThermoSmart continua a usar sensores de temperatura externos para a sua própria lógica de controlo. Quando ativado, o ThermoSmart também muda os TRV compatíveis para a sua fonte de temperatura externa e reverte para o sensor interno do TRV se os sensores externos ficarem indisponíveis.",
-          "calibration_invert": "Inverte o sinal do offset de calibração para modelos TRV específicos cuja direção do offset difere do comportamento padrão. Ative apenas se necessário para o dispositivo utilizado."
+          "calibration_sync": "Corrige o sensor de temperatura interno do TRV escrevendo a diferença para a temperatura ambiente na entidade de calibração abaixo. Desative para TRV que usam uma fonte de temperatura externa. Requer uma entidade de calibração.",
+          "calibration_entity": "Entidade numérica com o desvio de calibração local do TRV. Deixe vazio para desativar a calibração.",
+          "calibration_invert": "Ative se o TRV aplicar o desvio com o sinal oposto.",
+          "valve_entity": "Entidade numérica que controla a abertura da válvula deste TRV. Só é necessária se o controlo direto da válvula estiver ativado para este TRV; caso contrário é ignorada e pode ficar vazia. O ThermoSmart escreve 0–100 (%), ou 0–1 para entidades com \"level\" no nome.",
+          "window_off": "Desliga o dispositivo (modo HVAC desligado) quando uma janela está aberta. Se usar isto, certifique-se de que o TRV mantém a proteção contra congelamento ativa quando desligado (alguns modelos têm, outros não) para evitar o congelamento. Se desativar este interruptor, o TRV é mantido em modo de aquecimento, mas definido para a temperatura alvo de janela aberta definida numa das páginas seguintes."
+        }
+      },
+      "state_menu": {
+        "title": "Definições de estado do TRV",
+        "description": "**Zona:** {zone}\n**TRV {index} de {total}:** {device_name}\n\nAs definições de estado mantêm entidades escolhidas deste TRV (select, number ou switch) num valor que definir. Em cada ciclo ou evento de controlo, o ThermoSmart verifica-as e define um valor apenas se diferir. Deixe a lista vazia se não precisar disto.\n\n**Atualmente configuradas:**\n\n{state_rules}\n\nEscolha uma ação. Selecione **Concluído com este TRV** quando terminar; as alterações são guardadas após o último TRV.",
+        "menu_options": {
+          "state_add_device": "Adicionar uma entidade deste TRV",
+          "state_add_any": "Adicionar qualquer outra entidade",
+          "state_remove": "Remover definições",
+          "state_done": "Concluído com este TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Adicionar definição de estado (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nSelecione a entidade que o ThermoSmart deve manter num valor específico. {scope}\n\nEscolha o valor na página seguinte.",
+        "data": {
+          "entity_id": "Entidade"
+        },
+        "data_description": {
+          "entity_id": "Deixe vazio e envie para voltar sem adicionar nada."
+        }
+      },
+      "state_add_any": {
+        "title": "Adicionar definição de estado (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nSelecione a entidade que o ThermoSmart deve manter num valor específico. {scope}\n\nEscolha o valor na página seguinte.",
+        "data": {
+          "entity_id": "Entidade"
+        },
+        "data_description": {
+          "entity_id": "Deixe vazio e envie para voltar sem adicionar nada."
+        }
+      },
+      "state_value": {
+        "title": "Valor da definição de estado (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nDefina o valor que o ThermoSmart impõe para **{entity}**.\n\nValor atual: {current}",
+        "data": {
+          "value": "Valor a impor",
+          "cancel": "Cancelar – não guardar esta definição"
+        },
+        "data_description": {
+          "value": "Se a entidade diferir deste valor, o ThermoSmart define-o no próximo ciclo ou evento de controlo.",
+          "cancel": "Marque e envie para voltar à lista sem guardar."
+        }
+      },
+      "state_remove": {
+        "title": "Remover definições de estado (TRV {index}/{total})",
+        "description": "**TRV {index} de {total}:** {device_name}\n\nSelecione as definições de estado que o ThermoSmart deve deixar de impor a este TRV.",
+        "data": {
+          "remove": "Definições a remover"
+        },
+        "data_description": {
+          "remove": "Deixe vazio e envie para voltar sem remover nada."
         }
       },
       "schedule": {
@@ -143,7 +312,6 @@
           "vacation_temp": "Temperatura de férias",
           "eco_temp": "Temperatura eco",
           "window_open_temp": "Temperatura com janela aberta",
-          "temp_tolerance": "Tolerância de temperatura",
           "schedule_enabled": "Ativar horário",
           "sched_wd_morning": "Dia de semana: Conforto desde",
           "sched_wd_night": "Dia de semana: Noite desde",
@@ -158,8 +326,7 @@
           "sched_we_night": "A temperatura noturna aplica-se a partir desta hora",
           "away_temp": "Aplicada automaticamente apenas quando a deteção de presença está configurada (Passo 3). Pode também ser definida manualmente através do seletor de modo.",
           "eco_temp": "Usada quando o seletor de modo é definido manualmente para 'Eco'. Não é ativada automaticamente.",
-          "window_open_temp": "Temperatura alvo enquanto uma janela está aberta. Para termostatos que não suportam valores muito baixos, use um valor mais alto como 10 °C.",
-          "temp_tolerance": "Alteração mínima no setpoint TRV calculado antes de o ThermoSmart enviar uma nova atualização. Reduz as escritas desnecessárias no termostato. 0,5 °C funciona bem para a maioria dos quartos."
+          "window_open_temp": "Temperatura alvo definida num TRV enquanto uma janela está aberta, a menos que esse TRV esteja configurado para ser desligado (consulte as definições por dispositivo). Para termóstatos que não suportam valores muito baixos, use um valor mais alto, como 10 °C."
         }
       },
       "presence": {
@@ -311,6 +478,39 @@
       },
       "trv_observations": {
         "name": "Observações TRV"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Apenas temperatura alvo (TRV autónomo)",
+        "tpi_boost": "Modulação da temperatura alvo TPI (reforço calculado)",
+        "direct_valve": "Controlo direto da válvula (0–100%)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Herdar da zona (Apenas temperatura alvo)",
+        "setpoint": "Apenas temperatura alvo",
+        "tpi_boost": "Modulação da temperatura alvo TPI",
+        "direct_valve": "Controlo direto da válvula"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Herdar da zona (Modulação da temperatura alvo TPI)",
+        "setpoint": "Apenas temperatura alvo",
+        "tpi_boost": "Modulação da temperatura alvo TPI",
+        "direct_valve": "Controlo direto da válvula"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Herdar da zona (Controlo direto da válvula)",
+        "setpoint": "Apenas temperatura alvo",
+        "tpi_boost": "Modulação da temperatura alvo TPI",
+        "direct_valve": "Controlo direto da válvula"
       }
     }
   }

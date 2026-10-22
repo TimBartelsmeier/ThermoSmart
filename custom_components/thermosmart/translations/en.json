@@ -14,7 +14,7 @@
         "description": "Sets up the global Summer mode select (Automatic / On / Off) and Vacation switch. No thermostat required. Both controls apply to all zones simultaneously."
       },
       "add_zone": {
-        "title": "Step 1 / 4 – Devices & Sensors",
+        "title": "Step 1 – Devices & Sensors",
         "description": "Select the TRVs and sensors for this heating zone. Calibration entities and quirk switches are detected automatically.",
         "data": {
           "name": "Zone name (e.g. Living Room)",
@@ -23,19 +23,103 @@
           "humidity_sensors": "Indoor humidity sensors",
           "window_sensors": "Window sensors (binary_sensor)",
           "window_open_delay": "Heating off – delay after window opens",
-          "window_close_delay": "Heating on – delay after window closes",
-          "valve_maintenance": "Enable valve maintenance (Sunday 03:00 – Summer & Vacation mode only)",
-          "manage_temp_source": "Automatically use external room temperature for supported TRVs",
-          "calibration_invert": "Invert calibration offset (for TRVs like ME167 that reverse the sign)"
+          "window_close_delay": "Heating on – delay after window closes"
+        }
+      },
+      "control_options": {
+        "title": "Step 2 – Zone Control Strategy",
+        "description": "Choose a zone default. Per-device settings (next pages) can override this strategy.\n\nDetected devices:\n\n{detected_devices}",
+        "data": {
+          "zone_control_mode": "Zone control mode",
+          "control_interval": "Minimum control cycle interval",
+          "temp_tolerance": "Temperature tolerance",
+          "ext_temp_threshold": "External temperature write threshold"
         },
         "data_description": {
+          "zone_control_mode": "**Setpoint only:** ThermoSmart sends the plain target temperature and the TRV regulates its valve on its own.\n\n**TPI setpoint modulation:** ThermoSmart calculates the heating demand and raises or lowers the setpoint sent to the TRV to open or close its valve.\n\n**Direct valve control:** ThermoSmart writes the calculated valve opening (0–100 %) to the TRV's valve position entity and sends the plain target as setpoint.",
+          "control_interval": "Minimum time between regular control cycles. Each cycle recalculates the heating demand and writes setpoints, valve positions and state settings to the TRVs. Events such as opening a window or a manual override can trigger an extra cycle sooner. Shorter intervals cause faster reactions but may also overload devices or congest networks, e.g. Zigbee. In practice, 2-3 minutes combined with reasonable thresholds for temperature changes, which must be cleared for new values to be sent to the TRV, should be fine.",
+          "ext_temp_threshold": "The value from the external temperature sensor is sent to the TRV only after it has changed more than this threshold compared to the last update. Only has an effect when an external sensor is configured and for TRVs for which the external temperature input is enabled.",
+          "temp_tolerance": "A new setpoint is sent to the TRV only if it differs from the TRV's current setpoint by at least this value. Larger values reduce radio traffic, smaller values make the TRV follow ThermoSmart more closely."
+        }
+      },
+      "device_settings": {
+        "title": "Step 3 – TRV Settings (TRV {index}/{total})",
+        "description": "**Zone:** {zone}\n**TRV {index} of {total}:** {device_name}\n\nThese settings apply to this TRV only. Next you can define state settings for this TRV.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Control mode",
+          "valve_entity": "Valve control entity",
+          "feed_external_temp": "Feed room temperature to TRV",
+          "ext_temp_entity": "External temperature input entity",
+          "calibration_sync": "Write calibration offset",
+          "calibration_entity": "Calibration offset entity",
+          "calibration_invert": "Invert calibration offset",
+          "valve_maintenance": "Enable valve exercise / maintenance",
+          "window_off": "Turn off when window is open"
+        },
+        "data_description": {
+          "feed_external_temp": "Sends the room temperature to the TRV. Requires selecting the correct external temperature input entity below; nothing is sent without it.",
           "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active.",
-          "manage_temp_source": "ThermoSmart continues to use external temperature sensors for its own control logic. When enabled, ThermoSmart also switches supported TRVs to their external temperature source and falls back to the internal TRV sensor if external sensors become unavailable.",
-          "calibration_invert": "Inverts the calibration offset sign for specific TRV models whose offset direction differs from the standard behavior. Only enable this if required by your device."
+          "calibration_sync": "Corrects the TRV's internal temperature sensor by writing the difference to the room temperature into the calibration entity below. Turn off for TRVs that use an external temperature source. Requires a calibration entity.",
+          "calibration_entity": "Number entity that holds the TRV's local temperature calibration offset. Leave empty to disable calibration.",
+          "calibration_invert": "Enable if the TRV applies the calibration offset with the opposite sign.",
+          "valve_entity": "Number entity that controls the valve opening of this TRV. Only needed if direct valve control is enabled for this TRV, otherwise it is ignored and can be left empty. ThermoSmart writes 0–100 (%), or 0–1 for entities whose name contains \"level\".",
+          "window_off": "Turn off the device (HVAC mode off) when a window is open. If you use this, you should make sure that your TRV still has frost protection enabled when turned off (some models do, but not all) to prevent freezing. If you disable this toggle, the TRV will be kept in heat mode but set to the window open target temperature defined on one of the next pages instead when a window is open."
+        }
+      },
+      "state_menu": {
+        "title": "Step 3 – TRV State Settings",
+        "description": "**Zone:** {zone}\n**TRV {index} of {total}:** {device_name}\n\nState settings keep chosen entities of this TRV (select, number or switch) at a value you define. On every control cycle or control event ThermoSmart checks them and sets a value only if it differs. Leave the list empty if you don't need this.\n\n**Currently configured:**\n\n{state_rules}\n\nChoose an action. Select **Done with this TRV** when finished.",
+        "menu_options": {
+          "state_add_device": "Add an entity of this TRV",
+          "state_add_any": "Add any other entity",
+          "state_remove": "Remove settings",
+          "state_done": "Done with this TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Step 3 – Add State Setting (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the entity ThermoSmart should keep at a specific value. {scope}\n\nYou choose the value on the next page.",
+        "data": {
+          "entity_id": "Entity"
+        },
+        "data_description": {
+          "entity_id": "Leave empty and submit to go back without adding anything."
+        }
+      },
+      "state_add_any": {
+        "title": "Step 3 – Add State Setting (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the entity ThermoSmart should keep at a specific value. {scope}\n\nYou choose the value on the next page.",
+        "data": {
+          "entity_id": "Entity"
+        },
+        "data_description": {
+          "entity_id": "Leave empty and submit to go back without adding anything."
+        }
+      },
+      "state_value": {
+        "title": "Step 3 – State Setting Value (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nDefine the value ThermoSmart enforces for **{entity}**.\n\nCurrent value: {current}",
+        "data": {
+          "value": "Value to enforce",
+          "cancel": "Cancel – don't save this setting"
+        },
+        "data_description": {
+          "value": "If the entity differs from this value, ThermoSmart sets it on the next control cycle or event.",
+          "cancel": "Tick this box and submit to return to the list without saving."
+        }
+      },
+      "state_remove": {
+        "title": "Step 3 – Remove State Settings (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the state settings ThermoSmart should stop enforcing for this TRV.",
+        "data": {
+          "remove": "Settings to remove"
+        },
+        "data_description": {
+          "remove": "Leave empty and submit to go back without removing anything."
         }
       },
       "schedule": {
-        "title": "Step 2 / 4 – Temperatures & Schedule",
+        "title": "Step 4 – Temperatures & Schedule",
         "description": "Daily flow: Night → Comfort → Night\n\nWhen all persons are away, ThermoSmart automatically switches to the away temperature – regardless of the schedule.",
         "data": {
           "comfort_temp": "Comfort temperature (when someone is home)",
@@ -44,7 +128,6 @@
           "vacation_temp": "Vacation temperature (frost protection)",
           "eco_temp": "Eco temperature (energy saving, between night and comfort)",
           "window_open_temp": "Window open temperature",
-          "temp_tolerance": "Temperature tolerance – setpoint write threshold",
           "schedule_enabled": "Enable time schedule",
           "sched_wd_morning": "Weekday: Comfort from",
           "sched_wd_night": "Weekday: Night from",
@@ -59,12 +142,11 @@
           "sched_we_night": "Night temperature applies from this time",
           "away_temp": "Only applied automatically when presence detection is configured (Step 3). Can also be set manually via the mode select.",
           "eco_temp": "Used when the mode select is manually set to 'Eco'. Not applied automatically.",
-          "window_open_temp": "Target temperature while a window is open. For thermostats that do not support very low setpoints, use a higher value such as 10 °C.",
-          "temp_tolerance": "Minimum change in the calculated TRV setpoint before ThermoSmart sends a new update. This reduces unnecessary writes to the thermostat. 0.5 °C works well for most rooms."
+          "window_open_temp": "Target temperature set on a TRV while a window is open, unless that TRV is configured to be turned off when a window is open (see the per-device settings). For thermostats that do not support very low setpoints, use a higher value such as 10 °C."
         }
       },
       "presence": {
-        "title": "Step 3 / 4 – Presence",
+        "title": "Step 5 – Presence",
         "description": "Who is home? ThermoSmart automatically switches to away mode when everyone leaves.\n\nLeave the person list empty to disable automatic away detection – ThermoSmart will then follow only the schedule.",
         "data": {
           "presence_persons": "Persons for presence detection",
@@ -72,7 +154,7 @@
         }
       },
       "weather": {
-        "title": "Step 4 / 4 – Weather & Outdoor Sensors",
+        "title": "Step 6 – Weather & Outdoor Sensors",
         "description": "All fields optional – own sensors take priority over the weather entity. The system works without weather data too.",
         "data": {
           "weather_entity": "Weather entity (e.g. weather.home)",
@@ -105,8 +187,11 @@
     "step": {
       "init": {
         "title": "Settings",
+        "description": "Choose which part of zone **{zone}** to edit. Each section is saved on its own.",
         "menu_options": {
           "devices": "Devices & Sensors",
+          "control_options": "Zone Control Strategy (default mode, interval, thresholds)",
+          "device_settings": "Per-TRV Settings (mode override, entities, state settings)",
           "schedule": "Temperatures & Schedule",
           "presence": "Presence",
           "weather": "Weather & Outdoor Sensors"
@@ -122,15 +207,99 @@
           "humidity_sensors": "Indoor humidity sensors",
           "window_sensors": "Window sensors",
           "window_open_delay": "Heating off – delay after window opens",
-          "window_close_delay": "Heating on – delay after window closes",
-          "valve_maintenance": "Enable valve maintenance (Summer & Vacation mode only)",
-          "manage_temp_source": "Automatically use external room temperature for supported TRVs",
-          "calibration_invert": "Invert calibration offset (ME167 and similar)"
+          "window_close_delay": "Heating on – delay after window closes"
+        }
+      },
+      "control_options": {
+        "title": "Zone Control Strategy",
+        "description": "Zone **{zone}**: choose a zone default. Per-device settings can override this strategy.",
+        "data": {
+          "zone_control_mode": "Zone control mode",
+          "control_interval": "Minimum control cycle interval",
+          "temp_tolerance": "Temperature tolerance",
+          "ext_temp_threshold": "External temperature write threshold"
         },
         "data_description": {
+          "zone_control_mode": "**Setpoint only:** ThermoSmart sends the plain target temperature and the TRV regulates its valve on its own.\n\n**TPI setpoint modulation:** ThermoSmart calculates the heating demand and raises or lowers the setpoint sent to the TRV to open or close its valve.\n\n**Direct valve control:** ThermoSmart writes the calculated valve opening (0–100 %) to the TRV's valve position entity and sends the plain target as setpoint.",
+          "control_interval": "Minimum time between regular control cycles. Each cycle recalculates the heating demand and writes setpoints, valve positions and state settings to the TRVs. Events such as opening a window or a manual override can trigger an extra cycle sooner. Shorter intervals cause faster reactions but may also overload devices or congest networks, e.g. Zigbee. In practice, 2-3 minutes combined with reasonable thresholds for temperature changes, which must be cleared for new values to be sent to the TRV, should be fine.",
+          "ext_temp_threshold": "The value from the external temperature sensor is sent to the TRV only after it has changed more than this threshold compared to the last update. Only has an effect when an external sensor is configured and for TRVs for which the external temperature input is enabled.",
+          "temp_tolerance": "A new setpoint is sent to the TRV only if it differs from the TRV's current setpoint by at least this value. Larger values reduce radio traffic, smaller values make the TRV follow ThermoSmart more closely."
+        }
+      },
+      "device_settings": {
+        "title": "TRV Settings (TRV {index}/{total})",
+        "description": "**Zone:** {zone}\n**TRV {index} of {total}:** {device_name}\n\nThese settings apply to this TRV only. Next you can edit state settings for this TRV. Nothing is saved until you have gone through the last TRV.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Control mode",
+          "valve_entity": "Valve control entity",
+          "feed_external_temp": "Feed room temperature to TRV",
+          "ext_temp_entity": "External temperature input entity",
+          "calibration_sync": "Write calibration offset",
+          "calibration_entity": "Calibration offset entity",
+          "calibration_invert": "Invert calibration offset",
+          "valve_maintenance": "Enable valve exercise / maintenance",
+          "window_off": "Turn off when window is open"
+        },
+        "data_description": {
+          "feed_external_temp": "Sends the room temperature to the TRV. Requires selecting the correct external temperature input entity below; nothing is sent without it.",
           "valve_maintenance": "Prevents valves from sticking during extended periods without heating. ThermoSmart occasionally moves the valves automatically while Summer Mode or Vacation Mode is active.",
-          "manage_temp_source": "ThermoSmart continues to use external temperature sensors for its own control logic. When enabled, ThermoSmart also switches supported TRVs to their external temperature source and falls back to the internal TRV sensor if external sensors become unavailable.",
-          "calibration_invert": "Inverts the calibration offset sign for specific TRV models whose offset direction differs from the standard behavior. Only enable this if required by your device."
+          "calibration_sync": "Corrects the TRV's internal temperature sensor by writing the difference to the room temperature into the calibration entity below. Turn off for TRVs that use an external temperature source. Requires a calibration entity.",
+          "calibration_entity": "Number entity that holds the TRV's local temperature calibration offset. Leave empty to disable calibration.",
+          "calibration_invert": "Enable if the TRV applies the calibration offset with the opposite sign.",
+          "valve_entity": "Number entity that controls the valve opening of this TRV. Only needed if direct valve control is enabled for this TRV, otherwise it is ignored and can be left empty. ThermoSmart writes 0–100 (%), or 0–1 for entities whose name contains \"level\".",
+          "window_off": "Turn off the device (HVAC mode off) when a window is open. If you use this, you should make sure that your TRV still has frost protection enabled when turned off (some models do, but not all) to prevent freezing. If you disable this toggle, the TRV will be kept in heat mode but set to the window open target temperature defined on one of the next pages instead when a window is open."
+        }
+      },
+      "state_menu": {
+        "title": "TRV State Settings",
+        "description": "**Zone:** {zone}\n**TRV {index} of {total}:** {device_name}\n\nState settings keep chosen entities of this TRV (select, number or switch) at a value you define. On every control cycle or control event ThermoSmart checks them and sets a value only if it differs. Leave the list empty if you don't need this.\n\n**Currently configured:**\n\n{state_rules}\n\nChoose an action. Select **Done with this TRV** when finished; changes are saved after the last TRV.",
+        "menu_options": {
+          "state_add_device": "Add an entity of this TRV",
+          "state_add_any": "Add any other entity",
+          "state_remove": "Remove settings",
+          "state_done": "Done with this TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Add State Setting (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the entity ThermoSmart should keep at a specific value. {scope}\n\nYou choose the value on the next page.",
+        "data": {
+          "entity_id": "Entity"
+        },
+        "data_description": {
+          "entity_id": "Leave empty and submit to go back without adding anything."
+        }
+      },
+      "state_add_any": {
+        "title": "Add State Setting (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the entity ThermoSmart should keep at a specific value. {scope}\n\nYou choose the value on the next page.",
+        "data": {
+          "entity_id": "Entity"
+        },
+        "data_description": {
+          "entity_id": "Leave empty and submit to go back without adding anything."
+        }
+      },
+      "state_value": {
+        "title": "State Setting Value (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nDefine the value ThermoSmart enforces for **{entity}**.\n\nCurrent value: {current}",
+        "data": {
+          "value": "Value to enforce",
+          "cancel": "Cancel – don't save this setting"
+        },
+        "data_description": {
+          "value": "If the entity differs from this value, ThermoSmart sets it on the next control cycle or event.",
+          "cancel": "Tick this box and submit to return to the list without saving."
+        }
+      },
+      "state_remove": {
+        "title": "Remove State Settings (TRV {index}/{total})",
+        "description": "**TRV {index} of {total}:** {device_name}\n\nSelect the state settings ThermoSmart should stop enforcing for this TRV.",
+        "data": {
+          "remove": "Settings to remove"
+        },
+        "data_description": {
+          "remove": "Leave empty and submit to go back without removing anything."
         }
       },
       "schedule": {
@@ -143,7 +312,6 @@
           "vacation_temp": "Vacation temperature",
           "eco_temp": "Eco temperature",
           "window_open_temp": "Window open temperature",
-          "temp_tolerance": "Temperature tolerance",
           "schedule_enabled": "Enable time schedule",
           "sched_wd_morning": "Weekday: Comfort from",
           "sched_wd_night": "Weekday: Night from",
@@ -158,8 +326,7 @@
           "sched_we_night": "Night temperature applies from this time",
           "away_temp": "Only applied automatically when presence detection is configured. Can also be set manually via the mode select.",
           "eco_temp": "Used when the mode select is manually set to 'Eco'. Not applied automatically.",
-          "window_open_temp": "Target temperature while a window is open. For thermostats that do not support very low setpoints, use a higher value such as 10 °C.",
-          "temp_tolerance": "Minimum change in the calculated TRV setpoint before ThermoSmart sends a new update. This reduces unnecessary writes to the thermostat. 0.5 °C works well for most rooms."
+          "window_open_temp": "Target temperature set on a TRV while a window is open, unless that TRV is configured to be turned off when a window is open (see the per-device settings). For thermostats that do not support very low setpoints, use a higher value such as 10 °C."
         }
       },
       "presence": {
@@ -311,6 +478,39 @@
       },
       "trv_observations": {
         "name": "TRV observations"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Setpoint only (TRV autonomous)",
+        "tpi_boost": "TPI setpoint modulation (calculated boost)",
+        "direct_valve": "Direct valve control (0–100%)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Inherit from zone (Setpoint only)",
+        "setpoint": "Setpoint only",
+        "tpi_boost": "TPI setpoint modulation",
+        "direct_valve": "Direct valve control"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Inherit from zone (TPI setpoint modulation)",
+        "setpoint": "Setpoint only",
+        "tpi_boost": "TPI setpoint modulation",
+        "direct_valve": "Direct valve control"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Inherit from zone (Direct valve control)",
+        "setpoint": "Setpoint only",
+        "tpi_boost": "TPI setpoint modulation",
+        "direct_valve": "Direct valve control"
       }
     }
   }

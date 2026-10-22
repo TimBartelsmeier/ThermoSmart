@@ -23,9 +23,31 @@ CONF_SCHEDULE_ENABLED = "schedule_enabled"
 CONF_PRESENCE_PERSONS = "presence_persons"
 CONF_HOME_ZONE = "home_zone"           # Welche Zone gilt als "zuhause"?
 CONF_VACATION_BOOLEAN = "vacation_boolean"
-CONF_CALIBRATION_ENTITIES = "calibration_entities"
-CONF_QUIRK_ENTITIES = "quirk_entities"
-CONF_VALVE_MAINTENANCE = "valve_maintenance"
+CONF_ZONE_CONTROL_MODE = "zone_control_mode"
+CONF_CONTROL_INTERVAL = "control_interval"
+CONF_TEMP_TOLERANCE = "temp_tolerance"
+CONF_EXT_TEMP_THRESHOLD = "ext_temp_threshold"
+CONF_DEVICE_SETTINGS = "device_settings"
+CONF_DEV_CONTROL_MODE = "control_mode"
+CONF_DEV_VALVE_ENTITY = "valve_entity"
+CONF_DEV_FEED_EXT_TEMP = "feed_external_temp"
+CONF_DEV_EXT_TEMP_ENTITY = "ext_temp_entity"
+CONF_DEV_CALIBRATION_ENTITY = "calibration_entity"
+CONF_DEV_CALIBRATION_SYNC = "calibration_sync"
+CONF_DEV_CALIBRATION_INVERT = "calibration_invert"
+CONF_DEV_VALVE_MAINTENANCE = "valve_maintenance"
+CONF_DEV_WINDOW_OFF = "window_off"
+CONF_DEV_STATE_SETTINGS = "state_settings"
+CONTROL_MODE_INHERIT = "inherit"
+CONTROL_MODE_SETPOINT = "setpoint"
+CONTROL_MODE_TPI_BOOST = "tpi_boost"
+CONTROL_MODE_DIRECT_VALVE = "direct_valve"
+CONTROL_MODES = (
+    CONTROL_MODE_INHERIT,
+    CONTROL_MODE_SETPOINT,
+    CONTROL_MODE_TPI_BOOST,
+    CONTROL_MODE_DIRECT_VALVE,
+)
 
 # Bekannte Switch-Muster die bei TRVs automatisch deaktiviert werden sollen
 AUTO_QUIRK_PATTERNS = [
@@ -57,18 +79,6 @@ AUTO_VALVE_PATTERNS = [
     "heating_demand",         # alternative name for pi_heating_demand
     "level",                  # Homematic IP via hahomematic (0.0–1.0 scaled to %)
 ]
-
-# Kalibrierungs-Inversion (z.B. ME167 invertiert Offset-Vorzeichen)
-CONF_CALIBRATION_INVERT = "calibration_invert"
-
-# TRV temperature source management (external/internal select on SONOFF TRVZB etc.)
-CONF_MANAGE_TEMP_SOURCE = "manage_temp_source"
-
-# Patterns for temperature_sensor select entity detection
-AUTO_TEMP_SOURCE_PATTERNS = ["temperature_sensor"]
-
-# Seconds all external temp sensors must be unavailable before switching TRV to internal
-TEMP_SOURCE_SENSOR_GRACE_SECONDS = 300
 
 # TPI-Regler Konstanten
 TPI_COEF_INT_DEFAULT  = 0.6    # Duty-Cycle-Anteil pro °C Raumfehler (0→100%)
