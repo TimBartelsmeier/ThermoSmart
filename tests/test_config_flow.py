@@ -25,16 +25,9 @@ from custom_components.thermosmart.const import (
     CONF_OUTDOOR_SOLAR_SENSOR,
     CONF_OUTDOOR_RAIN_SENSOR,
     CONF_LEARNING_ENABLED,
-    CONF_SCHEDULE_ENABLED,
-    CONF_PRESENCE_PERSONS,
-    CONF_HOME_ZONE,
     CONF_VACATION_TEMP,
     CONF_WINDOW_OPEN_TEMP,
     CONF_ECO_TEMP,
-    CONF_SCHED_WD_MORNING,
-    CONF_SCHED_WD_NIGHT,
-    CONF_SCHED_WE_MORNING,
-    CONF_SCHED_WE_NIGHT,
     CONF_ZONE_CONTROL_MODE,
     CONF_CONTROL_INTERVAL,
     CONF_EXT_TEMP_THRESHOLD,
@@ -69,11 +62,6 @@ _SCHEDULE = {
     CONF_VACATION_TEMP: 12.0,
     CONF_ECO_TEMP: 18.0,
     CONF_WINDOW_OPEN_TEMP: 12.0,
-    CONF_SCHEDULE_ENABLED: True,
-    CONF_SCHED_WD_MORNING: "06:00:00",
-    CONF_SCHED_WD_NIGHT: "22:00:00",
-    CONF_SCHED_WE_MORNING: "08:00:00",
-    CONF_SCHED_WE_NIGHT: "23:00:00",
 }
 
 _CONTROL = {
@@ -92,11 +80,6 @@ _DEVICE_SETTINGS = {
     CONF_DEV_VALVE_MAINTENANCE: True,
 }
 
-_PRESENCE = {
-    CONF_PRESENCE_PERSONS: [],
-    CONF_HOME_ZONE: "zone.home",
-}
-
 _WEATHER_NONE = {
     CONF_WEATHER_ENTITY: None,
     CONF_OUTDOOR_TEMP_SENSOR: None,
@@ -110,7 +93,7 @@ _PATCH = "custom_components.thermosmart.async_setup_entry"
 
 
 async def _navigate_to_weather(hass) -> dict:
-    """Run (menu →) add_zone → schedule → presence, return weather-step result.
+    """Run (menu →) add_zone → temperatures, return weather-step result.
 
     The initial step is a MENU only when no ThermoSmart entry exists yet; once
     one does, async_step_user goes straight to add_zone (Config-Flow UX
@@ -131,7 +114,6 @@ async def _navigate_to_weather(hass) -> dict:
         result["flow_id"], {"next_step_id": "state_done"}
     )
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], _PRESENCE)
     return result
 
 
@@ -256,9 +238,6 @@ class TestGlobalSetupOnlyInitial:
                 result["flow_id"], _SCHEDULE
             )
             result = await hass.config_entries.flow.async_configure(
-                result["flow_id"], _PRESENCE
-            )
-            result = await hass.config_entries.flow.async_configure(
                 result["flow_id"], _WEATHER_NONE
             )
             await hass.async_block_till_done()
@@ -273,7 +252,7 @@ class TestNoGlobalLearningStep:
     """Config-Flow UX Cleanup: no global learning on/off question during setup.
     Per-zone learning stays controlled by the runtime 'Learning mode' switch."""
 
-    async def test_presence_step_schema_has_no_learning_field(
+    async def test_weather_step_schema_has_no_learning_field(
         self, hass, enable_custom_integrations
     ):
         result = await hass.config_entries.flow.async_init(
@@ -292,7 +271,7 @@ class TestNoGlobalLearningStep:
         )
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
 
-        assert result["step_id"] == "presence"
+        assert result["step_id"] == "weather"
         schema_keys = {str(k) for k in result["data_schema"].schema}
         assert CONF_LEARNING_ENABLED not in schema_keys
 
@@ -300,7 +279,7 @@ class TestNoGlobalLearningStep:
         self, hass, enable_custom_integrations
     ):
         """Zone wird trotzdem korrekt angelegt, auch ohne learning_enabled im
-        presence-Step-Submit."""
+        Submit."""
         with patch(_PATCH, return_value=True):
             result = await _navigate_to_weather(hass)
             result = await hass.config_entries.flow.async_configure(
@@ -465,11 +444,11 @@ class TestZoneFlowScheduleValidation:
         assert "night_temp" in result["errors"]
         assert "away_temp" in result["errors"]
 
-    async def test_valid_schedule_advances_to_presence(self, hass, enable_custom_integrations):
+    async def test_valid_schedule_advances_to_weather(self, hass, enable_custom_integrations):
         result = await self._to_schedule(hass)
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "presence"
+        assert result["step_id"] == "weather"
 
 
 # ── Zone Flow – weather step validation ───────────────────────────────────────
@@ -599,7 +578,6 @@ class TestStateSettingsSubFlow:
 
         await flow.async_configure(flow_id, {"next_step_id": "state_done"})
         await flow.async_configure(flow_id, _SCHEDULE)
-        await flow.async_configure(flow_id, _PRESENCE)
         with patch(_PATCH, return_value=True):
             result = await flow.async_configure(flow_id, _WEATHER_NONE)
             await hass.async_block_till_done()

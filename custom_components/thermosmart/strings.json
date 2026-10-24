@@ -125,42 +125,22 @@
         }
       },
       "schedule": {
-        "title": "Step 4 – Temperatures & Schedule",
-        "description": "Daily flow: Night → Comfort → Night\n\nWhen all persons are away, ThermoSmart automatically switches to the away temperature – regardless of the schedule.",
+        "title": "Step 4 – Temperatures",
+        "description": "Temperatures for the presets (Comfort, Eco, Night, Away, Vacation) and for open windows. A preset simply sets the zone's target temperature.",
         "data": {
-          "comfort_temp": "Comfort temperature (when someone is home)",
+          "comfort_temp": "Comfort temperature",
           "night_temp": "Night temperature (setback during sleep)",
-          "away_temp": "Away temperature (automatically when everyone is gone)",
+          "away_temp": "Away temperature",
           "vacation_temp": "Vacation temperature (frost protection)",
           "eco_temp": "Eco temperature (energy saving, between night and comfort)",
-          "window_open_temp": "Window open temperature",
-          "schedule_enabled": "Enable time schedule",
-          "sched_wd_morning": "Weekday: Comfort from",
-          "sched_wd_night": "Weekday: Night from",
-          "sched_we_morning": "Weekend: Comfort from",
-          "sched_we_night": "Weekend: Night from"
+          "window_open_temp": "Window open temperature"
         },
         "data_description": {
-          "schedule_enabled": "When disabled, comfort temperature is active around the clock – no automatic day/night switching.",
-          "sched_wd_morning": "Comfort temperature should be reached by this time – ThermoSmart preheats automatically in advance",
-          "sched_wd_night": "Night temperature applies from this time",
-          "sched_we_morning": "Comfort temperature should be reached by this time – ThermoSmart preheats automatically in advance",
-          "sched_we_night": "Night temperature applies from this time",
-          "away_temp": "Only applied automatically when presence detection is configured (Step 3). Can also be set manually via the mode select.",
-          "eco_temp": "Used when the mode select is manually set to 'Eco'. Not applied automatically.",
           "window_open_temp": "Target temperature set on a TRV while a window is open, unless that TRV is configured to be turned off when a window is open (see the per-device settings). For thermostats that do not support very low setpoints, use a higher value such as 10 °C."
         }
       },
-      "presence": {
-        "title": "Step 5 – Presence",
-        "description": "Who is home? ThermoSmart automatically switches to away mode when everyone leaves.\n\nLeave the person list empty to disable automatic away detection – ThermoSmart will then follow only the schedule.",
-        "data": {
-          "presence_persons": "Persons for presence detection",
-          "home_zone": "Home zone (default: zone.home)"
-        }
-      },
       "weather": {
-        "title": "Step 6 – Weather & Outdoor Sensors",
+        "title": "Step 5 – Weather & Outdoor Sensors",
         "description": "All fields optional – own sensors take priority over the weather entity. The system works without weather data too.",
         "data": {
           "weather_entity": "Weather entity (e.g. weather.home)",
@@ -198,8 +178,7 @@
           "devices": "Devices & Sensors",
           "control_options": "Zone Control Strategy (default mode, interval, thresholds)",
           "device_settings": "Per-TRV Settings (mode override, entities, state settings)",
-          "schedule": "Temperatures & Schedule",
-          "presence": "Presence",
+          "schedule": "Temperatures",
           "weather": "Weather & Outdoor Sensors"
         }
       },
@@ -315,38 +294,18 @@
         }
       },
       "schedule": {
-        "title": "Temperatures & Schedule",
-        "description": "Daily flow: Night → Comfort → Night\n\nWhen all persons are away, ThermoSmart automatically switches to the away temperature – regardless of the schedule.",
+        "title": "Temperatures",
+        "description": "Temperatures for the presets (Comfort, Eco, Night, Away, Vacation) and for open windows. A preset simply sets the zone's target temperature.",
         "data": {
           "comfort_temp": "Comfort temperature",
           "night_temp": "Night temperature",
           "away_temp": "Away temperature",
           "vacation_temp": "Vacation temperature",
           "eco_temp": "Eco temperature",
-          "window_open_temp": "Window open temperature",
-          "schedule_enabled": "Enable time schedule",
-          "sched_wd_morning": "Weekday: Comfort from",
-          "sched_wd_night": "Weekday: Night from",
-          "sched_we_morning": "Weekend: Comfort from",
-          "sched_we_night": "Weekend: Night from"
+          "window_open_temp": "Window open temperature"
         },
         "data_description": {
-          "schedule_enabled": "When disabled, comfort temperature is active around the clock – no automatic day/night switching.",
-          "sched_wd_morning": "Comfort temperature should be reached by this time – ThermoSmart preheats automatically in advance",
-          "sched_wd_night": "Night temperature applies from this time",
-          "sched_we_morning": "Comfort temperature should be reached by this time – ThermoSmart preheats automatically in advance",
-          "sched_we_night": "Night temperature applies from this time",
-          "away_temp": "Only applied automatically when presence detection is configured. Can also be set manually via the mode select.",
-          "eco_temp": "Used when the mode select is manually set to 'Eco'. Not applied automatically.",
           "window_open_temp": "Target temperature set on a TRV while a window is open, unless that TRV is configured to be turned off when a window is open (see the per-device settings). For thermostats that do not support very low setpoints, use a higher value such as 10 °C."
-        }
-      },
-      "presence": {
-        "title": "Presence",
-        "description": "Who is home? ThermoSmart automatically switches to away mode when everyone leaves.\n\nLeave the person list empty to disable automatic away detection – ThermoSmart will then follow only the schedule.",
-        "data": {
-          "presence_persons": "Persons for presence detection",
-          "home_zone": "Home zone (default: zone.home)"
         }
       },
       "weather": {
@@ -376,7 +335,6 @@
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "auto": "Auto",
               "vacation": "Vacation",
               "sleep": "Night"
             }
@@ -393,16 +351,12 @@
       },
       "vacation_mode": {
         "name": "Vacation Mode"
-      },
-      "debug_log": {
-        "name": "Debug Log"
       }
     },
     "select": {
-      "mode": {
-        "name": "Heating mode",
+      "preset": {
+        "name": "Preset",
         "state": {
-          "auto": "Auto",
           "comfort": "Comfort",
           "eco": "Eco",
           "night": "Night",
@@ -420,9 +374,6 @@
       }
     },
     "sensor": {
-      "adjusted_target": {
-        "name": "Target temperature"
-      },
       "trv_setpoint": {
         "name": "TRV setpoint"
       },
@@ -441,9 +392,6 @@
       "confidence": {
         "name": "Learning progress"
       },
-      "weather_offset": {
-        "name": "Weather correction"
-      },
       "status": {
         "name": "Status",
         "state": {
@@ -455,7 +403,6 @@
           "summer": "Summer – heating off",
           "window_open": "Window open",
           "vacation": "Vacation",
-          "away": "Away",
           "heating": "Heating",
           "idle": "Temperature maintained",
           "active": "Active"

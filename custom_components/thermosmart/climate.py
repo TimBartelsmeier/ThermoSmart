@@ -5,10 +5,10 @@ import logging
 from typing import Any
 
 from homeassistant.components.climate import (
-    PRESET_AWAY,
-    PRESET_COMFORT,
-    PRESET_ECO,
-    PRESET_SLEEP,
+    PRESET_AWAY as HA_PRESET_AWAY,
+    PRESET_COMFORT as HA_PRESET_COMFORT,
+    PRESET_ECO as HA_PRESET_ECO,
+    PRESET_SLEEP as HA_PRESET_SLEEP,
     ClimateEntity,
     ClimateEntityFeature,
     HVACAction,
@@ -17,6 +17,7 @@ from homeassistant.components.climate import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature, ATTR_TEMPERATURE
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er_helper
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -25,27 +26,24 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     DOMAIN, VERSION,
-    HEATING_MODE_AUTO, HEATING_MODE_COMFORT, HEATING_MODE_NIGHT,
-    HEATING_MODE_AWAY, HEATING_MODE_VACATION, HEATING_MODE_ECO,
-    TEMP_FROST_PROTECTION,
+    PRESET_COMFORT, PRESET_ECO, PRESET_NIGHT, PRESET_AWAY, PRESET_VACATION,
 )
 from .coordinator import ThermoSmartCoordinator
+from .target import SOURCE_USER, TARGET_MAX_C, TARGET_MIN_C
 
 _LOGGER = logging.getLogger(__name__)
 
-# Heizmodus → HA-Standard-Preset-Namen
-# PRESET_COMFORT/ECO/SLEEP/AWAY sind offizielle HA-Konstanten → Cards, Sprachassistenten,
-# Automationen funktionieren ohne zusätzliche Konfiguration.
-# "auto" und "vacation" haben keine HA-Entsprechung → bleiben als Custom-Strings.
-MODE_TO_PRESET = {
-    HEATING_MODE_AUTO:     "auto",
-    HEATING_MODE_COMFORT:  PRESET_COMFORT,   # "comfort"
-    HEATING_MODE_ECO:      PRESET_ECO,       # "eco"
-    HEATING_MODE_NIGHT:    PRESET_SLEEP,     # "sleep"
-    HEATING_MODE_AWAY:     PRESET_AWAY,      # "away"
-    HEATING_MODE_VACATION: "vacation",
+# ThermoSmart preset → HA standard preset name. The HA constants make cards, voice
+# assistants and automations work without extra configuration; "vacation" has no
+# HA equivalent and stays a custom string.
+PRESET_TO_HA = {
+    PRESET_COMFORT:  HA_PRESET_COMFORT,
+    PRESET_ECO:      HA_PRESET_ECO,
+    PRESET_NIGHT:    HA_PRESET_SLEEP,
+    PRESET_AWAY:     HA_PRESET_AWAY,
+    PRESET_VACATION: "vacation",
 }
-PRESET_TO_MODE = {v: k for k, v in MODE_TO_PRESET.items()}
+HA_TO_PRESET = {v: k for k, v in PRESET_TO_HA.items()}
 
 
 async def async_setup_entry(
@@ -69,7 +67,7 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
     _attr_translation_key = "zone"
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
-    _attr_preset_modes = list(MODE_TO_PRESET.values())
+    _attr_preset_modes = list(PRESET_TO_HA.values())
     _attr_supported_features = (
         ClimateEntityFeature.TARGET_TEMPERATURE
         | ClimateEntityFeature.PRESET_MODE
@@ -97,17 +95,12 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         last = await self.async_get_last_state()
-        if last and (preset := last.attributes.get("preset_mode")):
-            mode = PRESET_TO_MODE.get(preset, HEATING_MODE_AUTO)
-            self.coordinator.set_mode(mode)
-        # Restore manual temperature override (persisted via extra_state_attributes)
         if last:
+            # Restore the desired target; the preset is only kept if the value still matches.
             try:
-                if last.attributes.get("override_active") is True:
-                    override_temp = last.attributes.get("override_temp")
-                    if override_temp is not None:
-                        self.coordinator.set_override(float(override_temp))
-                        await self.coordinator.async_request_refresh()
+                value = float(last.attributes.get(ATTR_TEMPERATURE))
+                preset = HA_TO_PRESET.get(last.attributes.get("preset_mode"))
+                self.coordinator.target.restore(value, preset)
             except (TypeError, ValueError):
                 pass
 
@@ -131,12 +124,8 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
 
     @property
     def target_temperature(self) -> float | None:
-        target = self._zone.get("adjusted_target")
-        if target is None and self._zone.get("window_open"):
-            # adjusted_target is None while a window is open; show a pending override
-            # so the user sees that a (physical or UI) setpoint change was accepted.
-            return self._zone.get("override_temp")
-        return target
+        """The desired target – also shown while a window or suspension holds the TRVs."""
+        return self.coordinator.target.value
 
     @property
     def hvac_mode(self) -> HVACMode:
@@ -149,8 +138,7 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
         if not self.coordinator._active_control:
             return HVACAction.OFF
         curr = self._zone.get("current_temp")
-        # Use effective_target (weather-adjusted) for heating/idle determination
-        target = self._zone.get("effective_target") or self._zone.get("adjusted_target")
+        target = self._zone.get("effective_target")
         if curr is None or target is None:
             return HVACAction.IDLE
         tolerance = self.coordinator.zone_cfg.get("temp_tolerance", 0.5)
@@ -159,8 +147,8 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
         return HVACAction.IDLE
 
     @property
-    def preset_mode(self) -> str:
-        return MODE_TO_PRESET.get(self.coordinator._mode, "auto")
+    def preset_mode(self) -> str | None:
+        return PRESET_TO_HA.get(self.coordinator.target.preset)
 
     def _get_device_batteries(self) -> dict[str, int]:
         """Liest Batteriestände aller Geräte in der Zone (TRVs + Temp-/Feuchtigkeitssensoren).
@@ -219,13 +207,12 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         z = self._zone
         trv = z.get("trv_setpoint")
-        target = z.get("adjusted_target")
-        boost_delta = round(trv - target, 1) if trv is not None and target is not None and trv > target else 0.0
+        target = self.coordinator.target.value
+        boost_delta = round(trv - target, 1) if trv is not None and trv > target else 0.0
         return {
-            "forecast_suppression": f"{z.get('forecast_suppression', 0)}%",
+            "desired_target_source": self.coordinator.target.source,
             "preheat_time":         f"{z.get('preheat_minutes', 0)} min",
             "learning_confidence":  f"{round((z.get('learning_confidence', 0) * 100), 1)}%",
-            "weather_correction":   z.get("weather_offset"),
             "outdoor_temperature":  z.get("outdoor_temp"),
             "trv_setpoint":         trv,
             "boost_delta":          f"+{boost_delta}°C" if boost_delta > 0 else "0°C",
@@ -236,8 +223,6 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
             "window_open":          bool(z.get("window_open", False)),
             "summer_mode":          self.coordinator._is_summer,
             "heating_failure":      self.coordinator._heating_failure_notified,
-            "override_active":      bool(z.get("override_active", False)),
-            "override_temp":        z.get("override_temp"),
             "preheat_active":       bool(z.get("preheat_active", False)),
             "device_batteries":     self._get_device_batteries(),
         }
@@ -245,11 +230,16 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
     # ── Steuerung ────────────────────────────────────────────────────
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Zieltemperatur manuell setzen (Override)."""
+        """Set the desired target (a manual change; last writer wins)."""
         temp = kwargs.get(ATTR_TEMPERATURE)
         if temp is None:
             return
-        self.coordinator.set_override(float(temp))
+        try:
+            self.coordinator.set_target(float(temp), SOURCE_USER)
+        except ValueError as err:
+            raise ServiceValidationError(
+                f"Target must be between {TARGET_MIN_C:g} and {TARGET_MAX_C:g} °C"
+            ) from err
         self.async_write_ha_state()
         await self.coordinator.async_request_refresh()
 
@@ -267,9 +257,11 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
         await self.async_set_hvac_mode(HVACMode.OFF)
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
-        """Heizmodus wechseln (Auto, Komfort, Nacht, Abwesend, Urlaub)."""
-        mode = PRESET_TO_MODE.get(preset_mode, HEATING_MODE_AUTO)
-        self.coordinator.set_mode(mode)
+        """Apply a preset: the desired target becomes that preset's temperature."""
+        preset = HA_TO_PRESET.get(preset_mode)
+        if preset is None:
+            raise ServiceValidationError(f"Unknown preset '{preset_mode}'")
+        self.coordinator.set_preset(preset)
         self.async_write_ha_state()
         await self.coordinator.async_request_refresh()
 

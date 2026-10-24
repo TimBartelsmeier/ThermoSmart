@@ -12,8 +12,8 @@ from custom_components.thermosmart.const import (
 )
 from tests.helpers import make_coordinator, make_state, set_hass_states
 
-_REC_WINDOW = {"adjusted_target": None, "trv_setpoint": None, "window_open": True}
-_REC_NORMAL = {"adjusted_target": 21.0, "trv_setpoint": 21.0, "window_open": False}
+_REC_WINDOW = {"effective_target": None, "trv_setpoint": None, "window_open": True}
+_REC_NORMAL = {"effective_target": 21.0, "trv_setpoint": 21.0, "window_open": False}
 
 
 def _trv(state="heat", modes=("off", "heat"), setpoint=21.0):

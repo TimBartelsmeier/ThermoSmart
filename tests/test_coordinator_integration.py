@@ -13,7 +13,6 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 
 from custom_components.thermosmart.coordinator import ThermoSmartCoordinator
-from custom_components.thermosmart.const import HEATING_MODE_AUTO
 
 from tests.helpers import make_coordinator, make_state, set_hass_states
 
@@ -74,113 +73,25 @@ def _make_testable(zone_cfg_overrides: dict | None = None) -> _TestableCoordinat
 # ── TestIndoorSafetyBypass ────────────────────────────────────────────────────
 
 
-class TestIndoorSafetyBypass:
-    async def test_bypass_activates_when_indoor_below_night_temp(self):
-        """v1.1.1: effective_summer becomes False when indoor < night_temp."""
+class TestSummerNoIndoorBypass:
+    async def test_summer_stays_summer_when_indoor_is_cold(self):
+        """The former indoor safety bypass is removed: summer is never lifted
+        automatically, regardless of indoor temperature."""
         coord = _make_testable()
         coord._is_summer = True
-        coord._summer_override = None
-
-        # Indoor below night_temp (18.0)
-        set_hass_states(coord, {"sensor.test_temp": make_state("16.0")})
-
-        result = await coord._async_update_data()
-        assert result["zone"]["is_summer"] is False
-
-    async def test_bypass_sets_indoor_safety_active_flag(self):
-        coord = _make_testable()
-        coord._is_summer = True
-        coord._summer_override = None
-        coord._indoor_safety_active = False
-
-        set_hass_states(coord, {"sensor.test_temp": make_state("16.0")})
-
-        await coord._async_update_data()
-        assert coord._indoor_safety_active is True
-
-    async def test_no_bypass_when_indoor_above_night_temp(self):
-        """Indoor >= night_temp → effective_summer = True, no bypass."""
-        coord = _make_testable()
-        coord._is_summer = True
-        coord._summer_override = None
-
-        # Indoor above night_temp (18.0)
-        set_hass_states(coord, {"sensor.test_temp": make_state("20.0")})
+        set_hass_states(coord, {"sensor.test_temp": make_state("10.0")})
 
         result = await coord._async_update_data()
         assert result["zone"]["is_summer"] is True
+        assert not hasattr(coord, "_indoor_safety_active")
 
-    async def test_bypass_blocked_by_summer_override(self):
-        """With _summer_override set (not None), indoor safety check is skipped."""
-        coord = _make_testable()
-        coord._is_summer = True
-        coord._summer_override = True  # forced summer, bypass check skipped
-
-        set_hass_states(coord, {"sensor.test_temp": make_state("15.0")})
-
-        result = await coord._async_update_data()
-        assert result["zone"]["is_summer"] is True
-
-    async def test_bypass_not_active_when_not_summer(self):
+    async def test_not_summer_stays_winter(self):
         coord = _make_testable()
         coord._is_summer = False
-        coord._summer_override = None
-
         set_hass_states(coord, {"sensor.test_temp": make_state("15.0")})
 
         result = await coord._async_update_data()
         assert result["zone"]["is_summer"] is False
-        assert coord._indoor_safety_active is False
-
-
-# ── TestIndoorSafetyHysteresis ────────────────────────────────────────────────
-
-
-class TestIndoorSafetyHysteresis:
-    async def test_safety_cleared_when_indoor_reaches_threshold_plus_hysteresis(self):
-        """indoor >= night_temp + 0.5 → _indoor_safety_active cleared."""
-        coord = _make_testable()
-        coord._is_summer = True
-        coord._summer_override = None
-        coord._indoor_safety_active = True  # bypass was active
-
-        night_temp = coord.zone_cfg.get("night_temp", 18.0)
-        # Indoor at night_temp + 0.6 (above hysteresis band of +0.5)
-        set_hass_states(coord, {"sensor.test_temp": make_state(str(night_temp + 0.6))})
-
-        await coord._async_update_data()
-        assert coord._indoor_safety_active is False
-
-    async def test_safety_not_cleared_within_hysteresis_band(self):
-        """indoor at night_temp + 0.4 (inside hysteresis) → flag stays True."""
-        coord = _make_testable()
-        coord._is_summer = True
-        coord._summer_override = None
-        coord._indoor_safety_active = True
-
-        night_temp = coord.zone_cfg.get("night_temp", 18.0)
-        # Just above night_temp but inside hysteresis band (not yet >= +0.5)
-        set_hass_states(coord, {"sensor.test_temp": make_state(str(night_temp + 0.4))})
-
-        await coord._async_update_data()
-        # indoor (18.4) < night_temp (18.0) + 0.5 → flag not cleared
-        # BUT indoor (18.4) >= night_temp (18.0) → no bypass activation either
-        # The elif branch: _indoor_safety_active and indoor >= safety+0.5 → NOT met
-        # So flag remains True from pre-condition
-        assert coord._indoor_safety_active is True
-
-    async def test_safety_active_cleared_when_override_set(self):
-        """When _summer_override is not None, _indoor_safety_active is cleared."""
-        coord = _make_testable()
-        coord._is_summer = True
-        coord._summer_override = True
-        coord._indoor_safety_active = True
-
-        set_hass_states(coord, {"sensor.test_temp": make_state("15.0")})
-
-        await coord._async_update_data()
-        # The else branch (override is not None): clears _indoor_safety_active
-        assert coord._indoor_safety_active is False
 
 
 # ── TestUpdateDataStructure ───────────────────────────────────────────────────
@@ -194,15 +105,16 @@ class TestUpdateDataStructure:
         assert "weather" in result
         assert "zone" in result
         assert "active_control" in result
-        assert "presence" in result
+        assert "presence" not in result
 
-    async def test_presence_structure_in_result(self):
+    async def test_zone_contains_target_keys(self):
         coord = _make_testable()
         result = await coord._async_update_data()
-        presence = result["presence"]
-        assert "persons_home" in presence
-        assert "all_away" in presence
-        assert "vacation" in presence
+        zone = result["zone"]
+        for key in ("desired_target", "effective_target", "vacation_mode", "is_summer"):
+            assert key in zone
+        assert "adjusted_target" not in zone
+        assert "mode" not in zone
 
     async def test_is_summer_field_present_in_zone(self):
         coord = _make_testable()

@@ -13,7 +13,6 @@ from .const import (
     VALVE_MAINTENANCE_BOOST_TEMP,
     VALVE_MAINTENANCE_DURATION_SEC,
     VALVE_MAINTENANCE_DURATION_SUMMER_SEC,
-    HEATING_MODE_VACATION,
 )
 from .temperature_units import from_internal_temperature_c
 
@@ -42,7 +41,7 @@ class MaintenanceMixin:
         if not self._active_control:
             return
 
-        in_vacation = recommendation.get("mode") == HEATING_MODE_VACATION
+        in_vacation = bool(recommendation.get("vacation_mode"))
         valve_likely_idle = self._is_summer or in_vacation
         if not valve_likely_idle:
             return
@@ -63,7 +62,7 @@ class MaintenanceMixin:
         # Rückkehrtemperatur nach Wartung: aktuelle Zieltemp bevorzugt,
         # Fallback abhängig vom Modus (nicht hardcoded comfort_temp im Urlaub).
         low_temp_mode = self._is_summer or in_vacation
-        target_after = recommendation.get("adjusted_target") or cfg.get(
+        target_after = recommendation.get("effective_target") or cfg.get(
             "vacation_temp" if low_temp_mode else "comfort_temp",
             12.0 if low_temp_mode else 21.0,
         )

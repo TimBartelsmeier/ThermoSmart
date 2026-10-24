@@ -239,7 +239,7 @@ class TestClimateSetTemperatureDispatchConversion:
                 "min_temp": 41.0, "max_temp": 86.0,
             }),
         })
-        recommendation = {"adjusted_target": 21.0, "trv_setpoint": 21.0, "window_open": False}
+        recommendation = {"effective_target": 21.0, "trv_setpoint": 21.0, "window_open": False}
         await coord._apply_temperature({"climate_entities": ["climate.trv"], "temp_tolerance": 0.5},
                                        recommendation)
 
@@ -257,7 +257,7 @@ class TestClimateSetTemperatureDispatchConversion:
                 "min_temp": 5.0, "max_temp": 30.0,
             }),
         })
-        recommendation = {"adjusted_target": 21.0, "trv_setpoint": 21.0, "window_open": False}
+        recommendation = {"effective_target": 21.0, "trv_setpoint": 21.0, "window_open": False}
         await coord._apply_temperature({"climate_entities": ["climate.trv"], "temp_tolerance": 0.5},
                                        recommendation)
         call_data = coord.hass.services.async_call.call_args[0][2]

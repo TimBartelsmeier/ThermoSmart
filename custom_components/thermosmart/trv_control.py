@@ -596,7 +596,7 @@ class TRVControlMixin:
         echoed state against _last_written_setpoints.
         """
         stats = _DispatchStats()
-        target = recommendation.get("adjusted_target")
+        target = recommendation.get("effective_target")
 
         if target is None:
             if recommendation.get("window_open"):
@@ -708,7 +708,7 @@ class TRVControlMixin:
             return stats
 
         trv_setpoint = recommendation.get("trv_setpoint", target)
-        unboosted_target = recommendation.get("effective_target", target)
+        unboosted_target = target
         zone_mode = cfg.get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
         tolerance = cfg.get(CONF_TEMP_TOLERANCE, 0.5)
 

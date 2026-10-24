@@ -188,7 +188,7 @@ class TestPerDeviceValveMaintenance:
         coord = make_coordinator()
         coord._is_summer = True
         coord._active_control = True
-        return await _run_maintenance(coord, cfg, {"mode": "auto", "adjusted_target": 21.0})
+        return await _run_maintenance(coord, cfg, {"effective_target": 21.0})
 
     def _cfg(self, enabled, **extra):
         return {

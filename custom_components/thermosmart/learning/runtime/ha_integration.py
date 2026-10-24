@@ -188,8 +188,6 @@ def build_runtime_cycle_input(zone_id: str, recommendation: Mapping[str, Any], *
         )
     ts = ts_iso
     target = rec.get("effective_target")
-    if target is None:
-        target = rec.get("adjusted_target")
     setpoint = rec.get("trv_setpoint")
     current = rec.get("current_temp")
     indoor = Measurement(current, DataQuality.OK) if current is not None else None
@@ -1513,8 +1511,7 @@ class LearningShadowController:
                 return
             # Coordinator writes current_temp (not current_temperature) in the rec dict
             current_temp = recommendation.get("current_temp")
-            target = (recommendation.get("effective_target")
-                      or recommendation.get("adjusted_target"))
+            target = recommendation.get("effective_target")
             if current_temp is None or target is None:
                 return
             try:
@@ -1701,8 +1698,6 @@ class LearningShadowController:
             return
         try:
             target = recommendation.get("effective_target")
-            if target is None:
-                target = recommendation.get("adjusted_target")
             setpoint = recommendation.get("trv_setpoint")
             if target is None or setpoint is None:
                 recommendation["_boost_rejection_reason"] = "no_target"
@@ -1729,7 +1724,7 @@ class LearningShadowController:
                 return
             # Hard release: manual override — user explicitly changed temperature during boost.
             # Outcome is marked as manually influenced; no automatic counter-correction against user.
-            if recommendation.get("override_active"):
+            if recommendation.get("manual_change"):
                 self._release_boost_lifecycle_safe("manual_override")
                 recommendation["_boost_rejection_reason"] = "manual_override"
                 return
@@ -2172,8 +2167,6 @@ class LearningShadowController:
                 recommendation["_boost_evaluation_status"] = _BES.APPLIED.value
                 return
             target = recommendation.get("effective_target")
-            if target is None:
-                target = recommendation.get("adjusted_target")
             setpoint = recommendation.get("trv_setpoint")
             # Required runtime data missing -> no authoritative statement -> NOT_EVALUATED.
             if target is None or setpoint is None:
@@ -2211,8 +2204,6 @@ class LearningShadowController:
             if model is None:
                 return None
             target = recommendation.get("effective_target")
-            if target is None:
-                target = recommendation.get("adjusted_target")
             current = recommendation.get("current_temp")
             deficit = None
             if target is not None and current is not None:

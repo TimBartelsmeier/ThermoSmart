@@ -41,14 +41,9 @@ from .const import (
     CONF_OUTDOOR_WIND_SENSOR,
     CONF_OUTDOOR_SOLAR_SENSOR,
     CONF_OUTDOOR_RAIN_SENSOR,
-    CONF_SCHEDULE_ENABLED,
-    CONF_PRESENCE_PERSONS,
-    CONF_HOME_ZONE,
     CONF_VACATION_TEMP,
     CONF_WINDOW_OPEN_TEMP,
     CONF_ECO_TEMP,
-    CONF_SCHED_WD_MORNING, CONF_SCHED_WD_NIGHT,
-    CONF_SCHED_WE_MORNING, CONF_SCHED_WE_NIGHT,
     TEMP_ECO,
     WINDOW_OPEN_SETPOINT,
 )
@@ -160,34 +155,6 @@ def _schema_schedule(d: dict) -> vol.Schema:
             selector.NumberSelector(selector.NumberSelectorConfig(
                 min=5, max=20, step=0.5, unit_of_measurement="°C", mode=selector.NumberSelectorMode.BOX,
             )),
-        vol.Required(CONF_SCHEDULE_ENABLED, default=d.get(CONF_SCHEDULE_ENABLED, True)):
-            selector.BooleanSelector(),
-        vol.Optional(CONF_SCHED_WD_MORNING, default=d.get(CONF_SCHED_WD_MORNING, "06:00")):
-            selector.TimeSelector(),
-        vol.Optional(CONF_SCHED_WD_NIGHT, default=d.get(CONF_SCHED_WD_NIGHT, "22:00")):
-            selector.TimeSelector(),
-        vol.Optional(CONF_SCHED_WE_MORNING, default=d.get(CONF_SCHED_WE_MORNING, "08:00")):
-            selector.TimeSelector(),
-        vol.Optional(CONF_SCHED_WE_NIGHT, default=d.get(CONF_SCHED_WE_NIGHT, "23:00")):
-            selector.TimeSelector(),
-    })
-
-
-def _schema_presence(d: dict) -> vol.Schema:
-    """Presence-detection fields only.
-
-    No global learning on/off question here — per-zone learning is controlled
-    at runtime via the "Learning mode" switch entity (switch.py,
-    ThermoSmartLearningSwitch), which already covers this. CONF_LEARNING_ENABLED
-    stays readable in coordinator.py/__init__.py for backward compatibility with
-    entries created before this field was removed from the UI.
-    """
-    return vol.Schema({
-        vol.Optional(CONF_PRESENCE_PERSONS, default=d.get(CONF_PRESENCE_PERSONS, [])):
-            selector.EntitySelector(selector.EntitySelectorConfig(domain="person", multiple=True)),
-
-        vol.Optional(CONF_HOME_ZONE, default=d.get(CONF_HOME_ZONE, "zone.home")):
-            selector.EntitySelector(selector.EntitySelectorConfig(domain="zone")),
     })
 
 
@@ -771,22 +738,12 @@ class ThermoSmartConfigFlow(_DeviceSettingsMixin, config_entries.ConfigFlow, dom
             errors = _validate_temps(user_input)
             if not errors:
                 self._data.update(user_input)
-                return await self.async_step_presence()
+                return await self.async_step_weather()
 
         return self.async_show_form(
             step_id="schedule",
             data_schema=_schema_schedule(self._data),
             errors=errors,
-        )
-
-    async def async_step_presence(self, user_input: dict | None = None):
-        if user_input is not None:
-            self._data.update(user_input)
-            return await self.async_step_weather()
-
-        return self.async_show_form(
-            step_id="presence",
-            data_schema=_schema_presence(self._data),
         )
 
     async def async_step_weather(self, user_input: dict | None = None):
@@ -857,7 +814,7 @@ class ThermoSmartOptionsFlow(_DeviceSettingsMixin, config_entries.OptionsFlow):
             description_placeholders={"zone": self._ds_zone_name()},
             menu_options=[
                 "devices", "control_options", "device_settings",
-                "schedule", "presence", "weather",
+                "schedule", "weather",
             ],
         )
 
@@ -926,15 +883,6 @@ class ThermoSmartOptionsFlow(_DeviceSettingsMixin, config_entries.OptionsFlow):
             step_id="schedule",
             data_schema=_schema_schedule(current),
             errors=errors,
-        )
-
-    async def async_step_presence(self, user_input: dict | None = None):
-        current = self._current()
-        if user_input is not None:
-            return self.async_create_entry(title="", data={**current, **user_input})
-        return self.async_show_form(
-            step_id="presence",
-            data_schema=_schema_presence(current),
         )
 
     async def async_step_weather(self, user_input: dict | None = None):

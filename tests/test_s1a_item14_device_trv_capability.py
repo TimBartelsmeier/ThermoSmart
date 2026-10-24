@@ -90,8 +90,8 @@ _CFG_TWO = {
     "window_open_temp": WINDOW_OPEN_SETPOINT,
 }
 
-_REC_NORMAL = {"adjusted_target": 21.0, "trv_setpoint": 23.5, "window_open": False}
-_REC_WINDOW = {"adjusted_target": None, "trv_setpoint": None, "window_open": True}
+_REC_NORMAL = {"effective_target": 21.0, "trv_setpoint": 23.5, "window_open": False}
+_REC_WINDOW = {"effective_target": None, "trv_setpoint": None, "window_open": True}
 
 
 # ── §1 _DispatchStats unit tests ─────────────────────────────────────────────
@@ -404,7 +404,7 @@ class TestApplyTemperatureSetpointDispatch:
             )
         }
         set_hass_states(coord, {"climate.trv": _trv_state(setpoint=10.0)})
-        rec = {"adjusted_target": 14.0, "trv_setpoint": 15.0, "window_open": False}
+        rec = {"effective_target": 14.0, "trv_setpoint": 15.0, "window_open": False}
         await coord._apply_temperature(_CFG_ONE, rec)
         args = coord.hass.services.async_call.call_args
         assert args[0][2]["temperature"] == pytest.approx(20.0)
@@ -418,7 +418,7 @@ class TestApplyTemperatureSetpointDispatch:
             )
         }
         set_hass_states(coord, {"climate.trv": _trv_state(setpoint=10.0)})
-        rec = {"adjusted_target": 21.0, "trv_setpoint": 28.0, "window_open": False}
+        rec = {"effective_target": 21.0, "trv_setpoint": 28.0, "window_open": False}
         await coord._apply_temperature(_CFG_ONE, rec)
         args = coord.hass.services.async_call.call_args
         assert args[0][2]["temperature"] == pytest.approx(22.0)
@@ -464,15 +464,15 @@ class TestApplyTemperatureSetpointDispatch:
         """When trv_setpoint == adjusted_target, _boost_active not set."""
         coord = _coord_with_svc()
         set_hass_states(coord, {"climate.trv": _trv_state(setpoint=19.0)})
-        rec = {"adjusted_target": 21.0, "trv_setpoint": 21.0, "window_open": False}
+        rec = {"effective_target": 21.0, "trv_setpoint": 21.0, "window_open": False}
         await coord._apply_temperature(_CFG_ONE, rec)
         assert coord.zone_id not in coord._boost_active
 
-    async def test_adjusted_target_outside_safety_range_aborts_dispatch(self):
-        """adjusted_target < 5.0 → safety check fails → no dispatch."""
+    async def test_effective_target_outside_safety_range_aborts_dispatch(self):
+        """effective_target < 5.0 → safety check fails → no dispatch."""
         coord = _coord_with_svc()
         set_hass_states(coord, {"climate.trv": _trv_state(setpoint=19.0)})
-        rec = {"adjusted_target": 4.0, "trv_setpoint": 4.0, "window_open": False}
+        rec = {"effective_target": 4.0, "trv_setpoint": 4.0, "window_open": False}
         stats = await coord._apply_temperature(_CFG_ONE, rec)
         assert stats.status == "not_attempted"
 
@@ -579,7 +579,7 @@ class TestConfigurableControlStrategies:
         })
 
         await coord._apply_temperature(cfg, {
-            "adjusted_target": 21.0,
+            "effective_target": 21.0,
             "effective_target": 21.0,
             "trv_setpoint": 25.0,
             "window_open": False,
@@ -916,7 +916,7 @@ class TestPerDeviceState:
                 "climate.trv2": _trv_state(setpoint=18.0, min_temp=5.0, max_temp=30.0),
             },
         )
-        rec = {"adjusted_target": 21.0, "trv_setpoint": 23.5, "window_open": False}
+        rec = {"effective_target": 21.0, "trv_setpoint": 23.5, "window_open": False}
         stats = await coord._apply_temperature(_CFG_TWO, rec)
         assert "climate.trv1" in stats.effective_setpoints_by_entity
         assert "climate.trv2" in stats.effective_setpoints_by_entity

@@ -58,7 +58,7 @@ class TestValveMaintenanceActiveControlGate:
         coord = make_coordinator()
         coord._is_summer = True
         coord._active_control = False
-        calls = await _run_maintenance(coord, _cfg(), {"mode": "auto", "adjusted_target": 21.0})
+        calls = await _run_maintenance(coord, _cfg(), {"effective_target": 21.0})
         assert calls == []
         assert coord._maintenance_task is None
 
@@ -66,7 +66,7 @@ class TestValveMaintenanceActiveControlGate:
         coord = make_coordinator()
         coord._is_summer = False
         coord._active_control = False
-        rec = {"mode": "vacation", "adjusted_target": 12.0}
+        rec = {"vacation_mode": True, "effective_target": 12.0}
         calls = await _run_maintenance(coord, _cfg(), rec)
         assert calls == []
         assert coord._maintenance_task is None
@@ -75,7 +75,7 @@ class TestValveMaintenanceActiveControlGate:
         coord = make_coordinator()
         coord._is_summer = True
         coord._active_control = True
-        calls = await _run_maintenance(coord, _cfg(), {"mode": "auto", "adjusted_target": 21.0})
+        calls = await _run_maintenance(coord, _cfg(), {"effective_target": 21.0})
         assert len(calls) == 2  # boost dispatch + return dispatch
         assert calls[0]["entity_id"] == "climate.trv"
 
@@ -83,7 +83,7 @@ class TestValveMaintenanceActiveControlGate:
         coord = make_coordinator()
         coord._is_summer = False
         coord._active_control = True
-        rec = {"mode": "vacation", "adjusted_target": 12.0}
+        rec = {"vacation_mode": True, "effective_target": 12.0}
         calls = await _run_maintenance(coord, _cfg(), rec)
         assert len(calls) == 2  # boost dispatch + return dispatch
 
@@ -91,7 +91,7 @@ class TestValveMaintenanceActiveControlGate:
         coord = make_coordinator()
         coord._is_summer = False
         coord._active_control = True
-        rec = {"mode": "auto", "adjusted_target": 21.0}
+        rec = {"effective_target": 21.0}
         calls = await _run_maintenance(coord, _cfg(), rec)
         assert calls == []
         assert coord._maintenance_task is None

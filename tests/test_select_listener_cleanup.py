@@ -33,15 +33,8 @@ def _make_mode_select():
 
 
 async def _call_added_to_hass(entity, last_state=None):
-    """Invoke async_added_to_hass while mocking out HA restore-state I/O."""
-    with (
-        patch(
-            "homeassistant.helpers.restore_state.RestoreEntity.async_added_to_hass",
-            new=AsyncMock(),
-        ),
-        patch.object(entity, "async_get_last_state", new=AsyncMock(return_value=last_state)),
-    ):
-        await entity.async_added_to_hass()
+    """Invoke async_added_to_hass (the preset select has no restore-state I/O)."""
+    await entity.async_added_to_hass()
 
 
 # ── Test 1: cancel callable passed to async_on_remove ────────────────────────

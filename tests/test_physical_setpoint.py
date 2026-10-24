@@ -1,4 +1,4 @@
-"""Physical TRV setpoint changes become debounced zone overrides."""
+"""Physical TRV setpoint changes become debounced desired-target changes."""
 
 from __future__ import annotations
 
@@ -63,9 +63,10 @@ class TestPhysicalSetpoint:
             )
 
         assert callbacks[0][0] == 5
-        assert coordinator.get_override() is None
+        assert coordinator.target.value == 21.0
         callbacks[0][1](None)
-        assert coordinator.get_override() == 20
+        assert coordinator.target.value == 20
+        assert coordinator.target.current.source == "dial"
         coordinator.async_request_refresh.assert_called_once()
 
     def test_debounce_uses_last_reported_value(self):
@@ -92,9 +93,9 @@ class TestPhysicalSetpoint:
 
         cancels[0].assert_called_once()
         callbacks[0](None)
-        assert coordinator.get_override() is None
+        assert coordinator.target.value == 21.0
         callbacks[1](None)
-        assert coordinator.get_override() == 21
+        assert coordinator.target.value == 21
 
     def test_settling_suppresses_device_echoes(self):
         coordinator = _coordinator()
@@ -109,10 +110,7 @@ class TestPhysicalSetpoint:
 
     def test_window_open_change_is_still_adopted(self):
         coordinator = _coordinator()
-        coordinator.data = {
-            "zone": {"window_open": True},
-            "presence": {"vacation": False},
-        }
+        coordinator.data = {"zone": {"window_open": True}}
         callbacks = []
         with patch(
             "custom_components.thermosmart.coordinator.async_call_later",
@@ -121,10 +119,10 @@ class TestPhysicalSetpoint:
             ),
         ):
             coordinator._handle_trv_setpoint_change(
-                "climate.trv", _state(5), _state(20, state="off"), _cfg()
+                "climate.trv", _state(5), _state(25, state="off"), _cfg()
             )
         callbacks[0](None)
-        assert coordinator.get_override() == 20
+        assert coordinator.target.value == 25
 
     def test_disabled_setting_retains_corrective_refresh(self):
         coordinator = _coordinator()
@@ -137,7 +135,7 @@ class TestPhysicalSetpoint:
             )
         schedule.assert_not_called()
         coordinator.async_request_refresh.assert_called_once()
-        assert coordinator.get_override() is None
+        assert coordinator.target.value == 21.0
 
     @pytest.mark.parametrize("inactive", ["control_off", "vacation", "summer"])
     def test_inactive_zone_ignores_change(self, inactive):
@@ -145,17 +143,17 @@ class TestPhysicalSetpoint:
         if inactive == "control_off":
             coordinator._active_control = False
         elif inactive == "vacation":
-            coordinator.data = {"presence": {"vacation": True}}
+            coordinator._vacation_mode = True
         else:
             coordinator._is_summer = True
         with patch(
             "custom_components.thermosmart.coordinator.async_call_later"
         ) as schedule:
             coordinator._handle_trv_setpoint_change(
-                "climate.trv", _state(19), _state(21), _cfg()
+                "climate.trv", _state(19), _state(25), _cfg()
             )
         schedule.assert_not_called()
-        assert coordinator.get_override() is None
+        assert coordinator.target.value == 21.0
 
     def test_no_settling_delay_can_be_configured(self):
         coordinator = _coordinator()
@@ -164,9 +162,8 @@ class TestPhysicalSetpoint:
         )
         assert not coordinator._trv_write_is_settling("climate.trv")
 
-    def test_sub_five_value_uses_same_override_semantics(self):
+    def test_out_of_range_value_is_rejected(self):
         coordinator = _coordinator()
-        coordinator._override = 20
         callbacks = []
         with patch(
             "custom_components.thermosmart.coordinator.async_call_later",
@@ -178,7 +175,7 @@ class TestPhysicalSetpoint:
                 "climate.trv", _state(20), _state(4), _cfg()
             )
         callbacks[0](None)
-        assert coordinator.get_override() is None
+        assert coordinator.target.value == 21.0
 
 
 class TestTempTriggeredRefresh:

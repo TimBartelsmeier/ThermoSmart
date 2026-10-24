@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    DOMAIN, VERSION, ICON_ZONE, ICON_LEARNING, ICON_PREHEAT, ICON_WEATHER_ADJUST,
+    DOMAIN, VERSION, ICON_ZONE, ICON_LEARNING, ICON_PREHEAT,
     SOLAR_GAIN_THRESHOLD_W, SOLAR_GAIN_MIN_OUTDOOR_C, SOLAR_GAIN_MAX_REDUCTION,
 )
 from .coordinator import ThermoSmartCoordinator
@@ -25,12 +25,10 @@ async def async_setup_entry(
 ) -> None:
     coordinator: ThermoSmartCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     async_add_entities([
-        ThermoSmartTargetTempSensor(coordinator, entry),
         ThermoSmartTRVSetpointSensor(coordinator, entry),
         ThermoSmartTpiSensor(coordinator, entry),
         ThermoSmartPreheatSensor(coordinator, entry),
         ThermoSmartConfidenceSensor(coordinator, entry),
-        ThermoSmartWeatherOffsetSensor(coordinator, entry),
         ThermoSmartStatusSensor(coordinator, entry),
         ThermoSmartTempSlopeSensor(coordinator, entry),
         ThermoSmartTempEma1hSensor(coordinator, entry),
@@ -74,37 +72,6 @@ class _Base(CoordinatorEntity, SensorEntity):
         return self.coordinator.last_update_success
 
 
-class ThermoSmartTargetTempSensor(_Base):
-    _attr_entity_registry_enabled_default = True
-    _attr_translation_key = "adjusted_target"
-
-    def __init__(self, coordinator, entry):
-        super().__init__(coordinator, entry, "adjusted_target")
-        self._attr_unique_id = f"{entry.entry_id}_adjusted_target"
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        self._attr_device_class = SensorDeviceClass.TEMPERATURE
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_icon = ICON_ZONE
-
-    @property
-    def native_value(self):
-        return self._zone.get("adjusted_target")
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        z = self._zone
-        return {
-            "effective_target": z.get("effective_target"),   # actual TRV goal (with offset)
-            "weather_correction": z.get("weather_offset"),
-            "forecast_suppression": f"{z.get('forecast_suppression', 0)}%",
-            "window_open": z.get("window_open"),
-            "current_temperature": z.get("current_temp"),
-            "outdoor_temperature": z.get("outdoor_temp"),
-            "mode": z.get("mode"),
-            "is_summer": z.get("is_summer", False),
-        }
-
-
 class ThermoSmartTRVSetpointSensor(_Base):
     """Actual setpoint sent to the TRV (including boost)."""
     _attr_entity_registry_enabled_default = True
@@ -121,13 +88,13 @@ class ThermoSmartTRVSetpointSensor(_Base):
     @property
     def native_value(self):
         z = self._zone
-        return z.get("trv_setpoint") or z.get("adjusted_target")
+        return z.get("trv_setpoint") or z.get("effective_target")
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         z = self._zone
         trv = z.get("trv_setpoint")
-        target = z.get("adjusted_target")
+        target = z.get("effective_target")
         boost = round(trv - target, 1) if trv is not None and target is not None else 0.0
         return {
             "target_temperature": target,
@@ -189,22 +156,6 @@ class ThermoSmartConfidenceSensor(_Base):
         return attrs
 
 
-class ThermoSmartWeatherOffsetSensor(_Base):
-    _attr_entity_registry_enabled_default = False
-    _attr_translation_key = "weather_offset"
-
-    def __init__(self, coordinator, entry):
-        super().__init__(coordinator, entry, "weather_offset")
-        self._attr_unique_id = f"{entry.entry_id}_weather_offset"
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_icon = ICON_WEATHER_ADJUST
-
-    @property
-    def native_value(self):
-        return self._zone.get("weather_offset", 0.0)
-
-
 class ThermoSmartStatusSensor(_Base):
     """Current operating status of the zone."""
     _attr_entity_registry_enabled_default = True
@@ -223,7 +174,6 @@ class ThermoSmartStatusSensor(_Base):
             "summer",
             "window_open",
             "vacation",
-            "away",
             "heating",
             "idle",
             "active",
@@ -249,16 +199,12 @@ class ThermoSmartStatusSensor(_Base):
             return "preheating"
         if z.get("is_summer"):
             return "summer"
+        if z.get("vacation_mode"):
+            return "vacation"
         if z.get("window_open"):
             return "window_open"
-        mode = z.get("mode", "auto")
-        if mode == "vacation":
-            return "vacation"
-        if mode == "away":
-            return "away"
         curr = z.get("current_temp")
-        # Use effective_target (weather-adjusted) for accurate heating/idle status
-        target = z.get("effective_target") or z.get("adjusted_target")
+        target = z.get("effective_target")
         if curr is not None and target is not None:
             if curr < target - 0.5:
                 return "heating"
@@ -269,7 +215,6 @@ class ThermoSmartStatusSensor(_Base):
     def extra_state_attributes(self) -> dict[str, Any]:
         z = self._zone
         data = self.coordinator.data or {}
-        presence = data.get("presence", {})
         le = self.coordinator.learning_engine
         learning_enabled = le.is_zone_enabled(self.coordinator.zone_id) if le else True
 
@@ -285,14 +230,12 @@ class ThermoSmartStatusSensor(_Base):
 
         return {
             "current_temperature": z.get("current_temp"),
-            "target_temperature": z.get("adjusted_target"),
+            "target_temperature": z.get("desired_target"),
             "outdoor_temperature": z.get("outdoor_temp"),
             "forecast_high": z.get("forecast_high"),
             "weather_condition": z.get("weather_condition"),
-            "persons_home": len(presence.get("persons_home", [])),
-            "all_away": presence.get("all_away", False),
-            "vacation": presence.get("vacation", False),
             "summer_mode": z.get("is_summer", False),
+            "vacation_mode": z.get("vacation_mode", False),
             "heating_failure": z.get("heating_failure", False),
             "slope_window_active": getattr(self.coordinator, "_slope_window_active", False),
             # Effective control mode this cycle — inactive/shadow_only/deterministic/

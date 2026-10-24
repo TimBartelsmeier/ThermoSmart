@@ -17,7 +17,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from custom_components.thermosmart.weather_engine import WeatherEngine
-from custom_components.thermosmart.const import WIND_CHILL_BOOST
 
 
 def _sensor_state(value, unit_of_measurement: str | None = None) -> MagicMock:
@@ -81,22 +80,3 @@ class TestWeatherEntityWindSpeedUnitNormalization:
         data = await eng.async_get_data()
         assert data["wind_speed"] == pytest.approx(10.0)
 
-
-class TestWindChillBoostRegression:
-    async def test_kmh_reading_does_not_misfire_boost(self):
-        """Same raw number '15', different unit: 15 km/h ≈ 4.2 m/s (below
-        WIND_THRESHOLD_MS=10.0, no boost) vs a genuine 15 m/s (above
-        threshold, boost applies) — proves the value is unit-converted, not
-        passed through raw."""
-        eng = _engine(
-            wind_sensor="sensor.outdoor_wind",
-            states={"sensor.outdoor_wind": _sensor_state(15.0, unit_of_measurement="km/h")},
-        )
-        data = await eng.async_get_data()
-        data["temperature"] = -5.0
-
-        offset_kmh = eng.compute_temperature_offset(data)
-        offset_ms = eng.compute_temperature_offset({**data, "wind_speed": 15.0})
-
-        assert offset_kmh < offset_ms
-        assert (offset_ms - offset_kmh) == pytest.approx(WIND_CHILL_BOOST, abs=1e-6)

@@ -21,16 +21,9 @@ from custom_components.thermosmart.const import (
     CONF_OUTDOOR_SOLAR_SENSOR,
     CONF_OUTDOOR_RAIN_SENSOR,
     CONF_LEARNING_ENABLED,
-    CONF_SCHEDULE_ENABLED,
-    CONF_PRESENCE_PERSONS,
-    CONF_HOME_ZONE,
     CONF_VACATION_TEMP,
     CONF_WINDOW_OPEN_TEMP,
     CONF_ECO_TEMP,
-    CONF_SCHED_WD_MORNING,
-    CONF_SCHED_WD_NIGHT,
-    CONF_SCHED_WE_MORNING,
-    CONF_SCHED_WE_NIGHT,
 )
 
 # ── Shared zone entry data ────────────────────────────────────────────────────
@@ -51,13 +44,6 @@ _BASE_DATA = {
     CONF_ECO_TEMP: 18.0,
     CONF_WINDOW_OPEN_TEMP: 12.0,
     "temp_tolerance": 0.5,
-    CONF_SCHEDULE_ENABLED: True,
-    CONF_SCHED_WD_MORNING: "06:00:00",
-    CONF_SCHED_WD_NIGHT: "22:00:00",
-    CONF_SCHED_WE_MORNING: "08:00:00",
-    CONF_SCHED_WE_NIGHT: "23:00:00",
-    CONF_PRESENCE_PERSONS: [],
-    CONF_HOME_ZONE: "zone.home",
     CONF_LEARNING_ENABLED: True,
     CONF_WEATHER_ENTITY: None,
     CONF_OUTDOOR_TEMP_SENSOR: None,
@@ -73,11 +59,7 @@ _STEP_DEVICES = {k: _BASE_DATA[k] for k in [
 ]}
 _STEP_SCHEDULE = {k: _BASE_DATA[k] for k in [
     "comfort_temp", "night_temp", "away_temp", CONF_VACATION_TEMP, CONF_ECO_TEMP,
-    CONF_WINDOW_OPEN_TEMP, CONF_SCHEDULE_ENABLED,
-    CONF_SCHED_WD_MORNING, CONF_SCHED_WD_NIGHT, CONF_SCHED_WE_MORNING, CONF_SCHED_WE_NIGHT,
-]}
-_STEP_PRESENCE = {k: _BASE_DATA[k] for k in [
-    CONF_PRESENCE_PERSONS, CONF_HOME_ZONE,
+    CONF_WINDOW_OPEN_TEMP,
 ]}
 _STEP_WEATHER = {k: _BASE_DATA[k] for k in [
     CONF_WEATHER_ENTITY, CONF_OUTDOOR_TEMP_SENSOR, CONF_OUTDOOR_HUMIDITY_SENSOR,
@@ -144,9 +126,10 @@ class TestOptionsHub:
         result = await _open_hub(hass, entry)
         for section in (
             "devices", "control_options", "device_settings",
-            "schedule", "presence", "weather",
+            "schedule", "weather",
         ):
             assert section in result["menu_options"], f"section '{section}' missing"
+        assert "presence" not in result["menu_options"]
 
     async def test_hub_devices_section_shows_form(self, hass, enable_custom_integrations):
         entry = _zone_entry()
@@ -165,15 +148,6 @@ class TestOptionsHub:
         result = await _select_section(hass, hub, "schedule")
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "schedule"
-
-    async def test_hub_presence_section_shows_form(self, hass, enable_custom_integrations):
-        entry = _zone_entry()
-        entry.add_to_hass(hass)
-
-        hub = await _open_hub(hass, entry)
-        result = await _select_section(hass, hub, "presence")
-        assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "presence"
 
     async def test_hub_weather_section_shows_form(self, hass, enable_custom_integrations):
         entry = _zone_entry()
@@ -201,15 +175,6 @@ class TestOptionsHub:
         hub = await _open_hub(hass, entry)
         form = await _select_section(hass, hub, "schedule")
         result = await _save_section(hass, form, _STEP_SCHEDULE)
-        assert result["type"] == FlowResultType.CREATE_ENTRY
-
-    async def test_presence_section_saves_immediately(self, hass, enable_custom_integrations):
-        entry = _zone_entry()
-        entry.add_to_hass(hass)
-
-        hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "presence")
-        result = await _save_section(hass, form, _STEP_PRESENCE)
         assert result["type"] == FlowResultType.CREATE_ENTRY
 
     async def test_weather_section_saves_immediately(self, hass, enable_custom_integrations):
@@ -251,21 +216,6 @@ class TestOptionsHubPartialSave:
         assert result["type"] == FlowResultType.CREATE_ENTRY
         assert result["data"]["climate_entities"] == ["climate.test_trv"]
         assert result["data"]["name"] == "Wohnzimmer"
-
-    async def test_presence_save_preserves_all_other_fields(self, hass, enable_custom_integrations):
-        entry = _zone_entry()
-        entry.add_to_hass(hass)
-
-        hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "presence")
-        result = await _save_section(hass, form, _STEP_PRESENCE)
-
-        assert result["data"]["comfort_temp"] == 21.0
-        assert result["data"]["climate_entities"] == ["climate.test_trv"]
-        # Config-Flow UX Cleanup: the presence section no longer asks for
-        # learning_enabled, but a value already stored on the entry (backward
-        # compatibility) must survive an unrelated section save untouched.
-        assert result["data"][CONF_LEARNING_ENABLED] is True
 
     async def test_weather_save_preserves_all_other_fields(self, hass, enable_custom_integrations):
         entry = _zone_entry()
@@ -488,13 +438,13 @@ class TestOptionsHubOldConfigCompatibility:
         assert result["type"] == FlowResultType.CREATE_ENTRY
         assert result["data"][CONF_LEARNING_ENABLED] is False
 
-    async def test_presence_section_schema_has_no_learning_field(
+    async def test_weather_section_schema_has_no_learning_field(
         self, hass, enable_custom_integrations
     ):
         entry = _zone_entry()
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "presence")
+        form = await _select_section(hass, hub, "weather")
         schema_keys = {str(k) for k in form["data_schema"].schema}
         assert CONF_LEARNING_ENABLED not in schema_keys

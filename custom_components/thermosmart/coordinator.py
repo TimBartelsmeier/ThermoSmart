@@ -19,7 +19,6 @@ from .temperature_units import to_internal_temperature_c, is_plausible_temperatu
 from .tpi import compute_tpi, duty_to_setpoint
 from .const import (
     DOMAIN,
-    DEFAULT_SCAN_INTERVAL,
     CONF_CONTROL_INTERVAL,
     CONF_ZONE_CONTROL_MODE,
     CONF_DEVICE_SETTINGS,
@@ -27,34 +26,17 @@ from .const import (
     CONF_TRV_SETPOINT_SETTLING,
     CONF_DEV_ACCEPT_SETPOINT_CHANGES,
     CONF_DEV_CONTROL_MODE,
-    CONF_DEV_VALVE_ENTITY,
     CONTROL_MODE_INHERIT,
     CONTROL_MODE_DIRECT_VALVE,
     CONTROL_MODE_SETPOINT,
     CONTROL_MODE_TPI_BOOST,
-    CONF_PRESENCE_PERSONS,
-    CONF_HOME_ZONE,
-    CONF_VACATION_BOOLEAN,
     CONF_VACATION_TEMP,
-    CONF_ECO_TEMP,
     NOISE_FILTER_SPIKE_THRESHOLD,
     NOISE_FILTER_EMA_ALPHA,
     CONF_EXT_TEMP_THRESHOLD,
-    TEMP_NIGHT,
-    TEMP_ECO,
-    TEMP_COMFORT,
-    TEMP_AWAY,
     TEMP_FROST_PROTECTION,
     EMA_1H_ALPHA,
-    FORECAST_DELTA_FULL_HEAT,
-    FORECAST_DELTA_BLEND,
     SEASON_HOURS,
-    HEATING_MODE_AUTO,
-    HEATING_MODE_COMFORT,
-    HEATING_MODE_NIGHT,
-    HEATING_MODE_ECO,
-    HEATING_MODE_AWAY,
-    HEATING_MODE_VACATION,
     HEATING_FAILURE_DELAY_MIN,
     HEATING_FAILURE_SLOPE_THRESH,
     HEATING_FAILURE_CMD_DELTA,
@@ -65,6 +47,13 @@ from .const import (
 )
 from .device_profiles import DeviceProfile
 from .learning.clock import Clock, SystemClock
+from .target import (
+    MANUAL_SOURCES,
+    SOURCE_DIAL,
+    SOURCE_PRESET,
+    TargetState,
+    preset_temperature,
+)
 from .weather_engine import WeatherEngine
 from .learning_engine import LearningEngine
 from .window import WindowMixin
@@ -73,11 +62,6 @@ from .trv_control import TRVControlMixin, _DispatchStats
 from .maintenance import MaintenanceMixin
 
 _LOGGER = logging.getLogger(__name__)
-
-# Learning forecast bias application gates
-_FORECAST_BIAS_MIN_TRUST = 0.35        # minimum trust to apply the °C bias correction
-_FORECAST_BIAS_MIN_APPLY_C = 0.05     # noise floor – ignore sub-threshold corrections
-_FORECAST_BIAS_CORRECTION_MAX_C = 2.0  # hard cap matching ForecastParameters.bias_correction_max_c
 
 # TPI coef_int step-limiting (Phase 19D) — max change per coordinator cycle (~5 min).
 # Derivation: at max 3 °C deficit, 0.10 step → 30 % duty change per cycle.  The
@@ -89,11 +73,6 @@ _TPI_COEF_INT_MAX_STEP_UP: float = 0.10
 _TPI_COEF_INT_MAX_STEP_DOWN: float = 0.10
 _TPI_COEF_INT_CLAMP_MIN: float = 0.15   # mirrors estimate_coefficients lower bound
 _TPI_COEF_INT_CLAMP_MAX: float = 1.2    # mirrors estimate_coefficients upper bound
-
-# Learning early cutoff application gates
-_EARLY_CUTOFF_MIN_RESIDUAL_C = 0.15   # noise floor for residual rise (below → no cutoff)
-_EARLY_CUTOFF_MAX_C = 3.0             # hard maximum (mirrors AfterheatParameters.early_cutoff_max_c)
-_EARLY_CUTOFF_HOLD_TIMEOUT_SECS: float = 1800.0  # 30-min max afterheat window before forced release
 
 
 class ControlAdaptationMode:
@@ -159,10 +138,11 @@ class ThermoSmartCoordinator(
 
         # Steuerungszustand
         self._active_control: bool = False
-        self._mode: str = HEATING_MODE_AUTO
-        self._override: float | None = None
-        self._override_schedule_period: str | None = None
-        self._pre_vacation_mode: str | None = None
+        # The single desired target of the zone (see target.py).
+        self.target = TargetState()
+        self.target.add_listener(self._on_target_changed)
+        self._manual_change_pending: bool = False
+        self._vacation_mode: bool = False
         self._summer_override: bool | None = None
 
         # Event-Listener
@@ -192,7 +172,6 @@ class ThermoSmartCoordinator(
         # Event production only; never read by any control/decision path.
         self._support_event_window_hold_active: bool = False
         self._support_event_summer_hold_active: bool = False
-        self._support_event_manual_override_active: bool = False
         # TRV dispatch event dedupe: fires only when the (event_type, reason,
         # setpoint) signature genuinely changes from the previous cycle —
         # a zone sitting at target for hours must not spam one event per
@@ -238,7 +217,6 @@ class ThermoSmartCoordinator(
             ))
         )
         self._is_summer: bool = False
-        self._indoor_safety_active: bool = False
 
         # Wartung (genutzt von MaintenanceMixin)
         self._last_maintenance: datetime | None = None
@@ -271,9 +249,6 @@ class ThermoSmartCoordinator(
         self._heating_failure_since: datetime | None = None
         self._heating_failure_notified: bool = False
 
-        # Debug-Logging: Modus-Tracking für Wechsel-Erkennung
-        self._last_effective_mode: str | None = None
-
         # Restore initialization barrier: set True the first time Active Control
         # RestoreEntity calls its setter after restore.  Until then, boost is blocked.
         # Learning mode is read from config (not a RestoreEntity) → not in barrier.
@@ -302,18 +277,6 @@ class ThermoSmartCoordinator(
         # _tpi_duty_previous: last duty cycle for trace/audit (None before first cycle).
         self._tpi_coef_int_smoothed: float = TPI_COEF_INT_DEFAULT
         self._tpi_duty_previous: float | None = None
-
-        # Learning Early Cutoff hold state (transient, never persisted; safe on HA restart)
-        # Once early cutoff is applied, the hold maintains the reduced effective_target
-        # through the coasting phase so afterheat is not disrupted by a re-heat impulse.
-        self._ec_hold_active: bool = False
-        self._ec_hold_cut_target: float = 0.0
-        self._ec_hold_comfort_temp: float = 0.0
-        self._ec_hold_period: str = ""
-        self._ec_hold_started: float = 0.0   # _clock.monotonic() when hold was started
-        self._ec_state: str = "inactive"
-        self._ec_episode_failed: bool = False  # True after temp-falling/timeout release
-        self._ec_failed_cut_target: float = 0.0  # cut_target of the failed episode
 
         # Injectable clock — replaced by FakeClock in simulation/tests.
         # All fachliche Zeitaufrufe in this coordinator must go through self._clock.
@@ -358,159 +321,69 @@ class ThermoSmartCoordinator(
             "AN – Thermostat wird gesteuert" if active else "AUS – Beobachtungsmodus",
         )
 
-    def set_mode(self, mode: str) -> None:
-        if mode != self._mode and self._override is not None:
-            _LOGGER.debug(
-                "ThermoSmart '%s': clearing manual override due to mode change %s → %s",
-                self.zone_name, self._mode, mode,
-            )
-            self._override = None
-            self._override_schedule_period = None
-        self._mode = mode
-        # Immediately patch adjusted_target with the preset base temperature so
-        # that async_write_ha_state() in climate.py can expose the new target at
-        # once – before async_request_refresh() runs the full weather/learning
-        # recalculation.  The refresh will overwrite this value with the properly
-        # adjusted figure shortly after.
-        if self.data is not None and isinstance(self.data.get("zone"), dict):
-            cfg = self.zone_cfg
-            quick_target = {
-                HEATING_MODE_COMFORT:  cfg.get("comfort_temp", TEMP_COMFORT),
-                HEATING_MODE_NIGHT:    cfg.get("night_temp", TEMP_NIGHT),
-                HEATING_MODE_ECO:      cfg.get(CONF_ECO_TEMP, TEMP_ECO),
-                HEATING_MODE_AWAY:     cfg.get("away_temp", TEMP_AWAY),
-                HEATING_MODE_VACATION: cfg.get(CONF_VACATION_TEMP, TEMP_FROST_PROTECTION),
-                HEATING_MODE_AUTO:     cfg.get("comfort_temp", TEMP_COMFORT),
-            }.get(mode)
-            if quick_target is not None:
-                self.data["zone"]["adjusted_target"] = quick_target
+    def set_target(
+        self, value: float, source: str, *, preset: str | None = None
+    ) -> bool:
+        """Write the zone's desired target (single writer; last writer wins).
+
+        Raises ValueError for values outside the supported range.
+        """
+        return self.target.set(value, source, preset=preset, now=self._now_local())
+
+    def set_preset(self, preset: str) -> bool:
+        """Set the desired target to the temperature configured for ``preset``."""
+        return self.set_target(
+            preset_temperature(self.zone_cfg, preset), SOURCE_PRESET, preset=preset
+        )
+
+    def _on_target_changed(self, new, previous) -> None:
+        _LOGGER.info(
+            "ThermoSmart '%s': target %.1f°C → %.1f°C (source: %s%s)",
+            self.zone_name, previous.value, new.value, new.source,
+            f", preset {new.preset}" if new.preset else "",
+        )
+        if new.source in MANUAL_SOURCES:
+            self._manual_change_pending = True
 
     def set_vacation_override(self, active: bool) -> None:
-        """Globaler Urlaubs-Override – speichert/restauriert den bisherigen Modus."""
-        if active:
-            if self._override is not None:
-                _LOGGER.debug(
-                    "ThermoSmart '%s': clearing manual override due to vacation mode",
-                    self.zone_name,
-                )
-                self._override = None
-                self._override_schedule_period = None
-            if self._mode != HEATING_MODE_VACATION:
-                self._pre_vacation_mode = self._mode
-            self._mode = HEATING_MODE_VACATION
-        else:
-            self._mode = self._pre_vacation_mode or HEATING_MODE_AUTO
-            self._pre_vacation_mode = None
+        """Global vacation mode: the TRVs are held at the vacation temperature."""
+        self._vacation_mode = bool(active)
         _LOGGER.info(
-            "ThermoSmart '%s': Urlaubs-Override %s (Modus: %s)",
-            self.zone_name, "AN" if active else "AUS", self._mode,
+            "ThermoSmart '%s': vacation mode %s", self.zone_name, "ON" if active else "OFF",
         )
 
     def set_summer_override(self, value: bool | None) -> None:
-        """Globaler Sommer-Override vom domain-weiten Select.
+        """Global summer override from the domain-wide select.
 
-        value=True  → Sommer erzwungen  (_is_summer = True)
-        value=False → Winter erzwungen   (_is_summer = False)
-        value=None  → Automatik          (_is_summer wird durch _update_summer_mode neu berechnet)
+        value=True  → summer forced   (_is_summer = True)
+        value=False → winter forced   (_is_summer = False)
+        value=None  → automatic       (_is_summer is recomputed by _update_summer_mode)
         """
         self._summer_override = value
         if value is True:
-            if self._override is not None:
-                _LOGGER.debug(
-                    "ThermoSmart '%s': clearing manual override due to summer mode",
-                    self.zone_name,
-                )
-                self._override = None
-                self._override_schedule_period = None
             self._is_summer = True
         elif value is False:
             self._is_summer = False
-        # value is None: _is_summer unverändert, nächster _update_summer_mode-Zyklus übernimmt
         _LOGGER.info(
-            "ThermoSmart '%s': Sommer-Override %s",
+            "ThermoSmart '%s': summer override %s",
             self.zone_name,
-            "EIN (erzwungen)" if value is True
-            else ("AUS (erzwungen)" if value is False else "Automatik – 72h-Erkennung aktiv"),
+            "ON (forced)" if value is True
+            else ("OFF (forced)" if value is False else "automatic (72 h detection)"),
         )
 
-    def set_override(self, value: float) -> None:
-        self._override = value if value >= 5.0 else None
-        self._override_schedule_period = self._current_schedule_period() if self._override else None
-
-    def get_override(self) -> float | None:
-        return self._override
-
-    # ── Zeitplan-Helfer ──────────────────────────────────────────────
-
-    def _current_schedule_period(self) -> str:
-        now = self._now_local()
-        cfg = self.zone_cfg
-        is_weekend = now.weekday() >= 5
-        cur = now.hour * 60 + now.minute
-
-        def t(key: str, fallback: str) -> int:
-            raw = cfg.get(key, fallback)
-            try:
-                parts = str(raw).split(":")
-                return int(parts[0]) * 60 + int(parts[1])
-            except (ValueError, AttributeError, IndexError):
-                h2, m2 = fallback.split(":")
-                return int(h2) * 60 + int(m2)
-
-        if is_weekend:
-            morning = t("sched_we_morning", "08:00")
-            night   = t("sched_we_night",   "23:00")
-        else:
-            morning = t("sched_wd_morning", "06:00")
-            night   = t("sched_wd_night",   "22:00")
-
-        day_type = "we" if is_weekend else "wd"
-        if cur < morning or cur >= night:
-            return f"{day_type}_night"
-        return f"{day_type}_comfort"
-
-    def _minutes_until_next_comfort(self, cfg: dict) -> int | None:
-        """Minuten bis zur nächsten Komfortphase – None wenn bereits aktiv."""
-        now = self._now_local()
-        is_weekend = now.weekday() >= 5
-        cur = now.hour * 60 + now.minute
-
-        def t(key: str, fallback: str) -> int:
-            raw = cfg.get(key, fallback)
-            try:
-                parts = str(raw).split(":")
-                return int(parts[0]) * 60 + int(parts[1])
-            except (ValueError, AttributeError, IndexError):
-                h2, m2 = fallback.split(":")
-                return int(h2) * 60 + int(m2)
-
-        if is_weekend:
-            morning = t("sched_we_morning", "08:00")
-            night   = t("sched_we_night",   "23:00")
-        else:
-            morning = t("sched_wd_morning", "06:00")
-            night   = t("sched_wd_night",   "22:00")
-
-        if morning <= cur < night:
-            return None
-        if cur < morning:
-            return morning - cur
-        return (24 * 60 - cur) + morning
+    @property
+    def suspended(self) -> bool:
+        """True while summer or vacation mode holds the TRVs."""
+        return self._is_summer or self._vacation_mode
 
     # ── Event-Listener ───────────────────────────────────────────────
 
     def setup_event_listeners(self) -> None:
         cfg = self.zone_cfg
         window_sensors: set[str] = set(s for s in cfg.get("window_sensors", []) if s)
-        presence: set[str] = set(p for p in cfg.get(CONF_PRESENCE_PERSONS, []) if p)
-        # CONF_VACATION_BOOLEAN: planned per-zone vacation boolean input —
-        # implemented here (tracks state changes) but NOT exposed in config_flow UI.
-        vacation_entity = cfg.get(CONF_VACATION_BOOLEAN, "")
-        if vacation_entity:
-            presence.add(vacation_entity)
         climate_entities: set[str] = set(e for e in cfg.get("climate_entities", []) if e)
 
-        all_tracked = window_sensors | presence
+        all_tracked = window_sensors
         if all_tracked:
             @callback
             def _handle_state_change(event) -> None:
@@ -572,9 +445,7 @@ class ThermoSmartCoordinator(
                                     self.hass, close_delay_secs, _close_delay_expired
                                 )
 
-                            # LE v1 window-cooling observation removed (frozen no-op —
-                            # LearningEngine.freeze() in __init__.py). LE v1 now only
-                            # serves the schedule lookup via async_get_base_target().
+                            # LE v1 window-cooling observation removed (frozen no-op).
                             self._window_open_temp.pop(entity_id, None)
                         self._window_open_at.pop(entity_id, None)
 
@@ -638,7 +509,7 @@ class ThermoSmartCoordinator(
             self._event_unsub.append(cancel_sensors)
 
         _LOGGER.debug(
-            "ThermoSmart '%s': Event-Listener registriert (%d Präsenz/Fenster, %d TRVs)",
+            "ThermoSmart '%s': Event-Listener registriert (%d Fenster, %d TRVs)",
             self.zone_name, len(all_tracked), len(climate_entities),
         )
 
@@ -663,13 +534,7 @@ class ThermoSmartCoordinator(
         accumulate.
         """
         ref = self._cycle_ref_temp
-        if ref is None or not self._active_control:
-            return
-        if (
-            self._mode == HEATING_MODE_VACATION
-            or self._is_summer
-            or (self.data or {}).get("presence", {}).get("vacation", False)
-        ):
+        if ref is None or not self._active_control or self.suspended:
             return
         try:
             threshold = float(cfg.get(CONF_EXT_TEMP_THRESHOLD, 0.5))
@@ -713,12 +578,7 @@ class ThermoSmartCoordinator(
         self, entity_id: str, old_state, new_state, cfg: dict
     ) -> None:
         """Adopt physical TRV setpoint changes after debounce, or correct them."""
-        if (
-            not self._active_control
-            or self._mode == HEATING_MODE_VACATION
-            or self._is_summer
-            or (self.data or {}).get("presence", {}).get("vacation", False)
-        ):
+        if not self._active_control or self.suspended:
             return
         if old_state is None or old_state.state in ("unknown", "unavailable"):
             return
@@ -777,19 +637,21 @@ class ThermoSmartCoordinator(
             self._pending_manual_setpoint = None
             if pending is None:
                 return
-            if (
-                not self._active_control
-                or self._mode == HEATING_MODE_VACATION
-                or self._is_summer
-                or (self.data or {}).get("presence", {}).get("vacation", False)
-            ):
+            if not self._active_control or self.suspended:
                 return
             changed_entity, temperature = pending
             _LOGGER.info(
                 "ThermoSmart '%s': adopting physical setpoint %.1f°C from %s",
                 self.zone_name, temperature, changed_entity,
             )
-            self.set_override(temperature)
+            try:
+                self.set_target(temperature, SOURCE_DIAL)
+            except ValueError:
+                _LOGGER.warning(
+                    "ThermoSmart '%s': ignoring physical setpoint %.1f°C from %s "
+                    "(outside the supported target range)",
+                    self.zone_name, temperature, changed_entity,
+                )
             self.hass.async_create_task(self.async_request_refresh())
 
         self._manual_setpoint_cancel = async_call_later(
@@ -846,7 +708,7 @@ class ThermoSmartCoordinator(
     def _build_baseline_live_decision(self, recommendation, *, ts, mode_str):
         """Create authoritative LiveDecisionRecord from coordinator recommendation dict.
 
-        Always called regardless of Learning shadow presence.  Learning-specific fields
+        Always called regardless of Learning shadow existence.  Learning-specific fields
         (decision_id, onset_delay) remain None and are added by
         ``LearningShadowController.enrich_live_decision_pre_dispatch()`` when a shadow
         is attached.  Never raises — returns None on unexpected error.
@@ -902,55 +764,11 @@ class ThermoSmartCoordinator(
             weather_data = await self.weather_engine.async_get_data()
             self._update_summer_mode(weather_data)
 
-            presence = self._get_presence_state()
-            mode = self._effective_mode(presence)
-            if self._last_effective_mode is not None and mode != self._last_effective_mode:
-                if presence.get("vacation"):
-                    _reason = "vacation"
-                elif self._mode != HEATING_MODE_AUTO:
-                    _reason = "manual"
-                elif presence.get("all_away"):
-                    _reason = "presence"
-                else:
-                    _reason = "schedule"
-                _LOGGER.debug(
-                    "ThermoSmart '%s': effective mode changed %s → %s reason=%s",
-                    self.zone_name, self._last_effective_mode, mode, _reason,
-                )
-            self._last_effective_mode = mode
-            recommendation = await self._compute_recommendation(cfg, weather_data, mode)
+            recommendation = await self._compute_recommendation(cfg, weather_data)
 
             effective_summer = self._is_summer
-            if self._is_summer and self._summer_override is None:
-                current_indoor = recommendation.get("current_temp")
-                safety_threshold = cfg.get("night_temp", TEMP_NIGHT)
-                if current_indoor is not None and current_indoor < safety_threshold:
-                    effective_summer = False
-                    if not self._indoor_safety_active:
-                        self._indoor_safety_active = True
-                        _LOGGER.warning(
-                            "ThermoSmart '%s': Automatic summer mode temporarily bypassed "
-                            "because indoor temperature %.1f°C is below night temperature %.1f°C",
-                            self.zone_name,
-                            current_indoor,
-                            safety_threshold,
-                        )
-                elif self._indoor_safety_active and (
-                    current_indoor is None or current_indoor >= safety_threshold + 0.5
-                ):
-                    self._indoor_safety_active = False
-                    _LOGGER.info(
-                        "ThermoSmart '%s': Automatic summer mode indoor safety cleared "
-                        "(indoor %.1f°C ≥ night temp %.1f°C + 0.5°C hysteresis)",
-                        self.zone_name,
-                        current_indoor if current_indoor is not None else float("nan"),
-                        safety_threshold,
-                    )
-            else:
-                if self._indoor_safety_active:
-                    self._indoor_safety_active = False
-
             recommendation["is_summer"] = effective_summer
+            recommendation["vacation_mode"] = self._vacation_mode
 
             # Derive adaptation mode once per cycle from the two user-visible switches.
             # All Learning adaptive reads below are gated on _learning_mode_on so that
@@ -969,8 +787,7 @@ class ThermoSmartCoordinator(
                 except (TypeError, ValueError):
                     pass
 
-            # Use effective_target (weather-adjusted) for TPI/TRV calculations.
-            # adjusted_target is only the display value.
+            # TPI/TRV calculations use effective_target (None: window release).
             target = recommendation.get("effective_target")
             current_temp = recommendation.get("current_temp")
             if target is not None:
@@ -1115,7 +932,7 @@ class ThermoSmartCoordinator(
                     self._tpi_duty_previous)
 
             # Display fallback: when no active heating target exists (summer, window-open,
-            # away with adjusted_target=None), populate trv_setpoint for sensor display so
+            # effective_target=None), populate trv_setpoint for sensor display so
             # the sensor does not show Unknown after restart. Does not affect control logic,
             # TPI, learning, or boost tracking.
             if "trv_setpoint" not in recommendation:
@@ -1434,22 +1251,22 @@ class ThermoSmartCoordinator(
 
             _ct = recommendation.get("current_temp")
             _et = recommendation.get("effective_target")
-            _at = recommendation.get("adjusted_target")
+            _dt = recommendation.get("desired_target")
             _ts = recommendation.get("trv_setpoint")
             _LOGGER.debug(
-                "ThermoSmart '%s': cycle summary mode=%s current=%s°C"
-                " target=%s°C adjusted=%s°C trv=%s°C duty=%s%% preheat=%dmin"
-                " window=%s summer=%s active=%s",
+                "ThermoSmart '%s': cycle summary current=%s°C"
+                " desired=%s°C driven=%s°C trv=%s°C duty=%s%% preheat=%dmin"
+                " window=%s summer=%s vacation=%s active=%s",
                 self.zone_name,
-                mode,
                 f"{_ct:.1f}" if _ct is not None else "n/a",
+                f"{_dt:.1f}" if _dt is not None else "n/a",
                 f"{_et:.1f}" if _et is not None else "n/a",
-                f"{_at:.1f}" if _at is not None else "n/a",
                 f"{_ts:.1f}" if _ts is not None else "n/a",
                 f"{recommendation.get('tpi_duty_cycle', 0.0):.0f}",
                 recommendation.get("preheat_minutes", 0),
                 recommendation.get("window_open", False),
                 recommendation.get("is_summer", False),
+                self._vacation_mode,
                 self._active_control,
             )
 
@@ -1478,12 +1295,8 @@ class ThermoSmartCoordinator(
             # failure can never become a heating failure or an UpdateFailed.
             if _learning_mode_on and self._learning_shadow is not None:
                 try:
+                    # No schedule-derived comfort time yet (scheduling arrives with WP2).
                     _sched_time = _sched_temp = None
-                    _comfort_min = self._minutes_until_next_comfort(cfg)
-                    if _comfort_min is not None:
-                        _sched_time = (self._clock.now_utc()
-                                       + timedelta(minutes=_comfort_min)).isoformat()
-                        _sched_temp = cfg.get("comfort_temp", 21.0)
                     # B2b-4e: live per-device availability for the post-reach boost observer
                     # (binding/entity -> available|unavailable|unknown). No entity ids leave
                     # the learning runtime; they are hashed into anonymous slots internally.
@@ -1527,107 +1340,9 @@ class ThermoSmartCoordinator(
                 "weather": weather_data,
                 "zone": recommendation,
                 "active_control": self._active_control,
-                "presence": presence,
             }
         except Exception as err:
             raise UpdateFailed(f"ThermoSmart '{self.zone_name}': {err}") from err
-
-    # ── Präsenz ──────────────────────────────────────────────────────
-
-    def _is_person_home(self, person_state: str, zone_entity: str) -> bool:
-        if not zone_entity or zone_entity in ("zone.home", "home"):
-            return person_state == "home"
-
-        zone_slug = zone_entity.replace("zone.", "").lower()
-        if person_state.lower() == zone_slug:
-            return True
-
-        zone_state = self.hass.states.get(zone_entity)
-        if zone_state:
-            friendly = zone_state.attributes.get("friendly_name", "")
-            if person_state.lower() == friendly.lower():
-                return True
-
-        return False
-
-    def _get_presence_state(self) -> dict:
-        cfg = self.zone_cfg
-        home_zone = cfg.get(CONF_HOME_ZONE, "zone.home") or "zone.home"
-        persons_home, persons_away = [], []
-
-        for person in cfg.get(CONF_PRESENCE_PERSONS, []):
-            state = self.hass.states.get(person)
-            if state and self._is_person_home(state.state, home_zone):
-                persons_home.append(person)
-            else:
-                persons_away.append(person)
-
-        vacation = False
-        # CONF_VACATION_BOOLEAN: planned per-zone vacation boolean input —
-        # implemented here (reads state) but NOT exposed in config_flow UI.
-        vacation_entity = cfg.get(CONF_VACATION_BOOLEAN, "")
-        if vacation_entity:
-            vs = self.hass.states.get(vacation_entity)
-            if vs and vs.state == "on":
-                vacation = True
-
-        return {
-            "persons_home": persons_home,
-            "all_away": len(persons_home) == 0 and bool(cfg.get(CONF_PRESENCE_PERSONS)),
-            "vacation": vacation,
-        }
-
-    def _effective_mode(self, presence: dict) -> str:
-        if presence["vacation"]:
-            return HEATING_MODE_VACATION
-        if self._mode != HEATING_MODE_AUTO:
-            return self._mode
-        if presence["all_away"]:
-            return HEATING_MODE_AWAY
-        return HEATING_MODE_AUTO
-
-    def _control_reason(self, recommendation: dict) -> str:
-        """Determine the primary reason that governs the current heating target.
-
-        Priority order ensures only one unambiguous reason is recorded:
-          1. window_open    – heating suppressed due to open window
-          2. manual_override – user set an explicit target temperature
-          3. vacation       – vacation/frost-protection mode active
-          4. summer_mode    – season-based heating suppression active
-          5. presence       – away mode triggered by absence of all occupants
-          6. schedule       – default: auto mode driven by time schedule
-        Note: frost_protection is not a separate state; it is covered by summer_mode.
-        Note: explicit eco/night/comfort mode selections are covered by schedule
-              (they are schedule-like user preferences, not presence or override events).
-        """
-        if recommendation.get("window_open"):
-            return "window_open"
-        if recommendation.get("override_active"):
-            return "manual_override"
-        if recommendation.get("mode") == HEATING_MODE_VACATION:
-            return "vacation"
-        if recommendation.get("is_summer"):
-            return "summer_mode"
-        if recommendation.get("mode") == HEATING_MODE_AWAY:
-            return "presence"
-        return "schedule"
-
-    def _schedule_period(self, recommendation: dict, cfg: dict) -> str | None:
-        """Determine the active schedule period for observation context.
-
-        Returns one of: "comfort", "night", "eco", "away", or None
-        (vacation and summer_mode are captured by their own boolean fields).
-        """
-        mode = recommendation.get("mode", HEATING_MODE_AUTO)
-        if recommendation.get("is_summer") or mode == HEATING_MODE_VACATION:
-            return None
-        if mode in (HEATING_MODE_COMFORT, HEATING_MODE_NIGHT, HEATING_MODE_ECO, HEATING_MODE_AWAY):
-            return mode
-        # AUTO mode: derive from the active schedule slot
-        if not cfg.get("schedule_enabled", True):
-            return "comfort"
-        raw = self._current_schedule_period()
-        return raw.split("_", 1)[1] if "_" in raw else "comfort"
 
     def _record_support_hold_event(self, event_type, severity, *, reason: str,
                                     summary: str, details: dict) -> None:
@@ -1657,7 +1372,7 @@ class ThermoSmartCoordinator(
     def _maybe_record_support_hold_events(self, recommendation: dict) -> None:
         """Record Support Critical Events for window/summer/manual hold
         TRANSITIONS only — never every cycle. Compares this cycle's
-        window_open/is_summer/override_active flags (already computed in
+        window_open/is_summer flags and the one-shot manual_change marker (already computed in
         ``recommendation``) against the previous cycle's own dedupe state;
         emits a landmark only when a flag actually flips. Pure event
         production: reads recommendation, never mutates it, never touches
@@ -1708,22 +1423,13 @@ class ThermoSmartCoordinator(
                 )
             self._support_event_summer_hold_active = summer_active
 
-            manual_active = bool(recommendation.get("override_active", False))
-            if manual_active and not self._support_event_manual_override_active:
+            if recommendation.get("manual_change"):
                 self._record_support_hold_event(
                     SupportEventType.MANUAL_OVERRIDE_START, SupportEventSeverity.INFO,
-                    reason="manual_override_start",
-                    summary="Manual override started",
-                    details={"source": "manual_override"},
+                    reason="manual_target_change",
+                    summary="Manual target change",
+                    details={"source": "manual_target_change"},
                 )
-            elif not manual_active and self._support_event_manual_override_active:
-                self._record_support_hold_event(
-                    SupportEventType.MANUAL_OVERRIDE_END, SupportEventSeverity.INFO,
-                    reason="manual_override_end",
-                    summary="Manual override ended",
-                    details={"source": "manual_override"},
-                )
-            self._support_event_manual_override_active = manual_active
         except Exception:
             pass  # event production is best-effort; must never affect the control cycle
 
@@ -1782,7 +1488,7 @@ class ThermoSmartCoordinator(
 
             from .learning.support_event_schemas import SupportEventSeverity, SupportEventType
 
-            requested = recommendation.get("trv_setpoint", recommendation.get("adjusted_target"))
+            requested = recommendation.get("trv_setpoint", recommendation.get("effective_target"))
             requested_rounded = round(float(requested), 1) if isinstance(requested, (int, float)) else None
 
             if sp_stats.effective_setpoints:
@@ -2053,7 +1759,7 @@ class ThermoSmartCoordinator(
 
     # ── Berechnung ───────────────────────────────────────────────────
 
-    async def _compute_recommendation(self, cfg: dict, weather_data: dict, mode: str) -> dict:
+    async def _compute_recommendation(self, cfg: dict, weather_data: dict) -> dict:
         _learning_mode_on = bool(cfg.get("learning_enabled", True))
         _primary_room_temp = self._read_avg_sensor(cfg.get("temp_sensors", []), is_temperature=True)
         current_temp = _primary_room_temp
@@ -2089,23 +1795,11 @@ class ThermoSmartCoordinator(
 
         window_open = self._check_window_open(cfg, current_temp=current_temp)
 
-        comfort_temp = cfg.get("comfort_temp", 21.0)
-        night_temp_cfg = cfg.get("night_temp", TEMP_NIGHT)
-        base_target = await self.learning_engine.async_get_base_target(
-            self.zone_id, mode,
-            comfort_temp=comfort_temp,
-            night_temp=night_temp_cfg,
-            away_temp=cfg.get("away_temp", 17.0),
-            vacation_temp=cfg.get(CONF_VACATION_TEMP, 12.0),
-            eco_temp=cfg.get(CONF_ECO_TEMP, TEMP_ECO),
-            schedule_cfg=cfg,
-        )
+        desired_target = self.target.value
+        manual_change = self._manual_change_pending
+        self._manual_change_pending = False
 
-        weather_offset = 0.0
-        if mode == HEATING_MODE_AUTO:
-            weather_offset = self.weather_engine.compute_temperature_offset(weather_data)
-
-        # ── Preheat duration: Learning is the sole adaptive source ────────────
+        # ── Preheat duration estimate: Learning is the sole adaptive source ────
         # LE v1 is NEVER read for preheat; the frozen LE v1 store is historical.
         # When Learning has no evidence, or Learning Mode is OFF, the deterministic
         # baseline is used. Learning OFF → no adaptive preheat, no onset delay.
@@ -2113,7 +1807,7 @@ class ThermoSmartCoordinator(
         from .learning.runtime.ha_integration import LearningShadowController
         if _learning_mode_on and self._learning_shadow is not None:
             preheat_minutes, preheat_status = self._learning_shadow.read_preheat_minutes_safe(
-                current_temp, comfort_temp,
+                current_temp, desired_target,
                 outdoor_temp=weather_data.get("temperature") if weather_data else None,
             )
             _onset_delay_min, _onset_delay_status = self._learning_shadow.read_onset_delay_safe()
@@ -2121,319 +1815,22 @@ class ThermoSmartCoordinator(
             # No shadow: deterministic baseline (1.5 °C/h prior; onset prior 5 min).
             preheat_minutes, preheat_status = (
                 LearningShadowController.compute_deterministic_preheat_baseline(
-                    current_temp, comfort_temp
+                    current_temp, desired_target
                 )
             )
             _onset_delay_min = LearningShadowController._ONSET_DELAY_PRIOR_MIN
             _onset_delay_status = "cold_start_prior"
 
-        preheat_active = False
-        if mode == HEATING_MODE_AUTO and preheat_minutes > 0 and base_target < comfort_temp:
-            mins_until_comfort = self._minutes_until_next_comfort(cfg)
-            if mins_until_comfort is not None and 0 < mins_until_comfort <= preheat_minutes:
-                base_target = comfort_temp
-                preheat_active = True
-                _LOGGER.debug(
-                    "ThermoSmart '%s': Vorheizen – %d min bis Komfortphase, %.1f min Aufheizzeit [%s]",
-                    self.zone_name, mins_until_comfort, preheat_minutes, preheat_status,
-                )
-
-        if self._override is not None and self._override_schedule_period is not None:
-            current_period = self._current_schedule_period()
-            if current_period != self._override_schedule_period:
-                _LOGGER.info(
-                    "ThermoSmart '%s': Manueller Override abgelaufen (Slot %s → %s)",
-                    self.zone_name, self._override_schedule_period, current_period,
-                )
-                self._override = None
-                self._override_schedule_period = None
-
-        # Presence-aware override clearing: when presence detection switches to
-        # all-away (AUTO mode only), a manual override must not block the away
-        # temperature from taking effect.
-        # VACATION mode has higher priority (set via set_vacation_override) and is
-        # never reached as HEATING_MODE_AWAY here.
-        # Non-AUTO modes (_mode != HEATING_MODE_AUTO) return their own mode via
-        # _effective_mode(), never HEATING_MODE_AWAY, so this block is inert.
-        if mode == HEATING_MODE_AWAY and self._override is not None:
-            _LOGGER.info(
-                "ThermoSmart '%s': Manual override cleared – all persons away",
-                self.zone_name,
-            )
-            self._override = None
-            self._override_schedule_period = None
-
-        override = self.get_override()
-
-        # Hard-release any active Early Cutoff hold on window open or manual override:
-        # both are structural safety events that take absolute priority.
-        if self._ec_hold_active and (window_open or override is not None):
-            self._ec_hold_active = False
-            self._ec_episode_failed = False
-            self._ec_state = (
-                "released_window_open" if window_open else "released_manual_override"
-            )
-
-        biased_suppression = 1.0
-        # Learning forecast state – defaults represent "no evidence" (not "full trust")
-        learning_forecast_trust = 0.0
-        learning_forecast_bias_c = 0.0
-        learning_forecast_trust_status = "not_available"
-        learning_forecast_used = False
-        # Learning early cutoff state
-        learning_early_cutoff_c = 0.0
-        learning_early_cutoff_status = "not_available"
-        learning_early_cutoff_applied = False
-
-        # ── Effective target (internal) ────────────────────────────────────────
-        # Incorporates weather offset + forecast suppression.
-        # Used for TPI calculation and TRV setpoint – NOT shown to the user.
-        #
-        # ── Adjusted target (display) ──────────────────────────────────────────
-        # Always the configured schedule / mode temperature, or the manual override.
-        # This is what the climate entity and all UI elements show – no hidden offsets.
-
-        if override is not None and not window_open:
-            # Manual override: user set an explicit temp → show AND use it as-is
-            effective_target = override
-            adjusted_target = override
-            override_active = True
-        elif not window_open:
-            # Guard: a negative weather offset must not pull the effective target
-            # below the configured comfort temperature while the room hasn't
-            # reached it yet — otherwise the corrected target can converge with
-            # current_temp and stall active heating during an active comfort
-            # window. Positive offsets (boost) remain unaffected; negative
-            # offsets are still allowed once current_temp >= base_target.
-            if (
-                mode == HEATING_MODE_AUTO
-                and base_target >= comfort_temp
-                and weather_offset < 0
-                and current_temp is not None
-                and current_temp < base_target
-            ):
-                _LOGGER.debug(
-                    "ThermoSmart '%s': negative weather offset %.1f°C suppressed – "
-                    "comfort target %.1f°C not yet reached (current=%.1f°C)",
-                    self.zone_name, weather_offset, base_target, current_temp,
-                )
-                weather_offset = 0.0
-            raw_target = round(base_target + weather_offset, 1)
-            if mode == HEATING_MODE_AUTO:
-                if preheat_active:
-                    # Pre-heat window: always heat to full comfort target
-                    biased_suppression = 1.0
-                    effective_target = raw_target
-                elif base_target >= comfort_temp:
-                    # Active comfort window: always heat to configured comfort temperature.
-                    # Forecast may influence WHEN we pre-heat, but not the comfort target itself.
-                    biased_suppression = 1.0
-                    effective_target = raw_target
-                    _LOGGER.debug(
-                        "ThermoSmart '%s': Komfortzeit – Prognose-Unterdrückung deaktiviert "
-                        "(Ziel: %.1f°C)",
-                        self.zone_name, raw_target,
-                    )
-                else:
-                    # Night/transition window: forecast suppression applies
-                    raw_suppression = self.weather_engine.compute_forecast_suppression(
-                        weather_data, raw_target, night_temp_cfg
-                    )
-                    # Learning: read FORECAST_TRUST and FORECAST_BIAS separately via Read Gate.
-                    # Trust gates suppression strength; Bias corrects the °C target independently.
-                    # Only bias reads when trust is "valid" (real evidence, not cold-start/stale).
-                    # Learning OFF → static trust=1.0 / bias=0.0 (no Learning values in control).
-                    if _learning_mode_on and self._learning_shadow is not None:
-                        learning_forecast_trust, learning_forecast_trust_status = (
-                            self._learning_shadow.read_forecast_trust_safe())
-                        if learning_forecast_trust_status == "valid":
-                            learning_forecast_bias_c = self._learning_shadow.read_forecast_bias_safe()
-                            learning_forecast_used = True
-                    biased_suppression = 1.0 - (1.0 - raw_suppression) * learning_forecast_trust
-                    # Bias correction: only when trust is sufficient and correction clears noise floor
-                    if (learning_forecast_trust >= _FORECAST_BIAS_MIN_TRUST
-                            and abs(learning_forecast_bias_c) >= _FORECAST_BIAS_MIN_APPLY_C):
-                        _correction = max(-_FORECAST_BIAS_CORRECTION_MAX_C,
-                                          min(_FORECAST_BIAS_CORRECTION_MAX_C, learning_forecast_bias_c))
-                        raw_target = round(raw_target + _correction, 1)
-
-                    if current_temp is not None:
-                        delta = raw_target - current_temp
-                        if delta >= FORECAST_DELTA_FULL_HEAT:
-                            biased_suppression = 1.0
-                        elif delta >= FORECAST_DELTA_BLEND:
-                            blend = (delta - FORECAST_DELTA_BLEND) / (FORECAST_DELTA_FULL_HEAT - FORECAST_DELTA_BLEND)
-                            biased_suppression = min(1.0, biased_suppression + blend * (1.0 - biased_suppression))
-
-                    effective_target = round(
-                        night_temp_cfg + biased_suppression * (raw_target - night_temp_cfg), 1
-                    )
-
-                    if current_temp is not None and biased_suppression < 0.95:
-                        comfort_floor = round(current_temp - 0.5, 1)
-                        if effective_target < comfort_floor:
-                            _LOGGER.debug(
-                                "ThermoSmart '%s': Komfort-Boden greift (%.1f°C → %.1f°C)",
-                                self.zone_name, effective_target, comfort_floor,
-                            )
-                            effective_target = comfort_floor
-
-                    if biased_suppression < 0.95:
-                        _LOGGER.debug(
-                            "ThermoSmart '%s': forecast/weather correction active "
-                            "raw_target=%.1f°C → effective=%.1f°C correction=%.1f°C suppression=%.0f%%",
-                            self.zone_name, raw_target, effective_target,
-                            effective_target - raw_target,
-                            (1.0 - biased_suppression) * 100,
-                        )
-
-            else:
-                effective_target = raw_target
-
-            # ── Learning Early Cutoff Lifecycle ──────────────────────────────────
-            # Applies in BOTH preheat and active comfort-window branches; never in
-            # the night/transition branch and never in non-AUTO modes.
-            # adjusted_target (user-visible schedule temp) is NEVER changed here;
-            # only effective_target (internal heating drive) is reduced.
-            #
-            # Hold semantics: once a cutoff is applied, _ec_hold_active=True maintains
-            # the reduced effective_target through the coasting phase. Without a hold,
-            # effective_target would revert to comfort_temp as soon as current_temp
-            # reached the cut threshold, causing a re-heat impulse that defeats the
-            # purpose of the cutoff and leads to overshoot.
-            #
-            # Structural safety guards (guaranteed by outer if/elif structure):
-            #   • window_open: released above; we are inside `elif not window_open:`
-            #   • override: released above; override=None guaranteed here
-            # Additional guards in _ec_eligible and the state machine below.
-            if mode == HEATING_MODE_AUTO:
-                _heating_to_target = preheat_active or base_target >= comfort_temp
-                _current_period = self._current_schedule_period()
-                # Require explicit trend evidence: slope=None (no measurement) must NOT
-                # allow a new hold — unavailable trend means unavailable evidence, not
-                # "neutral".  Flat-or-rising (>= 0.0) with a real measurement is fine.
-                _temp_rising = (self._indoor_temp_slope is not None
-                                and self._indoor_temp_slope >= 0.0)
-                _ec_eligible = (
-                    _learning_mode_on
-                    and _heating_to_target
-                    and current_temp is not None
-                    and self._learning_shadow is not None
-                )
-                # Regime gate: new hold only when the Learning regime classifier confirms
-                # active heating.  UNKNOWN / AFTERHEAT / COOLING / None → no new hold.
-                # "keine zweite parallele Regime-Heuristik": regime comes exclusively
-                # from the shadow runtime pipeline (ThermalRegimeClassifier), never from
-                # a coordinator-local heuristic.
-                # Learning OFF → regime is never used (ec_eligible is already False).
-                _ec_regime = (self._learning_shadow.read_regime_safe()
-                              if (_learning_mode_on and self._learning_shadow is not None) else None)
-
-                # Episode change: different comfort target or schedule period → reset.
-                if (self._ec_hold_active or self._ec_episode_failed) and (
-                    self._ec_hold_comfort_temp != comfort_temp
-                    or self._ec_hold_period != _current_period
-                ):
-                    self._ec_hold_active = False
-                    self._ec_episode_failed = False
-                    self._ec_failed_cut_target = 0.0
-                    self._ec_state = "inactive"
-
-                if self._ec_hold_active:
-                    # ── Validate ongoing hold ─────────────────────────────────
-                    # Hold is governed by episode binding, temperature evidence and
-                    # safety gates.  A stale/missing prediction after hold-start must
-                    # NOT trigger immediate reheat (Prediction quality is a pre-start
-                    # gate only; the applied cut threshold is frozen for the duration).
-                    _hold_age = self._clock.monotonic() - self._ec_hold_started
-                    _release = None
-
-                    if not _ec_eligible:
-                        _release = "released_ineligible"
-                    elif current_temp >= comfort_temp:
-                        _release = "released_target_reached"
-                    elif _hold_age > _EARLY_CUTOFF_HOLD_TIMEOUT_SECS:
-                        _release = "released_timeout"
-                    elif (current_temp < self._ec_hold_cut_target
-                          and self._indoor_temp_slope is not None
-                          and self._indoor_temp_slope < 0.0):
-                        # Below cut threshold AND actively falling → re-heat needed
-                        _release = "released_temperature_falling"
-                    # No prediction re-validation here: frozen threshold, real evidence.
-
-                    if _release is not None:
-                        self._ec_hold_active = False
-                        self._ec_state = _release
-                        if _release in ("released_temperature_falling", "released_timeout"):
-                            self._ec_episode_failed = True
-                            self._ec_failed_cut_target = self._ec_hold_cut_target
-                        learning_early_cutoff_applied = False
-                    else:
-                        # Hold continues: maintain frozen cut target
-                        effective_target = max(self._ec_hold_cut_target, night_temp_cfg)
-                        learning_early_cutoff_applied = True
-                        learning_early_cutoff_c = round(
-                            comfort_temp - self._ec_hold_cut_target, 1)
-                        self._ec_state = (
-                            "coasting_hold"
-                            if current_temp >= self._ec_hold_cut_target
-                            else "cutoff_applied"
-                        )
-
-                elif (_ec_eligible and not self._ec_episode_failed and _temp_rising
-                      and _ec_regime == "active_heating"):
-                    # ── Evaluate new cutoff (regime gate: active_heating only) ─
-                    learning_early_cutoff_c, learning_early_cutoff_status = (
-                        self._learning_shadow.read_early_cutoff_safe())
-                    if learning_early_cutoff_c >= _EARLY_CUTOFF_MIN_RESIDUAL_C:
-                        capped_c = min(learning_early_cutoff_c, _EARLY_CUTOFF_MAX_C)
-                        cut_target = round(effective_target - capped_c, 1)
-                        if cut_target > current_temp:
-                            effective_target = max(cut_target, night_temp_cfg)
-                            learning_early_cutoff_applied = True
-                            self._ec_hold_active = True
-                            self._ec_hold_cut_target = effective_target
-                            self._ec_hold_comfort_temp = comfort_temp
-                            self._ec_hold_period = _current_period
-                            self._ec_hold_started = self._clock.monotonic()
-                            self._ec_state = "cutoff_applied"
-                    else:
-                        self._ec_state = "eligible"
-                else:
-                    # Recovery: room dropped well below the failed cut target, is now
-                    # rising, AND the ThermalRegimeClassifier confirms "active_heating".
-                    # Passive warming (solar, neighbours, internal loads) keeps the regime
-                    # at UNKNOWN / AFTERHEAT / COOLING and must NOT reset episode_failed.
-                    if (self._ec_episode_failed
-                            and self._indoor_temp_slope is not None
-                            and self._indoor_temp_slope >= 0.0
-                            and current_temp is not None
-                            and current_temp < self._ec_failed_cut_target - 1.0
-                            and _ec_regime == "active_heating"):
-                        self._ec_episode_failed = False
-                        self._ec_failed_cut_target = 0.0
-                    self._ec_state = (
-                        "inactive" if not self._ec_episode_failed else "episode_failed"
-                    )
-            else:
-                # Non-AUTO mode: release any active hold
-                if self._ec_hold_active:
-                    self._ec_hold_active = False
-                    self._ec_state = "released_mode_change"
-                    self._ec_episode_failed = False
-
-            # Display: always show the configured base temperature (no offsets)
-            adjusted_target = base_target
-            override_active = False
-        else:
+        # ── Driven target ──────────────────────────────────────────────────────
+        # The desired target is never altered here. What the TRVs are driven to
+        # is derived from it: vacation holds the vacation temperature, an open
+        # window releases the setpoint (None), otherwise it is the desired target.
+        if self._vacation_mode:
+            effective_target = float(cfg.get(CONF_VACATION_TEMP, TEMP_FROST_PROTECTION))
+        elif window_open:
             effective_target = None
-            adjusted_target = None
-            override_active = False
-
-        if mode == HEATING_MODE_AUTO and not window_open and override is None:
-            suppression_pct = round((1.0 - biased_suppression) * 100)
         else:
-            suppression_pct = 0
+            effective_target = desired_target
 
         # Learning progress from real per-zone model updates (display value, 0.0–1.0).
         # Uses learning_progress_safe() so the value matches ThermoSmartConfidenceSensor.
@@ -2448,38 +1845,25 @@ class ThermoSmartCoordinator(
 
         return {
             "zone_name": self.zone_name,
-            "mode": mode,
             "current_temp": current_temp,
             "window_open": window_open,
-            "base_target": base_target,
-            "weather_offset": weather_offset,
-            "adjusted_target": adjusted_target,    # display value – no offsets
-            "effective_target": effective_target,  # internal value – weather + suppression
-            "override_active": override_active,
-            "override_temp": override,
+            "desired_target": desired_target,
+            "desired_target_source": self.target.current.source,
+            "preset": self.target.preset,
+            "manual_change": manual_change,
+            "effective_target": effective_target,  # what the TRVs are driven to (None: window release)
             "preheat_minutes": preheat_minutes,
-            "preheat_active": preheat_active,
+            "preheat_active": False,
             "preheat_status": preheat_status,
             # Onset delay and baseline for DecisionTrace (computed once above)
             "onset_delay_min": _onset_delay_min,
             "onset_delay_status": _onset_delay_status,
             "preheat_baseline_minutes": LearningShadowController.compute_deterministic_preheat_baseline(
-                current_temp, comfort_temp)[0],
-            "temperature_gap_c": ((comfort_temp - current_temp)
+                current_temp, desired_target)[0],
+            "temperature_gap_c": ((desired_target - current_temp)
                                   if current_temp is not None else None),
-            "forecast_suppression": suppression_pct,
-            "forecast_trust": learning_forecast_trust,
-            "forecast_bias_c": learning_forecast_bias_c,
-            "forecast_used": learning_forecast_used,
-            "forecast_trust_status": learning_forecast_trust_status,
-            "early_cutoff_applied": learning_early_cutoff_applied,
-            "early_cutoff_c": learning_early_cutoff_c,
-            "early_cutoff_status": learning_early_cutoff_status,
-            "early_cutoff_state": self._ec_state,
-            "early_cutoff_hold_active": self._ec_hold_active,
             "learning_confidence": learning_confidence,
             "outdoor_temp": weather_data.get("temperature"),
-            "forecast_high": weather_data.get("forecast_high"),
             "weather_condition": weather_data.get("condition"),
             "temp_slope": self._indoor_temp_slope,
             "temp_ema_1h": self._ema_1h,

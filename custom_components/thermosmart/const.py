@@ -18,10 +18,6 @@ CONF_OUTDOOR_WIND_SENSOR = "outdoor_wind_sensor"
 CONF_OUTDOOR_SOLAR_SENSOR = "outdoor_solar_sensor"
 CONF_OUTDOOR_RAIN_SENSOR = "outdoor_rain_sensor"
 CONF_LEARNING_ENABLED = "learning_enabled"
-CONF_SCHEDULE_ENABLED = "schedule_enabled"
-CONF_PRESENCE_PERSONS = "presence_persons"
-CONF_HOME_ZONE = "home_zone"           # Welche Zone gilt als "zuhause"?
-CONF_VACATION_BOOLEAN = "vacation_boolean"
 CONF_ZONE_CONTROL_MODE = "zone_control_mode"
 CONF_CONTROL_INTERVAL = "control_interval"
 CONF_TEMP_TOLERANCE = "temp_tolerance"
@@ -96,10 +92,6 @@ TPI_VALVE_BUMP_DELAY  = 5.0    # Sekunden zwischen Bump-Open und Zielwert
 CONF_VACATION_TEMP     = "vacation_temp"       # Urlaubstemperatur (Frostschutz)
 CONF_WINDOW_OPEN_TEMP  = "window_open_temp"    # TRV-Setpoint bei geöffnetem Fenster (pro Zone)
 CONF_ECO_TEMP          = "eco_temp"            # Eco-Preset Temperatur
-CONF_SCHED_WD_MORNING  = "sched_wd_morning"   # Werktag: Aufwachen  → comfort_temp
-CONF_SCHED_WD_NIGHT    = "sched_wd_night"     # Werktag: Nacht      → night_temp
-CONF_SCHED_WE_MORNING  = "sched_we_morning"   # Wochenende: Aufwachen → comfort_temp
-CONF_SCHED_WE_NIGHT    = "sched_we_night"     # Wochenende: Nacht     → night_temp
 
 VALVE_MAINTENANCE_HOUR = 3     # 03:00 Uhr nachts
 VALVE_MAINTENANCE_WEEKDAY = 6  # Sonntag (0=Mo … 6=So)
@@ -109,7 +101,6 @@ VALVE_MAINTENANCE_DURATION_SUMMER_SEC = 8  # Sekunden offen (Sommer – kurze Ü
 
 DOMAIN_GLOBAL_SUMMER   = f"{DOMAIN}_global_summer"
 DOMAIN_GLOBAL_VACATION = f"{DOMAIN}_global_vacation"
-DOMAIN_GLOBAL_DEBUG    = f"{DOMAIN}_global_debug"
 
 # Default values
 DEFAULT_WEATHER_ENTITY = "weather.home"
@@ -122,7 +113,6 @@ TEMP_NIGHT = 18.0
 TEMP_AWAY = 17.0
 TEMP_FROST_PROTECTION = 12.0
 TEMP_ECO = 19.0
-INDOOR_SAFETY_TEMP = 16.0  # °C – below this, automatic summer mode is bypassed for one cycle
 WINDOW_OPEN_SETPOINT = 5.0  # TRV-Setpoint bei geöffnetem Fenster
 
 # Weather-based adjustments
@@ -130,13 +120,6 @@ WEATHER_COLD_THRESHOLD = 0.0     # °C outdoor — boost heating
 WEATHER_MILD_THRESHOLD = 10.0   # °C outdoor — reduce heating
 WEATHER_WARM_THRESHOLD = 18.0   # °C outdoor — consider disabling
 WEATHER_HOT_THRESHOLD = 22.0    # °C outdoor — disable heating
-
-WEATHER_BOOST_OFFSET = 1.5      # °C added when very cold
-WEATHER_REDUCE_OFFSET = -1.0    # °C subtracted when mild
-
-# Wind chill factor: extra boost when windy + cold
-WIND_THRESHOLD_MS = 10.0        # m/s
-WIND_CHILL_BOOST = 0.5          # °C extra when cold AND windy
 
 # Learning algorithm settings
 LEARNING_MIN_SAMPLES = 5        # Mindest-Beobachtungen bevor Lernen aktiv wird
@@ -148,12 +131,6 @@ FORECAST_EVAL_HOURS = 5          # Stunden bis Prognose-Entscheidung ausgewertet
 FORECAST_BIAS_MIN = 0.3          # Mindest-Vertrauen in Prognose (nie komplett ignorieren)
 FORECAST_BIAS_MAX = 1.0          # Vollständiges Vertrauen (Standard / Cold-Start)
 FORECAST_BIAS_LEARNING_RATE = 0.06  # Anpassungsrate pro Auswertung
-FORECAST_DELTA_FULL_HEAT = 3.0   # °C unter Ziel → vollständig heizen, Prognose ignorieren
-FORECAST_DELTA_BLEND = 1.5       # °C unter Ziel → Übergang beginnt
-
-# Solar-Einfluss auf Temperatur-Offset (compute_temperature_offset)
-SOLAR_OFFSET_THRESHOLD_W = 400.0   # W/m² – Solar reduziert Heiz-Offset ab diesem Wert
-SOLAR_OFFSET_MIN_OUTDOOR_C = 5.0   # °C – Solar-Offset nur bei wärmerer Außentemp
 
 # Solar-Gain-Erkennung (SunIntensitySensor)
 SOLAR_GAIN_THRESHOLD_W = 300.0   # W/m² – unterhalb kein relevanter Solar-Wärmeeintrag
@@ -169,20 +146,18 @@ SEASON_HOURS = 72         # Stunden die der Schwellwert überschritten sein muss
 NOISE_FILTER_SPIKE_THRESHOLD = 4.0  # °C – Abweichung > Wert vom EMA → Messung ignorieren
 NOISE_FILTER_EMA_ALPHA = 0.2        # EMA-Glättungsfaktor (kleiner = träger/stabiler)
 
-# Heizmodi
-HEATING_MODE_AUTO     = "auto"
-HEATING_MODE_COMFORT  = "comfort"
-HEATING_MODE_ECO      = "eco"
-HEATING_MODE_NIGHT    = "night"
-HEATING_MODE_AWAY     = "away"
-HEATING_MODE_VACATION = "vacation"
-HEATING_MODES = [
-    HEATING_MODE_AUTO,
-    HEATING_MODE_COMFORT,
-    HEATING_MODE_ECO,
-    HEATING_MODE_NIGHT,
-    HEATING_MODE_AWAY,
-    HEATING_MODE_VACATION,
+# Presets: plain named temperatures (configured per zone)
+PRESET_COMFORT  = "comfort"
+PRESET_ECO      = "eco"
+PRESET_NIGHT    = "night"
+PRESET_AWAY     = "away"
+PRESET_VACATION = "vacation"
+PRESETS = [
+    PRESET_COMFORT,
+    PRESET_ECO,
+    PRESET_NIGHT,
+    PRESET_AWAY,
+    PRESET_VACATION,
 ]
 
 # EMA-Zeitkonstante für 1h-Trend-Sensor (α ≈ 1-e^(-5min/60min))
@@ -213,5 +188,4 @@ PLATFORMS = ["climate", "sensor", "switch", "select"]
 # Icons
 ICON_ZONE = "mdi:home-thermometer"
 ICON_LEARNING = "mdi:brain"
-ICON_WEATHER_ADJUST = "mdi:weather-partly-cloudy"
 ICON_PREHEAT = "mdi:timer-play"
