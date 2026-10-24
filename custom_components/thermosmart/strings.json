@@ -330,6 +330,11 @@
     }
   },
   "entity": {
+    "datetime": {
+      "scheduling_disabled_until": {
+        "name": "Scheduling disabled until"
+      }
+    },
     "climate": {
       "zone": {
         "state_attributes": {
@@ -348,6 +353,9 @@
       },
       "learning": {
         "name": "Learning mode"
+      },
+      "scheduling_enabled": {
+        "name": "Scheduling enabled"
       },
       "vacation_mode": {
         "name": "Vacation Mode"
@@ -388,6 +396,9 @@
       },
       "preheat_minutes": {
         "name": "Preheat time"
+      },
+      "next_scheduled_event": {
+        "name": "Next scheduled event"
       },
       "confidence": {
         "name": "Learning progress"

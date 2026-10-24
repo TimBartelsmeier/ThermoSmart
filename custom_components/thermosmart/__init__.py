@@ -37,6 +37,11 @@ from .const import (
     VERSION,
 )
 from .coordinator import ThermoSmartCoordinator
+from .schedule import (
+    ScheduleError,
+    async_manage_schedule_yaml,
+    async_orphaned_zone_keys,
+)
 from .weather_engine import WeatherEngine
 from .learning_engine import LearningEngine
 
@@ -244,6 +249,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_detect_device_entities()
     coordinator.setup_event_listeners()
     entry.async_on_unload(coordinator.cleanup_event_listeners)
+
+    # Schedule YAML: add missing zone blocks, then load this zone's events
+    # (re-read on every entry reload, i.e. after options changes).
+    try:
+        all_entries = hass.config_entries.async_entries(DOMAIN)
+        await async_manage_schedule_yaml(hass, all_entries)
+        if orphans := await async_orphaned_zone_keys(hass, all_entries):
+            _LOGGER.warning(
+                "ThermoSmart: schedule blocks without a matching zone (kept untouched): %s",
+                ", ".join(orphans),
+            )
+    except ScheduleError as err:
+        _LOGGER.error("ThermoSmart: schedule file not managed – %s", err)
+    await coordinator.async_load_schedule()
+    coordinator.start_scheduler()
 
     entry_store: dict = {
         "coordinator": coordinator,

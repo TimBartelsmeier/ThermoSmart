@@ -50,9 +50,18 @@ from .learning.clock import Clock, SystemClock
 from .target import (
     MANUAL_SOURCES,
     SOURCE_DIAL,
+    SOURCE_EVENT,
     SOURCE_PRESET,
     TargetState,
     preset_temperature,
+)
+from .schedule import (
+    ScheduleError,
+    ScheduleOccurrence,
+    ScheduleRunner,
+    async_load_schedule,
+    event_preset,
+    resolve_target,
 )
 from .weather_engine import WeatherEngine
 from .learning_engine import LearningEngine
@@ -142,6 +151,17 @@ class ThermoSmartCoordinator(
         self.target = TargetState()
         self.target.add_listener(self._on_target_changed)
         self._manual_change_pending: bool = False
+        # Scheduling (events fire at exact times via the runner, see schedule.py).
+        self._scheduling_enabled: bool = True
+        self._scheduling_disabled_until: datetime | None = None
+        self.schedule_error: str | None = None
+        self.scheduler = ScheduleRunner(
+            hass,
+            now=self._now_local,
+            is_active=self._scheduling_active_at,
+            on_event=self._on_schedule_event,
+            on_change=lambda: self.async_update_listeners(),
+        )
         self._vacation_mode: bool = False
         self._summer_override: bool | None = None
 
@@ -309,6 +329,66 @@ class ThermoSmartCoordinator(
     @property
     def zone_cfg(self) -> dict:
         return {**self.entry.data, **self.entry.options}
+
+    # ── Scheduling ──────────────────────────────────────────────────
+
+    @property
+    def scheduling_enabled(self) -> bool:
+        return self._scheduling_enabled
+
+    @property
+    def scheduling_disabled_until(self) -> datetime | None:
+        return self._scheduling_disabled_until
+
+    def _scheduling_active_at(self, now: datetime) -> bool:
+        until = self._scheduling_disabled_until
+        return self._scheduling_enabled and (until is None or now >= until)
+
+    @property
+    def scheduling_active(self) -> bool:
+        """Events are applied: switched on and not paused by 'disabled until'."""
+        return self._scheduling_active_at(self._now_local())
+
+    def set_scheduling_enabled(self, enabled: bool) -> None:
+        self._scheduling_enabled = bool(enabled)
+        _LOGGER.info("ThermoSmart '%s': scheduling %s",
+                     self.zone_name, "enabled" if enabled else "disabled")
+
+    def set_scheduling_disabled_until(self, until: datetime | None) -> None:
+        self._scheduling_disabled_until = until
+        _LOGGER.info("ThermoSmart '%s': scheduling disabled until %s",
+                     self.zone_name, until.isoformat() if until else "– (not paused)")
+
+    async def async_load_schedule(self) -> None:
+        """(Re-)read this zone's events from the schedule YAML.
+
+        An invalid file never stops the zone: it runs without events and the
+        reason is logged and exposed as ``schedule_error``.
+        """
+        try:
+            events = await async_load_schedule(self.hass, self.entry)
+            self.schedule_error = None
+        except ScheduleError as err:
+            events = []
+            self.schedule_error = str(err)
+            _LOGGER.error("ThermoSmart '%s': schedule not loaded – %s",
+                          self.zone_name, err)
+        self.scheduler.set_events(events)
+
+    def start_scheduler(self) -> None:
+        self.scheduler.start()
+
+    def _on_schedule_event(self, occurrence: ScheduleOccurrence) -> None:
+        event = occurrence.event
+        value = resolve_target(event.target, self.zone_cfg)
+        preset = event_preset(event.target)
+        try:
+            self.set_target(value, SOURCE_EVENT, preset=preset)
+        except ValueError as err:
+            _LOGGER.warning("ThermoSmart '%s': schedule event %s ignored – %s",
+                            self.zone_name, event.key, err)
+            return
+        self.hass.async_create_task(self.async_request_refresh())
 
     # ── Setter ──────────────────────────────────────────────────────
 
@@ -514,6 +594,7 @@ class ThermoSmartCoordinator(
         )
 
     def cleanup_event_listeners(self) -> None:
+        self.scheduler.stop()
         for cancel in self._event_unsub:
             cancel()
         self._event_unsub.clear()

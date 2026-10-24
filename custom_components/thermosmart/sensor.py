@@ -16,6 +16,7 @@ from .const import (
     SOLAR_GAIN_THRESHOLD_W, SOLAR_GAIN_MIN_OUTDOOR_C, SOLAR_GAIN_MAX_REDUCTION,
 )
 from .coordinator import ThermoSmartCoordinator
+from .schedule import event_preset, resolve_target
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ async def async_setup_entry(
         ThermoSmartTRVSetpointSensor(coordinator, entry),
         ThermoSmartTpiSensor(coordinator, entry),
         ThermoSmartPreheatSensor(coordinator, entry),
+        ThermoSmartNextEventSensor(coordinator, entry),
         ThermoSmartConfidenceSensor(coordinator, entry),
         ThermoSmartStatusSensor(coordinator, entry),
         ThermoSmartTempSlopeSensor(coordinator, entry),
@@ -120,6 +122,42 @@ class ThermoSmartPreheatSensor(_Base):
     @property
     def native_value(self):
         return self._zone.get("preheat_minutes", 0)
+
+
+class ThermoSmartNextEventSensor(_Base):
+    """When the next schedule event fires (a timestamp), with its details."""
+    _attr_entity_registry_enabled_default = True
+    _attr_translation_key = "next_scheduled_event"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_icon = "mdi:calendar-arrow-right"
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry, "next_scheduled_event")
+        self._attr_unique_id = f"{entry.entry_id}_next_scheduled_event"
+
+    @property
+    def native_value(self):
+        occurrence = self.coordinator.scheduler.next_event
+        return occurrence.at if occurrence else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        coordinator = self.coordinator
+        occurrence = coordinator.scheduler.next_event
+        attrs: dict[str, Any] = {
+            "scheduling_active": coordinator.scheduling_active,
+            "schedule_error": coordinator.schedule_error,
+        }
+        if occurrence is not None:
+            event = occurrence.event
+            target = event.target
+            attrs.update({
+                "preset": event_preset(target),
+                "target_temperature": resolve_target(target, coordinator.zone_cfg),
+                "minutes_until": occurrence.minutes_until,
+                "preheat": event.preheat,
+            })
+        return attrs
 
 
 class ThermoSmartConfidenceSensor(_Base):

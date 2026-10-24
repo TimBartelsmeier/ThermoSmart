@@ -183,7 +183,7 @@ STORAGE_VERSION = 1
 STORAGE_KEY = f"{DOMAIN}_learning_data"
 
 # Platforms
-PLATFORMS = ["climate", "sensor", "switch", "select"]
+PLATFORMS = ["climate", "sensor", "switch", "select", "datetime"]
 
 # Icons
 ICON_ZONE = "mdi:home-thermometer"
