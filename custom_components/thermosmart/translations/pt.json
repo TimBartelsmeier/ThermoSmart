@@ -33,13 +33,17 @@
           "zone_control_mode": "Modo de controlo da zona",
           "control_interval": "Intervalo mínimo do ciclo de controlo",
           "temp_tolerance": "Tolerância de temperatura",
-          "ext_temp_threshold": "Limiar de escrita da temperatura externa"
+          "ext_temp_threshold": "Limiar de escrita da temperatura externa",
+          "trv_setpoint_debounce": "Atraso de alterações físicas do valor definido do TRV",
+          "trv_setpoint_settling": "Tempo de estabilização do valor definido do TRV"
         },
         "data_description": {
           "zone_control_mode": "**Apenas setpoint:** o ThermoSmart envia a temperatura alvo simples e o TRV regula a sua válvula por si próprio.\n\n**Modulação de setpoint TPI:** o ThermoSmart calcula a necessidade de aquecimento e aumenta ou diminui o setpoint enviado ao TRV para abrir ou fechar a válvula.\n\n**Controlo direto da válvula:** o ThermoSmart escreve a abertura calculada da válvula (0–100 %) na entidade de posição da válvula do TRV e envia a temperatura alvo simples como setpoint.",
           "control_interval": "Tempo mínimo entre ciclos de controlo regulares. Cada ciclo recalcula a necessidade de aquecimento e escreve setpoints, posições das válvulas e definições de estado nos TRV. Eventos como a abertura de uma janela ou uma substituição manual podem acionar um ciclo extra mais cedo. Intervalos mais curtos provocam reações mais rápidas, mas também podem sobrecarregar dispositivos ou congestionar redes, por exemplo Zigbee. Na prática, 2-3 minutos combinados com limiares razoáveis para alterações de temperatura, que têm de ser ultrapassados para que novos valores sejam enviados ao TRV, devem ser adequados.",
           "ext_temp_threshold": "O valor do sensor de temperatura externo só é enviado ao TRV depois de ter mudado mais do que este limite desde a última atualização. Só tem efeito quando um sensor externo está configurado e para TRV com a entrada de temperatura externa ativada.",
-          "temp_tolerance": "Uma nova temperatura alvo só é enviada ao TRV se diferir da temperatura alvo atual do TRV em pelo menos este valor. Valores maiores reduzem o tráfego de rádio; valores menores fazem o TRV seguir o ThermoSmart mais de perto."
+          "temp_tolerance": "Uma nova temperatura alvo só é enviada ao TRV se diferir da temperatura alvo atual do TRV em pelo menos este valor. Valores maiores reduzem o tráfego de rádio; valores menores fazem o TRV seguir o ThermoSmart mais de perto.",
+          "trv_setpoint_debounce": "Aguarde este período após a última atualização do valor definido de um TRV antes de o aplicar como temperatura-alvo da zona. Assim pode terminar o ajuste; só é usado o último valor comunicado.",
+          "trv_setpoint_settling": "Depois de o ThermoSmart escrever num TRV, ignore os relatórios do valor definido desse TRV durante este período para evitar interpretar ecos atrasados ou valores intermédios como alterações manuais."
         }
       },
       "device_settings": {
@@ -54,7 +58,8 @@
           "calibration_entity": "Entidade do desvio de calibração",
           "calibration_invert": "Inverter offset de calibração",
           "valve_maintenance": "Ativar exercício / manutenção da válvula",
-          "window_off": "Desligar quando uma janela está aberta"
+          "window_off": "Desligar quando uma janela está aberta",
+          "accept_setpoint_changes": "Aceitar alterações físicas do valor definido"
         },
         "data_description": {
           "feed_external_temp": "Envia a temperatura ambiente ao TRV. Requer a seleção da entidade de entrada de temperatura externa correta abaixo; sem ela, nada é enviado.",
@@ -63,7 +68,8 @@
           "calibration_entity": "Entidade numérica com o desvio de calibração local do TRV. Deixe vazio para desativar a calibração.",
           "calibration_invert": "Ative se o TRV aplicar o desvio com o sinal oposto.",
           "valve_entity": "Entidade numérica que controla a abertura da válvula deste TRV. Só é necessária se o controlo direto da válvula estiver ativado para este TRV; caso contrário é ignorada e pode ficar vazia. O ThermoSmart escreve 0–100 (%), ou 0–1 para entidades com \"level\" no nome.",
-          "window_off": "Desliga o dispositivo (modo HVAC desligado) quando uma janela está aberta. Se usar isto, certifique-se de que o TRV mantém a proteção contra congelamento ativa quando desligado (alguns modelos têm, outros não) para evitar o congelamento. Se desativar este interruptor, o TRV é mantido em modo de aquecimento, mas definido para a temperatura alvo de janela aberta definida numa das páginas seguintes."
+          "window_off": "Desliga o dispositivo (modo HVAC desligado) quando uma janela está aberta. Se usar isto, certifique-se de que o TRV mantém a proteção contra congelamento ativa quando desligado (alguns modelos têm, outros não) para evitar o congelamento. Se desativar este interruptor, o TRV é mantido em modo de aquecimento, mas definido para a temperatura alvo de janela aberta definida numa das páginas seguintes.",
+          "accept_setpoint_changes": "Quando ativado, o valor definido alterado neste TRV é adotado como temperatura-alvo da zona após o atraso configurado e aplicado a todos os TRV. As alterações também são aceites com uma janela aberta."
         }
       },
       "state_menu": {
@@ -217,13 +223,17 @@
           "zone_control_mode": "Modo de controlo da zona",
           "control_interval": "Intervalo mínimo do ciclo de controlo",
           "temp_tolerance": "Tolerância de temperatura",
-          "ext_temp_threshold": "Limiar de escrita da temperatura externa"
+          "ext_temp_threshold": "Limiar de escrita da temperatura externa",
+          "trv_setpoint_debounce": "Atraso de alterações físicas do valor definido do TRV",
+          "trv_setpoint_settling": "Tempo de estabilização do valor definido do TRV"
         },
         "data_description": {
           "zone_control_mode": "**Apenas setpoint:** o ThermoSmart envia a temperatura alvo simples e o TRV regula a sua válvula por si próprio.\n\n**Modulação de setpoint TPI:** o ThermoSmart calcula a necessidade de aquecimento e aumenta ou diminui o setpoint enviado ao TRV para abrir ou fechar a válvula.\n\n**Controlo direto da válvula:** o ThermoSmart escreve a abertura calculada da válvula (0–100 %) na entidade de posição da válvula do TRV e envia a temperatura alvo simples como setpoint.",
           "control_interval": "Tempo mínimo entre ciclos de controlo regulares. Cada ciclo recalcula a necessidade de aquecimento e escreve setpoints, posições das válvulas e definições de estado nos TRV. Eventos como a abertura de uma janela ou uma substituição manual podem acionar um ciclo extra mais cedo. Intervalos mais curtos provocam reações mais rápidas, mas também podem sobrecarregar dispositivos ou congestionar redes, por exemplo Zigbee. Na prática, 2-3 minutos combinados com limiares razoáveis para alterações de temperatura, que têm de ser ultrapassados para que novos valores sejam enviados ao TRV, devem ser adequados.",
           "ext_temp_threshold": "O valor do sensor de temperatura externo só é enviado ao TRV depois de ter mudado mais do que este limite desde a última atualização. Só tem efeito quando um sensor externo está configurado e para TRV com a entrada de temperatura externa ativada.",
-          "temp_tolerance": "Uma nova temperatura alvo só é enviada ao TRV se diferir da temperatura alvo atual do TRV em pelo menos este valor. Valores maiores reduzem o tráfego de rádio; valores menores fazem o TRV seguir o ThermoSmart mais de perto."
+          "temp_tolerance": "Uma nova temperatura alvo só é enviada ao TRV se diferir da temperatura alvo atual do TRV em pelo menos este valor. Valores maiores reduzem o tráfego de rádio; valores menores fazem o TRV seguir o ThermoSmart mais de perto.",
+          "trv_setpoint_debounce": "Aguarde este período após a última atualização do valor definido de um TRV antes de o aplicar como temperatura-alvo da zona. Assim pode terminar o ajuste; só é usado o último valor comunicado.",
+          "trv_setpoint_settling": "Depois de o ThermoSmart escrever num TRV, ignore os relatórios do valor definido desse TRV durante este período para evitar interpretar ecos atrasados ou valores intermédios como alterações manuais."
         }
       },
       "device_settings": {
@@ -238,7 +248,8 @@
           "calibration_entity": "Entidade do desvio de calibração",
           "calibration_invert": "Inverter offset de calibração",
           "valve_maintenance": "Ativar exercício / manutenção da válvula",
-          "window_off": "Desligar quando uma janela está aberta"
+          "window_off": "Desligar quando uma janela está aberta",
+          "accept_setpoint_changes": "Aceitar alterações físicas do valor definido"
         },
         "data_description": {
           "feed_external_temp": "Envia a temperatura ambiente ao TRV. Requer a seleção da entidade de entrada de temperatura externa correta abaixo; sem ela, nada é enviado.",
@@ -247,7 +258,8 @@
           "calibration_entity": "Entidade numérica com o desvio de calibração local do TRV. Deixe vazio para desativar a calibração.",
           "calibration_invert": "Ative se o TRV aplicar o desvio com o sinal oposto.",
           "valve_entity": "Entidade numérica que controla a abertura da válvula deste TRV. Só é necessária se o controlo direto da válvula estiver ativado para este TRV; caso contrário é ignorada e pode ficar vazia. O ThermoSmart escreve 0–100 (%), ou 0–1 para entidades com \"level\" no nome.",
-          "window_off": "Desliga o dispositivo (modo HVAC desligado) quando uma janela está aberta. Se usar isto, certifique-se de que o TRV mantém a proteção contra congelamento ativa quando desligado (alguns modelos têm, outros não) para evitar o congelamento. Se desativar este interruptor, o TRV é mantido em modo de aquecimento, mas definido para a temperatura alvo de janela aberta definida numa das páginas seguintes."
+          "window_off": "Desliga o dispositivo (modo HVAC desligado) quando uma janela está aberta. Se usar isto, certifique-se de que o TRV mantém a proteção contra congelamento ativa quando desligado (alguns modelos têm, outros não) para evitar o congelamento. Se desativar este interruptor, o TRV é mantido em modo de aquecimento, mas definido para a temperatura alvo de janela aberta definida numa das páginas seguintes.",
+          "accept_setpoint_changes": "Quando ativado, o valor definido alterado neste TRV é adotado como temperatura-alvo da zona após o atraso configurado e aplicado a todos os TRV. As alterações também são aceites com uma janela aberta."
         }
       },
       "state_menu": {

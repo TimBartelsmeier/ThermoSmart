@@ -107,9 +107,7 @@ class MaintenanceMixin:
         async def _run_maintenance() -> None:
             try:
                 tasks = [
-                    self.hass.services.async_call(
-                        "climate", "set_temperature", payload, blocking=True,
-                    )
+                    _maintenance_set_temperature(payload, cfg)
                     for payload in _dispatch_payloads(VALVE_MAINTENANCE_BOOST_TEMP)
                 ]
                 if tasks:
@@ -118,9 +116,7 @@ class MaintenanceMixin:
                 await asyncio.sleep(duration)
 
                 tasks = [
-                    self.hass.services.async_call(
-                        "climate", "set_temperature", payload, blocking=True,
-                    )
+                    _maintenance_set_temperature(payload, cfg)
                     for payload in _dispatch_payloads(target_after)
                 ]
                 if tasks:
@@ -132,6 +128,13 @@ class MaintenanceMixin:
                 )
             finally:
                 self._maintenance_running = False
+
+        async def _maintenance_set_temperature(payload: dict, config: dict) -> None:
+            entity_id = payload["entity_id"]
+            self._mark_trv_write(entity_id, config)
+            await self.hass.services.async_call(
+                "climate", "set_temperature", payload, blocking=True,
+            )
 
         self._maintenance_task = self.hass.async_create_task(_run_maintenance())
 

@@ -33,13 +33,17 @@
           "zone_control_mode": "Vyöhykkeen ohjaustila",
           "control_interval": "Ohjausjakson vähimmäisväli",
           "temp_tolerance": "Lämpötilatoleranssi",
-          "ext_temp_threshold": "Ulkoisen lämpötilan kirjoitusraja"
+          "ext_temp_threshold": "Ulkoisen lämpötilan kirjoitusraja",
+          "trv_setpoint_debounce": "Fyysisen TRV-asetusarvon muutoksen viive",
+          "trv_setpoint_settling": "TRV-asetusarvon tasaantumisaika"
         },
         "data_description": {
           "zone_control_mode": "**Vain asetusarvo:** ThermoSmart lähettää pelkän tavoitelämpötilan ja TRV säätää venttiiliään itse.\n\n**TPI-asetusarvon modulointi:** ThermoSmart laskee lämmöntarpeen ja nostaa tai laskee TRV:lle lähetettävää asetusarvoa venttiilin avaamiseksi tai sulkemiseksi.\n\n**Suora venttiiliohjaus:** ThermoSmart kirjoittaa lasketun venttiilin aukeaman (0–100 %) TRV:n venttiilin asentoentiteettiin ja lähettää pelkän tavoitelämpötilan asetusarvona.",
           "control_interval": "Vähimmäisaika säännöllisten ohjausjaksojen välillä. Jokainen jakso laskee lämmöntarpeen uudelleen ja kirjoittaa asetusarvot, venttiilin asennot ja tila-asetukset TRV:ille. Tapahtumat, kuten ikkunan avaaminen tai manuaalinen ohitus, voivat käynnistää ylimääräisen jakson aiemmin. Lyhyemmät välit tarkoittavat nopeampia reaktioita, mutta voivat myös ylikuormittaa laitteita tai ruuhkauttaa verkkoja, esim. Zigbeetä. Käytännössä 2–3 minuuttia yhdessä kohtuullisten lämpötilamuutosten rajojen kanssa, jotka on ylitettävä, jotta uudet arvot lähetetään TRV:lle, pitäisi riittää.",
           "ext_temp_threshold": "Ulkoisen lämpötila-anturin arvo lähetetään TRV:lle vasta, kun se on muuttunut yli tämän kynnyksen edellisestä päivityksestä. Vaikuttaa vain, kun ulkoinen anturi on määritetty, ja TRV:illä, joilla ulkoinen lämpötilasyöte on käytössä.",
-          "temp_tolerance": "Uusi tavoitelämpötila lähetetään TRV:lle vain, jos se poikkeaa TRV:n nykyisestä tavoitelämpötilasta vähintään tämän arvon verran. Suuremmat arvot vähentävät radioliikennettä, pienemmät saavat TRV:n seuraamaan ThermoSmartia tarkemmin."
+          "temp_tolerance": "Uusi tavoitelämpötila lähetetään TRV:lle vain, jos se poikkeaa TRV:n nykyisestä tavoitelämpötilasta vähintään tämän arvon verran. Suuremmat arvot vähentävät radioliikennettä, pienemmät saavat TRV:n seuraamaan ThermoSmartia tarkemmin.",
+          "trv_setpoint_debounce": "Odota tämä aika TRV:n viimeisimmän asetusarvopäivityksen jälkeen ennen kuin arvo otetaan käyttöön alueen tavoitelämpötilana. Näin ehdit säätää valmiiksi; vain viimeisin ilmoitettu arvo otetaan käyttöön.",
+          "trv_setpoint_settling": "Kun ThermoSmart on kirjoittanut TRV:lle, ohita sen asetusarvoilmoitukset tämän ajan, jotta viivästyneitä kaikuja tai väliaikaisia arvoja ei tulkita manuaalisiksi muutoksiksi."
         }
       },
       "device_settings": {
@@ -54,7 +58,8 @@
           "calibration_entity": "Kalibrointipoikkeaman entiteetti",
           "calibration_invert": "Käännä kalibrointipoikkeama",
           "valve_maintenance": "Ota venttiilin liikutus / huolto käyttöön",
-          "window_off": "Sammuta kun ikkuna on auki"
+          "window_off": "Sammuta kun ikkuna on auki",
+          "accept_setpoint_changes": "Hyväksy fyysiset asetusarvon muutokset"
         },
         "data_description": {
           "feed_external_temp": "Lähettää huoneen lämpötilan TRV:lle. Edellyttää oikean ulkoisen lämpötilan syöttöentiteetin valitsemista alla; ilman sitä mitään ei lähetetä.",
@@ -63,7 +68,8 @@
           "calibration_entity": "Numeroentiteetti, joka sisältää TRV:n paikallisen kalibrointipoikkeaman. Jätä tyhjäksi poistaaksesi kalibroinnin käytöstä.",
           "calibration_invert": "Ota käyttöön, jos TRV soveltaa poikkeamaa vastakkaisella etumerkillä.",
           "valve_entity": "Numeroentiteetti, joka ohjaa tämän TRV:n venttiilin aukeamista. Tarvitaan vain, jos suora venttiiliohjaus on käytössä tälle TRV:lle; muuten se ohitetaan ja sen voi jättää tyhjäksi. ThermoSmart kirjoittaa 0–100 (%) tai 0–1 entiteeteille, joiden nimessä on \"level\".",
-          "window_off": "Sammuttaa laitteen (HVAC-tila pois), kun ikkuna on auki. Jos käytät tätä, varmista, että TRV:n routasuojaus on edelleen käytössä sammutettuna (joissakin malleissa on, toisissa ei), jotta se ei jäädy. Jos poistat tämän kytkimen käytöstä, TRV pysyy lämmitystilassa mutta asetetaan sen sijaan jollakin seuraavista sivuista määritettyyn ikkuna auki -tavoitelämpötilaan."
+          "window_off": "Sammuttaa laitteen (HVAC-tila pois), kun ikkuna on auki. Jos käytät tätä, varmista, että TRV:n routasuojaus on edelleen käytössä sammutettuna (joissakin malleissa on, toisissa ei), jotta se ei jäädy. Jos poistat tämän kytkimen käytöstä, TRV pysyy lämmitystilassa mutta asetetaan sen sijaan jollakin seuraavista sivuista määritettyyn ikkuna auki -tavoitelämpötilaan.",
+          "accept_setpoint_changes": "Kun käytössä, tämän TRV:n muutettu asetusarvo otetaan alueen tavoitelämpötilaksi määritetyn viiveen jälkeen ja lähetetään kaikille TRV:ille. Muutokset hyväksytään myös ikkunan ollessa auki."
         }
       },
       "state_menu": {
@@ -217,13 +223,17 @@
           "zone_control_mode": "Vyöhykkeen ohjaustila",
           "control_interval": "Ohjausjakson vähimmäisväli",
           "temp_tolerance": "Lämpötilatoleranssi",
-          "ext_temp_threshold": "Ulkoisen lämpötilan kirjoitusraja"
+          "ext_temp_threshold": "Ulkoisen lämpötilan kirjoitusraja",
+          "trv_setpoint_debounce": "Fyysisen TRV-asetusarvon muutoksen viive",
+          "trv_setpoint_settling": "TRV-asetusarvon tasaantumisaika"
         },
         "data_description": {
           "zone_control_mode": "**Vain asetusarvo:** ThermoSmart lähettää pelkän tavoitelämpötilan ja TRV säätää venttiiliään itse.\n\n**TPI-asetusarvon modulointi:** ThermoSmart laskee lämmöntarpeen ja nostaa tai laskee TRV:lle lähetettävää asetusarvoa venttiilin avaamiseksi tai sulkemiseksi.\n\n**Suora venttiiliohjaus:** ThermoSmart kirjoittaa lasketun venttiilin aukeaman (0–100 %) TRV:n venttiilin asentoentiteettiin ja lähettää pelkän tavoitelämpötilan asetusarvona.",
           "control_interval": "Vähimmäisaika säännöllisten ohjausjaksojen välillä. Jokainen jakso laskee lämmöntarpeen uudelleen ja kirjoittaa asetusarvot, venttiilin asennot ja tila-asetukset TRV:ille. Tapahtumat, kuten ikkunan avaaminen tai manuaalinen ohitus, voivat käynnistää ylimääräisen jakson aiemmin. Lyhyemmät välit tarkoittavat nopeampia reaktioita, mutta voivat myös ylikuormittaa laitteita tai ruuhkauttaa verkkoja, esim. Zigbeetä. Käytännössä 2–3 minuuttia yhdessä kohtuullisten lämpötilamuutosten rajojen kanssa, jotka on ylitettävä, jotta uudet arvot lähetetään TRV:lle, pitäisi riittää.",
           "ext_temp_threshold": "Ulkoisen lämpötila-anturin arvo lähetetään TRV:lle vasta, kun se on muuttunut yli tämän kynnyksen edellisestä päivityksestä. Vaikuttaa vain, kun ulkoinen anturi on määritetty, ja TRV:illä, joilla ulkoinen lämpötilasyöte on käytössä.",
-          "temp_tolerance": "Uusi tavoitelämpötila lähetetään TRV:lle vain, jos se poikkeaa TRV:n nykyisestä tavoitelämpötilasta vähintään tämän arvon verran. Suuremmat arvot vähentävät radioliikennettä, pienemmät saavat TRV:n seuraamaan ThermoSmartia tarkemmin."
+          "temp_tolerance": "Uusi tavoitelämpötila lähetetään TRV:lle vain, jos se poikkeaa TRV:n nykyisestä tavoitelämpötilasta vähintään tämän arvon verran. Suuremmat arvot vähentävät radioliikennettä, pienemmät saavat TRV:n seuraamaan ThermoSmartia tarkemmin.",
+          "trv_setpoint_debounce": "Odota tämä aika TRV:n viimeisimmän asetusarvopäivityksen jälkeen ennen kuin arvo otetaan käyttöön alueen tavoitelämpötilana. Näin ehdit säätää valmiiksi; vain viimeisin ilmoitettu arvo otetaan käyttöön.",
+          "trv_setpoint_settling": "Kun ThermoSmart on kirjoittanut TRV:lle, ohita sen asetusarvoilmoitukset tämän ajan, jotta viivästyneitä kaikuja tai väliaikaisia arvoja ei tulkita manuaalisiksi muutoksiksi."
         }
       },
       "device_settings": {
@@ -238,7 +248,8 @@
           "calibration_entity": "Kalibrointipoikkeaman entiteetti",
           "calibration_invert": "Käännä kalibrointipoikkeama",
           "valve_maintenance": "Ota venttiilin liikutus / huolto käyttöön",
-          "window_off": "Sammuta kun ikkuna on auki"
+          "window_off": "Sammuta kun ikkuna on auki",
+          "accept_setpoint_changes": "Hyväksy fyysiset asetusarvon muutokset"
         },
         "data_description": {
           "feed_external_temp": "Lähettää huoneen lämpötilan TRV:lle. Edellyttää oikean ulkoisen lämpötilan syöttöentiteetin valitsemista alla; ilman sitä mitään ei lähetetä.",
@@ -247,7 +258,8 @@
           "calibration_entity": "Numeroentiteetti, joka sisältää TRV:n paikallisen kalibrointipoikkeaman. Jätä tyhjäksi poistaaksesi kalibroinnin käytöstä.",
           "calibration_invert": "Ota käyttöön, jos TRV soveltaa poikkeamaa vastakkaisella etumerkillä.",
           "valve_entity": "Numeroentiteetti, joka ohjaa tämän TRV:n venttiilin aukeamista. Tarvitaan vain, jos suora venttiiliohjaus on käytössä tälle TRV:lle; muuten se ohitetaan ja sen voi jättää tyhjäksi. ThermoSmart kirjoittaa 0–100 (%) tai 0–1 entiteeteille, joiden nimessä on \"level\".",
-          "window_off": "Sammuttaa laitteen (HVAC-tila pois), kun ikkuna on auki. Jos käytät tätä, varmista, että TRV:n routasuojaus on edelleen käytössä sammutettuna (joissakin malleissa on, toisissa ei), jotta se ei jäädy. Jos poistat tämän kytkimen käytöstä, TRV pysyy lämmitystilassa mutta asetetaan sen sijaan jollakin seuraavista sivuista määritettyyn ikkuna auki -tavoitelämpötilaan."
+          "window_off": "Sammuttaa laitteen (HVAC-tila pois), kun ikkuna on auki. Jos käytät tätä, varmista, että TRV:n routasuojaus on edelleen käytössä sammutettuna (joissakin malleissa on, toisissa ei), jotta se ei jäädy. Jos poistat tämän kytkimen käytöstä, TRV pysyy lämmitystilassa mutta asetetaan sen sijaan jollakin seuraavista sivuista määritettyyn ikkuna auki -tavoitelämpötilaan.",
+          "accept_setpoint_changes": "Kun käytössä, tämän TRV:n muutettu asetusarvo otetaan alueen tavoitelämpötilaksi määritetyn viiveen jälkeen ja lähetetään kaikille TRV:ille. Muutokset hyväksytään myös ikkunan ollessa auki."
         }
       },
       "state_menu": {

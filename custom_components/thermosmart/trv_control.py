@@ -281,6 +281,7 @@ class TRVControlMixin:
                 "ThermoSmart Watchdog '%s': %s ist im Modus '%s' → erzwinge 'heat'",
                 self.zone_name, entity_id, state.state,
             )
+            self._mark_trv_write(entity_id, cfg)
             await self.hass.services.async_call(
                 "climate", "set_hvac_mode",
                 {"entity_id": entity_id, "hvac_mode": "heat"},
@@ -574,6 +575,7 @@ class TRVControlMixin:
             if "heat" not in (state.attributes.get("hvac_modes") or []):
                 continue
             try:
+                self._mark_trv_write(entity_id, cfg)
                 await self.hass.services.async_call(
                     "climate", "set_hvac_mode",
                     {"entity_id": entity_id, "hvac_mode": "heat"},
@@ -610,6 +612,7 @@ class TRVControlMixin:
                     if self._window_off_wanted(entity_id, state, cfg):
                         self._window_off_entities.add(entity_id)
                         if state.state != "off":
+                            self._mark_trv_write(entity_id, cfg)
                             _off_pending.append((entity_id, self.hass.services.async_call(
                                 "climate", "set_hvac_mode",
                                 {"entity_id": entity_id, "hvac_mode": "off"},
@@ -651,10 +654,13 @@ class TRVControlMixin:
                     if _wp is not None and _wp.minimum_setpoint is not None and _wp.minimum_setpoint > frost_temp:
                         frost_temp = _wp.minimum_setpoint
                     effective_frost = frost_temp  # track clamped value for sensor display
+                    if self._manual_setpoint_is_pending(entity_id):
+                        continue
                     current_setpoint_c = to_internal_temperature_c(
                         self.hass, state.attributes.get("temperature"))
                     if current_setpoint_c is not None and abs(current_setpoint_c - frost_temp) < 0.3:
                         continue
+                    self._mark_trv_write(entity_id, cfg)
                     _frost_pending.append((entity_id, frost_temp, self.hass.services.async_call(
                         "climate", "set_temperature",
                         {"entity_id": entity_id,
@@ -735,6 +741,8 @@ class TRVControlMixin:
                 requested_setpoint = trv_setpoint
             effective_setpoint = self.resolve_device_effective_setpoint(
                 entity_id, state, requested_setpoint, _profile)
+            if self._manual_setpoint_is_pending(entity_id):
+                continue
             current_setpoint = to_internal_temperature_c(self.hass, state.attributes.get("temperature"))
             if current_setpoint is not None:
                 if abs(current_setpoint - effective_setpoint) < tolerance:
@@ -766,6 +774,7 @@ class TRVControlMixin:
                         await asyncio.sleep(_profile.setpoint_delay_seconds)
                 _hvac_first_exc = None
                 try:
+                    self._mark_trv_write(entity_id, cfg)
                     await self.hass.services.async_call(
                         "climate", "set_temperature",
                         {"entity_id": entity_id,
@@ -783,6 +792,7 @@ class TRVControlMixin:
                              effective_c=effective_setpoint if _hvac_first_exc is None else None,
                              entity_id=entity_id)
             else:
+                self._mark_trv_write(entity_id, cfg)
                 _sp_pending.append((entity_id, effective_setpoint, self.hass.services.async_call(
                     "climate", "set_temperature",
                     {"entity_id": entity_id,

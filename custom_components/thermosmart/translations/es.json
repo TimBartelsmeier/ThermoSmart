@@ -33,13 +33,17 @@
           "zone_control_mode": "Modo de control de la zona",
           "control_interval": "Intervalo mínimo del ciclo de control",
           "temp_tolerance": "Tolerancia de temperatura",
-          "ext_temp_threshold": "Umbral de escritura de temperatura externa"
+          "ext_temp_threshold": "Umbral de escritura de temperatura externa",
+          "trv_setpoint_debounce": "Retardo de cambios físicos de consigna del TRV",
+          "trv_setpoint_settling": "Tiempo de estabilización de la consigna del TRV"
         },
         "data_description": {
           "zone_control_mode": "**Solo consigna:** ThermoSmart envía la temperatura objetivo simple y el TRV regula su válvula por sí mismo.\n\n**Modulación de consigna TPI:** ThermoSmart calcula la demanda de calefacción y sube o baja la consigna enviada al TRV para abrir o cerrar su válvula.\n\n**Control directo de la válvula:** ThermoSmart escribe la apertura de válvula calculada (0–100 %) en la entidad de posición de válvula del TRV y envía la temperatura objetivo simple como consigna.",
           "control_interval": "Tiempo mínimo entre ciclos de control regulares. Cada ciclo recalcula la demanda de calefacción y escribe consignas, posiciones de válvula y ajustes de estado en los TRV. Eventos como abrir una ventana o una anulación manual pueden activar un ciclo adicional antes. Intervalos más cortos provocan reacciones más rápidas, pero también pueden sobrecargar los dispositivos o congestionar las redes, p. ej. Zigbee. En la práctica, 2-3 minutos combinados con umbrales razonables para los cambios de temperatura, que deben superarse para que se envíen nuevos valores al TRV, deberían bastar.",
           "ext_temp_threshold": "El valor del sensor de temperatura externo se envía al TRV solo cuando ha cambiado más que este umbral respecto a la última actualización. Solo tiene efecto si hay un sensor externo configurado y para los TRV con la entrada de temperatura externa activada.",
-          "temp_tolerance": "Solo se envía una nueva consigna al TRV si difiere de la consigna actual del TRV en al menos este valor. Valores mayores reducen el tráfico de radio; valores menores hacen que el TRV siga más de cerca a ThermoSmart."
+          "temp_tolerance": "Solo se envía una nueva consigna al TRV si difiere de la consigna actual del TRV en al menos este valor. Valores mayores reducen el tráfico de radio; valores menores hacen que el TRV siga más de cerca a ThermoSmart.",
+          "trv_setpoint_debounce": "Espera este tiempo tras la última actualización de consigna de un TRV antes de aplicarla como objetivo de la zona. Así puedes terminar de ajustar el mando; solo se utiliza el último valor recibido.",
+          "trv_setpoint_settling": "Después de que ThermoSmart escriba en un TRV, ignora durante este tiempo sus informes de consigna para no interpretar ecos retrasados o valores intermedios como cambios manuales."
         }
       },
       "device_settings": {
@@ -54,7 +58,8 @@
           "calibration_entity": "Entidad de desfase de calibración",
           "calibration_invert": "Invertir el desfase de calibración",
           "valve_maintenance": "Activar ejercicio / mantenimiento de la válvula",
-          "window_off": "Apagar cuando hay una ventana abierta"
+          "window_off": "Apagar cuando hay una ventana abierta",
+          "accept_setpoint_changes": "Aceptar cambios físicos de consigna"
         },
         "data_description": {
           "feed_external_temp": "Envía la temperatura de la habitación al TRV. Requiere seleccionar abajo la entidad de entrada de temperatura externa correcta; sin ella no se envía nada.",
@@ -63,7 +68,8 @@
           "calibration_entity": "Entidad numérica que contiene el desfase de calibración local del TRV. Déjela vacía para desactivar la calibración.",
           "calibration_invert": "Actívelo si el TRV aplica el desfase con el signo opuesto.",
           "valve_entity": "Entidad numérica que controla la apertura de la válvula de este TRV. Solo es necesaria si el control directo de la válvula está activado para este TRV; en caso contrario se ignora y puede dejarse vacía. ThermoSmart escribe 0–100 (%), o 0–1 en entidades con \"level\" en el nombre.",
-          "window_off": "Apaga el dispositivo (modo HVAC apagado) cuando hay una ventana abierta. Si lo usa, asegúrese de que su TRV mantenga activa la protección antiheladas al estar apagado (algunos modelos sí, otros no) para evitar que se congele. Si desactiva este interruptor, el TRV permanecerá en modo calefacción pero se ajustará a la temperatura objetivo de ventana abierta definida en una de las páginas siguientes."
+          "window_off": "Apaga el dispositivo (modo HVAC apagado) cuando hay una ventana abierta. Si lo usa, asegúrese de que su TRV mantenga activa la protección antiheladas al estar apagado (algunos modelos sí, otros no) para evitar que se congele. Si desactiva este interruptor, el TRV permanecerá en modo calefacción pero se ajustará a la temperatura objetivo de ventana abierta definida en una de las páginas siguientes.",
+          "accept_setpoint_changes": "Al activarlo, la consigna modificada en este TRV se adopta como objetivo de la zona tras el retardo configurado y se aplica a todos los TRV. También se aceptan cambios con una ventana abierta."
         }
       },
       "state_menu": {
@@ -217,13 +223,17 @@
           "zone_control_mode": "Modo de control de la zona",
           "control_interval": "Intervalo mínimo del ciclo de control",
           "temp_tolerance": "Tolerancia de temperatura",
-          "ext_temp_threshold": "Umbral de escritura de temperatura externa"
+          "ext_temp_threshold": "Umbral de escritura de temperatura externa",
+          "trv_setpoint_debounce": "Retardo de cambios físicos de consigna del TRV",
+          "trv_setpoint_settling": "Tiempo de estabilización de la consigna del TRV"
         },
         "data_description": {
           "zone_control_mode": "**Solo consigna:** ThermoSmart envía la temperatura objetivo simple y el TRV regula su válvula por sí mismo.\n\n**Modulación de consigna TPI:** ThermoSmart calcula la demanda de calefacción y sube o baja la consigna enviada al TRV para abrir o cerrar su válvula.\n\n**Control directo de la válvula:** ThermoSmart escribe la apertura de válvula calculada (0–100 %) en la entidad de posición de válvula del TRV y envía la temperatura objetivo simple como consigna.",
           "control_interval": "Tiempo mínimo entre ciclos de control regulares. Cada ciclo recalcula la demanda de calefacción y escribe consignas, posiciones de válvula y ajustes de estado en los TRV. Eventos como abrir una ventana o una anulación manual pueden activar un ciclo adicional antes. Intervalos más cortos provocan reacciones más rápidas, pero también pueden sobrecargar los dispositivos o congestionar las redes, p. ej. Zigbee. En la práctica, 2-3 minutos combinados con umbrales razonables para los cambios de temperatura, que deben superarse para que se envíen nuevos valores al TRV, deberían bastar.",
           "ext_temp_threshold": "El valor del sensor de temperatura externo se envía al TRV solo cuando ha cambiado más que este umbral respecto a la última actualización. Solo tiene efecto si hay un sensor externo configurado y para los TRV con la entrada de temperatura externa activada.",
-          "temp_tolerance": "Solo se envía una nueva consigna al TRV si difiere de la consigna actual del TRV en al menos este valor. Valores mayores reducen el tráfico de radio; valores menores hacen que el TRV siga más de cerca a ThermoSmart."
+          "temp_tolerance": "Solo se envía una nueva consigna al TRV si difiere de la consigna actual del TRV en al menos este valor. Valores mayores reducen el tráfico de radio; valores menores hacen que el TRV siga más de cerca a ThermoSmart.",
+          "trv_setpoint_debounce": "Espera este tiempo tras la última actualización de consigna de un TRV antes de aplicarla como objetivo de la zona. Así puedes terminar de ajustar el mando; solo se utiliza el último valor recibido.",
+          "trv_setpoint_settling": "Después de que ThermoSmart escriba en un TRV, ignora durante este tiempo sus informes de consigna para no interpretar ecos retrasados o valores intermedios como cambios manuales."
         }
       },
       "device_settings": {
@@ -238,7 +248,8 @@
           "calibration_entity": "Entidad de desfase de calibración",
           "calibration_invert": "Invertir el desfase de calibración",
           "valve_maintenance": "Activar ejercicio / mantenimiento de la válvula",
-          "window_off": "Apagar cuando hay una ventana abierta"
+          "window_off": "Apagar cuando hay una ventana abierta",
+          "accept_setpoint_changes": "Aceptar cambios físicos de consigna"
         },
         "data_description": {
           "feed_external_temp": "Envía la temperatura de la habitación al TRV. Requiere seleccionar abajo la entidad de entrada de temperatura externa correcta; sin ella no se envía nada.",
@@ -247,7 +258,8 @@
           "calibration_entity": "Entidad numérica que contiene el desfase de calibración local del TRV. Déjela vacía para desactivar la calibración.",
           "calibration_invert": "Actívelo si el TRV aplica el desfase con el signo opuesto.",
           "valve_entity": "Entidad numérica que controla la apertura de la válvula de este TRV. Solo es necesaria si el control directo de la válvula está activado para este TRV; en caso contrario se ignora y puede dejarse vacía. ThermoSmart escribe 0–100 (%), o 0–1 en entidades con \"level\" en el nombre.",
-          "window_off": "Apaga el dispositivo (modo HVAC apagado) cuando hay una ventana abierta. Si lo usa, asegúrese de que su TRV mantenga activa la protección antiheladas al estar apagado (algunos modelos sí, otros no) para evitar que se congele. Si desactiva este interruptor, el TRV permanecerá en modo calefacción pero se ajustará a la temperatura objetivo de ventana abierta definida en una de las páginas siguientes."
+          "window_off": "Apaga el dispositivo (modo HVAC apagado) cuando hay una ventana abierta. Si lo usa, asegúrese de que su TRV mantenga activa la protección antiheladas al estar apagado (algunos modelos sí, otros no) para evitar que se congele. Si desactiva este interruptor, el TRV permanecerá en modo calefacción pero se ajustará a la temperatura objetivo de ventana abierta definida en una de las páginas siguientes.",
+          "accept_setpoint_changes": "Al activarlo, la consigna modificada en este TRV se adopta como objetivo de la zona tras el retardo configurado y se aplica a todos los TRV. También se aceptan cambios con una ventana abierta."
         }
       },
       "state_menu": {

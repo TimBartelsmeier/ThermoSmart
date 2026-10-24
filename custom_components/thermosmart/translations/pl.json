@@ -33,13 +33,17 @@
           "zone_control_mode": "Tryb sterowania strefą",
           "control_interval": "Minimalny odstęp cyklu sterowania",
           "temp_tolerance": "Tolerancja temperatury",
-          "ext_temp_threshold": "Próg zapisu temperatury zewnętrznej"
+          "ext_temp_threshold": "Próg zapisu temperatury zewnętrznej",
+          "trv_setpoint_debounce": "Opóźnienie fizycznej zmiany temperatury zadanej TRV",
+          "trv_setpoint_settling": "Czas stabilizacji temperatury zadanej TRV"
         },
         "data_description": {
           "zone_control_mode": "**Tylko wartość zadana:** ThermoSmart wysyła zwykłą temperaturę docelową, a TRV samodzielnie reguluje swój zawór.\n\n**Modulacja wartości zadanej TPI:** ThermoSmart oblicza zapotrzebowanie na ciepło i podnosi lub obniża wartość zadaną wysyłaną do TRV, aby otworzyć lub zamknąć zawór.\n\n**Bezpośrednie sterowanie zaworem:** ThermoSmart zapisuje obliczone otwarcie zaworu (0–100 %) w encji pozycji zaworu TRV i wysyła zwykłą temperaturę docelową jako wartość zadaną.",
           "control_interval": "Minimalny czas między regularnymi cyklami sterowania. Każdy cykl ponownie oblicza zapotrzebowanie na ciepło i zapisuje wartości zadane, pozycje zaworów oraz ustawienia stanu w TRV. Zdarzenia, takie jak otwarcie okna lub ręczne nadpisanie, mogą wcześniej wywołać dodatkowy cykl. Krótsze odstępy zapewniają szybsze reakcje, ale mogą też przeciążać urządzenia lub zapychać sieci, np. Zigbee. W praktyce 2–3 minuty w połączeniu z rozsądnymi progami zmian temperatury, które muszą zostać przekroczone, aby nowe wartości zostały wysłane do TRV, powinny wystarczyć.",
           "ext_temp_threshold": "Wartość z zewnętrznego czujnika temperatury jest wysyłana do TRV dopiero po zmianie o więcej niż ten próg względem ostatniej aktualizacji. Działa tylko po skonfigurowaniu zewnętrznego czujnika i dla TRV z włączonym zewnętrznym wejściem temperatury.",
-          "temp_tolerance": "Nowa temperatura docelowa jest wysyłana do TRV tylko wtedy, gdy różni się od bieżącej temperatury docelowej TRV o co najmniej tę wartość. Większe wartości zmniejszają ruch radiowy, mniejsze sprawiają, że TRV ściślej podąża za ThermoSmart."
+          "temp_tolerance": "Nowa temperatura docelowa jest wysyłana do TRV tylko wtedy, gdy różni się od bieżącej temperatury docelowej TRV o co najmniej tę wartość. Większe wartości zmniejszają ruch radiowy, mniejsze sprawiają, że TRV ściślej podąża za ThermoSmart.",
+          "trv_setpoint_debounce": "Odczekaj ten czas od ostatniej aktualizacji temperatury zadanej z TRV, zanim zastosujesz ją jako temperaturę docelową strefy. Dzięki temu możesz dokończyć regulację; używana jest tylko ostatnia zgłoszona wartość.",
+          "trv_setpoint_settling": "Po zapisaniu wartości przez ThermoSmart ignoruj przez ten czas raporty temperatury zadanej z TRV, aby opóźnione potwierdzenia lub wartości pośrednie nie były uznawane za zmiany ręczne."
         }
       },
       "device_settings": {
@@ -54,7 +58,8 @@
           "calibration_entity": "Encja offsetu kalibracji",
           "calibration_invert": "Odwróć offset kalibracji",
           "valve_maintenance": "Włącz ćwiczenie / konserwację zaworu",
-          "window_off": "Wyłącz przy otwartym oknie"
+          "window_off": "Wyłącz przy otwartym oknie",
+          "accept_setpoint_changes": "Akceptuj fizyczne zmiany temperatury zadanej"
         },
         "data_description": {
           "feed_external_temp": "Wysyła temperaturę pomieszczenia do TRV. Wymaga wybrania poniżej właściwej encji wejściowej temperatury zewnętrznej; bez niej nic nie jest wysyłane.",
@@ -63,7 +68,8 @@
           "calibration_entity": "Encja numeryczna zawierająca lokalny offset kalibracji TRV. Pozostaw puste, aby wyłączyć kalibrację.",
           "calibration_invert": "Włącz, jeśli TRV stosuje offset z przeciwnym znakiem.",
           "valve_entity": "Encja numeryczna sterująca otwarciem zaworu tego TRV. Potrzebna tylko przy włączonym bezpośrednim sterowaniu zaworem dla tego TRV; w przeciwnym razie jest ignorowana i można ją zostawić pustą. ThermoSmart zapisuje 0–100 (%) lub 0–1 dla encji z \"level\" w nazwie.",
-          "window_off": "Wyłącza urządzenie (tryb HVAC wyłączony), gdy okno jest otwarte. Jeśli z tego korzystasz, upewnij się, że TRV ma nadal aktywną ochronę przed zamarzaniem po wyłączeniu (niektóre modele mają, inne nie), aby nie zamarzł. Jeśli wyłączysz ten przełącznik, TRV pozostanie w trybie grzania, ale przy otwartym oknie zostanie ustawiony na temperaturę docelową otwartego okna zdefiniowaną na jednej z kolejnych stron."
+          "window_off": "Wyłącza urządzenie (tryb HVAC wyłączony), gdy okno jest otwarte. Jeśli z tego korzystasz, upewnij się, że TRV ma nadal aktywną ochronę przed zamarzaniem po wyłączeniu (niektóre modele mają, inne nie), aby nie zamarzł. Jeśli wyłączysz ten przełącznik, TRV pozostanie w trybie grzania, ale przy otwartym oknie zostanie ustawiony na temperaturę docelową otwartego okna zdefiniowaną na jednej z kolejnych stron.",
+          "accept_setpoint_changes": "Po włączeniu zmiana temperatury zadanej na tym TRV zostanie po skonfigurowanym opóźnieniu przyjęta jako cel strefy i zastosowana do wszystkich TRV. Zmiany są akceptowane także przy otwartym oknie."
         }
       },
       "state_menu": {
@@ -217,13 +223,17 @@
           "zone_control_mode": "Tryb sterowania strefą",
           "control_interval": "Minimalny odstęp cyklu sterowania",
           "temp_tolerance": "Tolerancja temperatury",
-          "ext_temp_threshold": "Próg zapisu temperatury zewnętrznej"
+          "ext_temp_threshold": "Próg zapisu temperatury zewnętrznej",
+          "trv_setpoint_debounce": "Opóźnienie fizycznej zmiany temperatury zadanej TRV",
+          "trv_setpoint_settling": "Czas stabilizacji temperatury zadanej TRV"
         },
         "data_description": {
           "zone_control_mode": "**Tylko wartość zadana:** ThermoSmart wysyła zwykłą temperaturę docelową, a TRV samodzielnie reguluje swój zawór.\n\n**Modulacja wartości zadanej TPI:** ThermoSmart oblicza zapotrzebowanie na ciepło i podnosi lub obniża wartość zadaną wysyłaną do TRV, aby otworzyć lub zamknąć zawór.\n\n**Bezpośrednie sterowanie zaworem:** ThermoSmart zapisuje obliczone otwarcie zaworu (0–100 %) w encji pozycji zaworu TRV i wysyła zwykłą temperaturę docelową jako wartość zadaną.",
           "control_interval": "Minimalny czas między regularnymi cyklami sterowania. Każdy cykl ponownie oblicza zapotrzebowanie na ciepło i zapisuje wartości zadane, pozycje zaworów oraz ustawienia stanu w TRV. Zdarzenia, takie jak otwarcie okna lub ręczne nadpisanie, mogą wcześniej wywołać dodatkowy cykl. Krótsze odstępy zapewniają szybsze reakcje, ale mogą też przeciążać urządzenia lub zapychać sieci, np. Zigbee. W praktyce 2–3 minuty w połączeniu z rozsądnymi progami zmian temperatury, które muszą zostać przekroczone, aby nowe wartości zostały wysłane do TRV, powinny wystarczyć.",
           "ext_temp_threshold": "Wartość z zewnętrznego czujnika temperatury jest wysyłana do TRV dopiero po zmianie o więcej niż ten próg względem ostatniej aktualizacji. Działa tylko po skonfigurowaniu zewnętrznego czujnika i dla TRV z włączonym zewnętrznym wejściem temperatury.",
-          "temp_tolerance": "Nowa temperatura docelowa jest wysyłana do TRV tylko wtedy, gdy różni się od bieżącej temperatury docelowej TRV o co najmniej tę wartość. Większe wartości zmniejszają ruch radiowy, mniejsze sprawiają, że TRV ściślej podąża za ThermoSmart."
+          "temp_tolerance": "Nowa temperatura docelowa jest wysyłana do TRV tylko wtedy, gdy różni się od bieżącej temperatury docelowej TRV o co najmniej tę wartość. Większe wartości zmniejszają ruch radiowy, mniejsze sprawiają, że TRV ściślej podąża za ThermoSmart.",
+          "trv_setpoint_debounce": "Odczekaj ten czas od ostatniej aktualizacji temperatury zadanej z TRV, zanim zastosujesz ją jako temperaturę docelową strefy. Dzięki temu możesz dokończyć regulację; używana jest tylko ostatnia zgłoszona wartość.",
+          "trv_setpoint_settling": "Po zapisaniu wartości przez ThermoSmart ignoruj przez ten czas raporty temperatury zadanej z TRV, aby opóźnione potwierdzenia lub wartości pośrednie nie były uznawane za zmiany ręczne."
         }
       },
       "device_settings": {
@@ -238,7 +248,8 @@
           "calibration_entity": "Encja offsetu kalibracji",
           "calibration_invert": "Odwróć offset kalibracji",
           "valve_maintenance": "Włącz ćwiczenie / konserwację zaworu",
-          "window_off": "Wyłącz przy otwartym oknie"
+          "window_off": "Wyłącz przy otwartym oknie",
+          "accept_setpoint_changes": "Akceptuj fizyczne zmiany temperatury zadanej"
         },
         "data_description": {
           "feed_external_temp": "Wysyła temperaturę pomieszczenia do TRV. Wymaga wybrania poniżej właściwej encji wejściowej temperatury zewnętrznej; bez niej nic nie jest wysyłane.",
@@ -247,7 +258,8 @@
           "calibration_entity": "Encja numeryczna zawierająca lokalny offset kalibracji TRV. Pozostaw puste, aby wyłączyć kalibrację.",
           "calibration_invert": "Włącz, jeśli TRV stosuje offset z przeciwnym znakiem.",
           "valve_entity": "Encja numeryczna sterująca otwarciem zaworu tego TRV. Potrzebna tylko przy włączonym bezpośrednim sterowaniu zaworem dla tego TRV; w przeciwnym razie jest ignorowana i można ją zostawić pustą. ThermoSmart zapisuje 0–100 (%) lub 0–1 dla encji z \"level\" w nazwie.",
-          "window_off": "Wyłącza urządzenie (tryb HVAC wyłączony), gdy okno jest otwarte. Jeśli z tego korzystasz, upewnij się, że TRV ma nadal aktywną ochronę przed zamarzaniem po wyłączeniu (niektóre modele mają, inne nie), aby nie zamarzł. Jeśli wyłączysz ten przełącznik, TRV pozostanie w trybie grzania, ale przy otwartym oknie zostanie ustawiony na temperaturę docelową otwartego okna zdefiniowaną na jednej z kolejnych stron."
+          "window_off": "Wyłącza urządzenie (tryb HVAC wyłączony), gdy okno jest otwarte. Jeśli z tego korzystasz, upewnij się, że TRV ma nadal aktywną ochronę przed zamarzaniem po wyłączeniu (niektóre modele mają, inne nie), aby nie zamarzł. Jeśli wyłączysz ten przełącznik, TRV pozostanie w trybie grzania, ale przy otwartym oknie zostanie ustawiony na temperaturę docelową otwartego okna zdefiniowaną na jednej z kolejnych stron.",
+          "accept_setpoint_changes": "Po włączeniu zmiana temperatury zadanej na tym TRV zostanie po skonfigurowanym opóźnieniu przyjęta jako cel strefy i zastosowana do wszystkich TRV. Zmiany są akceptowane także przy otwartym oknie."
         }
       },
       "state_menu": {

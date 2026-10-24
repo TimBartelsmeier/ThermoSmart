@@ -33,13 +33,17 @@
           "zone_control_mode": "区域控制模式",
           "control_interval": "最小控制周期间隔",
           "temp_tolerance": "温度容差",
-          "ext_temp_threshold": "外部温度写入阈值"
+          "ext_temp_threshold": "外部温度写入阈值",
+          "trv_setpoint_debounce": "TRV 手动设定温度变更防抖时间",
+          "trv_setpoint_settling": "TRV 设定温度稳定时间"
         },
         "data_description": {
           "zone_control_mode": "**仅设定点：** ThermoSmart 发送普通目标温度，TRV 自行调节其阀门。\n\n**TPI 设定点调制：** ThermoSmart 计算供暖需求，并升高或降低发送给 TRV 的设定点，以打开或关闭其阀门。\n\n**直接阀门控制：** ThermoSmart 将计算出的阀门开度（0–100 %）写入 TRV 的阀门位置实体，并将普通目标作为设定点发送。",
           "control_interval": "常规控制周期之间的最短时间。每个周期都会重新计算供暖需求，并将设定点、阀门位置和状态设置写入 TRV。打开窗户或手动覆盖等事件可能会提前触发额外的周期。较短的间隔反应更快，但也可能使设备过载或使网络（例如 Zigbee）拥塞。实际上，2–3 分钟再配合合理的温度变化阈值（必须超过该阈值才会向 TRV 发送新值）就足够了。",
           "ext_temp_threshold": "仅当外部温度传感器的值相对上次更新变化超过此阈值时才会发送给 TRV。仅在配置了外部传感器且 TRV 启用了外部温度输入时有效。",
-          "temp_tolerance": "仅当新的设定温度与 TRV 当前设定温度相差至少此值时才会发送给 TRV。值越大，无线通信越少；值越小，TRV 越紧密地跟随 ThermoSmart。"
+          "temp_tolerance": "仅当新的设定温度与 TRV 当前设定温度相差至少此值时才会发送给 TRV。值越大，无线通信越少；值越小，TRV 越紧密地跟随 ThermoSmart。",
+          "trv_setpoint_debounce": "TRV 最后一次更新设定温度后等待此时间，再将其应用为区域目标温度。这样您可以完成旋钮调节；系统只采用最后报告的数值。",
+          "trv_setpoint_settling": "ThermoSmart 写入 TRV 后，在此时间内忽略该 TRV 报告的设定温度，避免将延迟回报或中间值误认为手动更改。"
         }
       },
       "device_settings": {
@@ -54,7 +58,8 @@
           "calibration_entity": "校准偏移实体",
           "calibration_invert": "反转校准偏移",
           "valve_maintenance": "启用阀门活动 / 维护",
-          "window_off": "窗户打开时关闭"
+          "window_off": "窗户打开时关闭",
+          "accept_setpoint_changes": "接受 TRV 手动设定温度变更"
         },
         "data_description": {
           "feed_external_temp": "将室温发送给 TRV。需要在下方选择正确的外部温度输入实体；否则不会发送任何内容。",
@@ -63,7 +68,8 @@
           "calibration_entity": "保存 TRV 本地校准偏移的数值实体。留空则禁用校准。",
           "calibration_invert": "如果 TRV 以相反符号应用偏移，请启用。",
           "valve_entity": "控制此 TRV 阀门开度的数值实体。仅在为此 TRV 启用直接阀门控制时需要，否则将被忽略，可留空。ThermoSmart 写入 0–100（%），名称中含 \"level\" 的实体则写入 0–1。",
-          "window_off": "窗户打开时关闭设备（HVAC 模式为关）。使用此选项时，请确保您的 TRV 在关闭状态下仍启用防冻保护（部分型号具备，部分不具备），以防冻结。如果关闭此开关，TRV 将保持制热模式，但窗户打开时会改为设置为后续页面之一中定义的窗户打开目标温度。"
+          "window_off": "窗户打开时关闭设备（HVAC 模式为关）。使用此选项时，请确保您的 TRV 在关闭状态下仍启用防冻保护（部分型号具备，部分不具备），以防冻结。如果关闭此开关，TRV 将保持制热模式，但窗户打开时会改为设置为后续页面之一中定义的窗户打开目标温度。",
+          "accept_setpoint_changes": "启用后，此 TRV 上更改的设定温度会在指定防抖时间后作为区域目标温度，并应用到所有 TRV。窗口打开时的更改也会被接受。"
         }
       },
       "state_menu": {
@@ -217,13 +223,17 @@
           "zone_control_mode": "区域控制模式",
           "control_interval": "最小控制周期间隔",
           "temp_tolerance": "温度容差",
-          "ext_temp_threshold": "外部温度写入阈值"
+          "ext_temp_threshold": "外部温度写入阈值",
+          "trv_setpoint_debounce": "TRV 手动设定温度变更防抖时间",
+          "trv_setpoint_settling": "TRV 设定温度稳定时间"
         },
         "data_description": {
           "zone_control_mode": "**仅设定点：** ThermoSmart 发送普通目标温度，TRV 自行调节其阀门。\n\n**TPI 设定点调制：** ThermoSmart 计算供暖需求，并升高或降低发送给 TRV 的设定点，以打开或关闭其阀门。\n\n**直接阀门控制：** ThermoSmart 将计算出的阀门开度（0–100 %）写入 TRV 的阀门位置实体，并将普通目标作为设定点发送。",
           "control_interval": "常规控制周期之间的最短时间。每个周期都会重新计算供暖需求，并将设定点、阀门位置和状态设置写入 TRV。打开窗户或手动覆盖等事件可能会提前触发额外的周期。较短的间隔反应更快，但也可能使设备过载或使网络（例如 Zigbee）拥塞。实际上，2–3 分钟再配合合理的温度变化阈值（必须超过该阈值才会向 TRV 发送新值）就足够了。",
           "ext_temp_threshold": "仅当外部温度传感器的值相对上次更新变化超过此阈值时才会发送给 TRV。仅在配置了外部传感器且 TRV 启用了外部温度输入时有效。",
-          "temp_tolerance": "仅当新的设定温度与 TRV 当前设定温度相差至少此值时才会发送给 TRV。值越大，无线通信越少；值越小，TRV 越紧密地跟随 ThermoSmart。"
+          "temp_tolerance": "仅当新的设定温度与 TRV 当前设定温度相差至少此值时才会发送给 TRV。值越大，无线通信越少；值越小，TRV 越紧密地跟随 ThermoSmart。",
+          "trv_setpoint_debounce": "TRV 最后一次更新设定温度后等待此时间，再将其应用为区域目标温度。这样您可以完成旋钮调节；系统只采用最后报告的数值。",
+          "trv_setpoint_settling": "ThermoSmart 写入 TRV 后，在此时间内忽略该 TRV 报告的设定温度，避免将延迟回报或中间值误认为手动更改。"
         }
       },
       "device_settings": {
@@ -238,7 +248,8 @@
           "calibration_entity": "校准偏移实体",
           "calibration_invert": "反转校准偏移",
           "valve_maintenance": "启用阀门活动 / 维护",
-          "window_off": "窗户打开时关闭"
+          "window_off": "窗户打开时关闭",
+          "accept_setpoint_changes": "接受 TRV 手动设定温度变更"
         },
         "data_description": {
           "feed_external_temp": "将室温发送给 TRV。需要在下方选择正确的外部温度输入实体；否则不会发送任何内容。",
@@ -247,7 +258,8 @@
           "calibration_entity": "保存 TRV 本地校准偏移的数值实体。留空则禁用校准。",
           "calibration_invert": "如果 TRV 以相反符号应用偏移，请启用。",
           "valve_entity": "控制此 TRV 阀门开度的数值实体。仅在为此 TRV 启用直接阀门控制时需要，否则将被忽略，可留空。ThermoSmart 写入 0–100（%），名称中含 \"level\" 的实体则写入 0–1。",
-          "window_off": "窗户打开时关闭设备（HVAC 模式为关）。使用此选项时，请确保您的 TRV 在关闭状态下仍启用防冻保护（部分型号具备，部分不具备），以防冻结。如果关闭此开关，TRV 将保持制热模式，但窗户打开时会改为设置为后续页面之一中定义的窗户打开目标温度。"
+          "window_off": "窗户打开时关闭设备（HVAC 模式为关）。使用此选项时，请确保您的 TRV 在关闭状态下仍启用防冻保护（部分型号具备，部分不具备），以防冻结。如果关闭此开关，TRV 将保持制热模式，但窗户打开时会改为设置为后续页面之一中定义的窗户打开目标温度。",
+          "accept_setpoint_changes": "启用后，此 TRV 上更改的设定温度会在指定防抖时间后作为区域目标温度，并应用到所有 TRV。窗口打开时的更改也会被接受。"
         }
       },
       "state_menu": {

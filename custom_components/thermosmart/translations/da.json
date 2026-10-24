@@ -33,13 +33,17 @@
           "zone_control_mode": "Zonestyringstilstand",
           "control_interval": "Mindste interval for styringscyklus",
           "temp_tolerance": "Temperaturtolerance",
-          "ext_temp_threshold": "Tærskel for skrivning af udendørstemperatur"
+          "ext_temp_threshold": "Tærskel for skrivning af udendørstemperatur",
+          "trv_setpoint_debounce": "Forsinkelse af fysiske ændringer af TRV-temperatur",
+          "trv_setpoint_settling": "Stabiliseringstid for TRV-temperatur"
         },
         "data_description": {
           "zone_control_mode": "**Kun setpunkt:** ThermoSmart sender den rene måltemperatur, og TRV'en regulerer selv sin ventil.\n\n**TPI-setpunktsmodulation:** ThermoSmart beregner varmebehovet og hæver eller sænker det setpunkt, der sendes til TRV'en, for at åbne eller lukke dens ventil.\n\n**Direkte ventilstyring:** ThermoSmart skriver den beregnede ventilåbning (0–100 %) til TRV'ens ventilpositionsenhed og sender den rene måltemperatur som setpunkt.",
           "control_interval": "Mindste tid mellem almindelige styringscyklusser. Hver cyklus genberegner varmebehovet og skriver setpunkter, ventilpositioner og tilstandsindstillinger til TRV'erne. Hændelser som åbning af et vindue eller en manuel tilsidesættelse kan udløse en ekstra cyklus tidligere. Kortere intervaller giver hurtigere reaktioner, men kan også overbelaste enheder eller netværk, f.eks. Zigbee. I praksis bør 2-3 minutter i kombination med fornuftige tærskler for temperaturændringer, som skal overskrides, før nye værdier sendes til TRV'en, være fint.",
           "ext_temp_threshold": "Værdien fra den eksterne temperatursensor sendes kun til TRV'en, når den har ændret sig mere end denne tærskel siden sidste opdatering. Har kun effekt, når en ekstern sensor er konfigureret, og for TRV'er med ekstern temperaturindgang aktiveret.",
-          "temp_tolerance": "En ny måltemperatur sendes kun til TRV'en, hvis den afviger med mindst denne værdi fra TRV'ens nuværende måltemperatur. Større værdier reducerer radiotrafik, mindre værdier får TRV'en til at følge ThermoSmart tættere."
+          "temp_tolerance": "En ny måltemperatur sendes kun til TRV'en, hvis den afviger med mindst denne værdi fra TRV'ens nuværende måltemperatur. Større værdier reducerer radiotrafik, mindre værdier får TRV'en til at følge ThermoSmart tættere.",
+          "trv_setpoint_debounce": "Vent så længe efter den seneste temperaturændring fra en TRV, før værdien anvendes som zonens måltemperatur. Det giver dig tid til at justere; kun den senest rapporterede værdi bruges.",
+          "trv_setpoint_settling": "Efter ThermoSmart har skrevet til en TRV, ignoreres temperaturmeldinger fra den i dette tidsrum, så forsinkede ekkoer eller mellemværdier ikke opfattes som manuelle ændringer."
         }
       },
       "device_settings": {
@@ -54,7 +58,8 @@
           "calibration_entity": "Entitet til kalibreringsforskydning",
           "calibration_invert": "Inverter kalibreringsoffset",
           "valve_maintenance": "Aktivér ventilmotion / vedligeholdelse",
-          "window_off": "Sluk når et vindue er åbent"
+          "window_off": "Sluk når et vindue er åbent",
+          "accept_setpoint_changes": "Acceptér fysiske temperaturændringer"
         },
         "data_description": {
           "feed_external_temp": "Sender rumtemperaturen til TRV'en. Kræver, at den korrekte enhed til ekstern temperaturindgang vælges nedenfor; uden den sendes intet.",
@@ -63,7 +68,8 @@
           "calibration_entity": "Talentitet med TRV'ens lokale kalibreringsforskydning. Lad feltet stå tomt for at slå kalibrering fra.",
           "calibration_invert": "Slå til, hvis TRV'en anvender forskydningen med modsat fortegn.",
           "valve_entity": "Talentitet, der styrer ventilåbningen på denne TRV. Kun nødvendig, hvis direkte ventilstyring er aktiveret for denne TRV; ellers ignoreres den og kan stå tom. ThermoSmart skriver 0–100 (%), eller 0–1 for entiteter med \"level\" i navnet.",
-          "window_off": "Slukker enheden (HVAC-tilstand fra), når et vindue er åbent. Hvis du bruger dette, skal du sikre dig, at din TRV stadig har frostbeskyttelse aktiveret, når den er slukket (nogle modeller har, men ikke alle), så den ikke fryser. Hvis du slår denne kontakt fra, forbliver TRV'en i varmetilstand, men sættes i stedet til måltemperaturen for åbent vindue, som er defineret på en af de næste sider."
+          "window_off": "Slukker enheden (HVAC-tilstand fra), når et vindue er åbent. Hvis du bruger dette, skal du sikre dig, at din TRV stadig har frostbeskyttelse aktiveret, når den er slukket (nogle modeller har, men ikke alle), så den ikke fryser. Hvis du slår denne kontakt fra, forbliver TRV'en i varmetilstand, men sættes i stedet til måltemperaturen for åbent vindue, som er defineret på en af de næste sider.",
+          "accept_setpoint_changes": "Når indstillingen er aktiveret, bruges en ændret temperatur på denne TRV som zonens måltemperatur efter den valgte forsinkelse og sendes til alle TRV’er. Ændringer accepteres også, når et vindue er åbent."
         }
       },
       "state_menu": {
@@ -217,13 +223,17 @@
           "zone_control_mode": "Zonestyringstilstand",
           "control_interval": "Mindste interval for styringscyklus",
           "temp_tolerance": "Temperaturtolerance",
-          "ext_temp_threshold": "Tærskel for skrivning af udendørstemperatur"
+          "ext_temp_threshold": "Tærskel for skrivning af udendørstemperatur",
+          "trv_setpoint_debounce": "Forsinkelse af fysiske ændringer af TRV-temperatur",
+          "trv_setpoint_settling": "Stabiliseringstid for TRV-temperatur"
         },
         "data_description": {
           "zone_control_mode": "**Kun setpunkt:** ThermoSmart sender den rene måltemperatur, og TRV'en regulerer selv sin ventil.\n\n**TPI-setpunktsmodulation:** ThermoSmart beregner varmebehovet og hæver eller sænker det setpunkt, der sendes til TRV'en, for at åbne eller lukke dens ventil.\n\n**Direkte ventilstyring:** ThermoSmart skriver den beregnede ventilåbning (0–100 %) til TRV'ens ventilpositionsenhed og sender den rene måltemperatur som setpunkt.",
           "control_interval": "Mindste tid mellem almindelige styringscyklusser. Hver cyklus genberegner varmebehovet og skriver setpunkter, ventilpositioner og tilstandsindstillinger til TRV'erne. Hændelser som åbning af et vindue eller en manuel tilsidesættelse kan udløse en ekstra cyklus tidligere. Kortere intervaller giver hurtigere reaktioner, men kan også overbelaste enheder eller netværk, f.eks. Zigbee. I praksis bør 2-3 minutter i kombination med fornuftige tærskler for temperaturændringer, som skal overskrides, før nye værdier sendes til TRV'en, være fint.",
           "ext_temp_threshold": "Værdien fra den eksterne temperatursensor sendes kun til TRV'en, når den har ændret sig mere end denne tærskel siden sidste opdatering. Har kun effekt, når en ekstern sensor er konfigureret, og for TRV'er med ekstern temperaturindgang aktiveret.",
-          "temp_tolerance": "En ny måltemperatur sendes kun til TRV'en, hvis den afviger med mindst denne værdi fra TRV'ens nuværende måltemperatur. Større værdier reducerer radiotrafik, mindre værdier får TRV'en til at følge ThermoSmart tættere."
+          "temp_tolerance": "En ny måltemperatur sendes kun til TRV'en, hvis den afviger med mindst denne værdi fra TRV'ens nuværende måltemperatur. Større værdier reducerer radiotrafik, mindre værdier får TRV'en til at følge ThermoSmart tættere.",
+          "trv_setpoint_debounce": "Vent så længe efter den seneste temperaturændring fra en TRV, før værdien anvendes som zonens måltemperatur. Det giver dig tid til at justere; kun den senest rapporterede værdi bruges.",
+          "trv_setpoint_settling": "Efter ThermoSmart har skrevet til en TRV, ignoreres temperaturmeldinger fra den i dette tidsrum, så forsinkede ekkoer eller mellemværdier ikke opfattes som manuelle ændringer."
         }
       },
       "device_settings": {
@@ -238,7 +248,8 @@
           "calibration_entity": "Entitet til kalibreringsforskydning",
           "calibration_invert": "Inverter kalibreringsoffset",
           "valve_maintenance": "Aktivér ventilmotion / vedligeholdelse",
-          "window_off": "Sluk når et vindue er åbent"
+          "window_off": "Sluk når et vindue er åbent",
+          "accept_setpoint_changes": "Acceptér fysiske temperaturændringer"
         },
         "data_description": {
           "feed_external_temp": "Sender rumtemperaturen til TRV'en. Kræver, at den korrekte enhed til ekstern temperaturindgang vælges nedenfor; uden den sendes intet.",
@@ -247,7 +258,8 @@
           "calibration_entity": "Talentitet med TRV'ens lokale kalibreringsforskydning. Lad feltet stå tomt for at slå kalibrering fra.",
           "calibration_invert": "Slå til, hvis TRV'en anvender forskydningen med modsat fortegn.",
           "valve_entity": "Talentitet, der styrer ventilåbningen på denne TRV. Kun nødvendig, hvis direkte ventilstyring er aktiveret for denne TRV; ellers ignoreres den og kan stå tom. ThermoSmart skriver 0–100 (%), eller 0–1 for entiteter med \"level\" i navnet.",
-          "window_off": "Slukker enheden (HVAC-tilstand fra), når et vindue er åbent. Hvis du bruger dette, skal du sikre dig, at din TRV stadig har frostbeskyttelse aktiveret, når den er slukket (nogle modeller har, men ikke alle), så den ikke fryser. Hvis du slår denne kontakt fra, forbliver TRV'en i varmetilstand, men sættes i stedet til måltemperaturen for åbent vindue, som er defineret på en af de næste sider."
+          "window_off": "Slukker enheden (HVAC-tilstand fra), når et vindue er åbent. Hvis du bruger dette, skal du sikre dig, at din TRV stadig har frostbeskyttelse aktiveret, når den er slukket (nogle modeller har, men ikke alle), så den ikke fryser. Hvis du slår denne kontakt fra, forbliver TRV'en i varmetilstand, men sættes i stedet til måltemperaturen for åbent vindue, som er defineret på en af de næste sider.",
+          "accept_setpoint_changes": "Når indstillingen er aktiveret, bruges en ændret temperatur på denne TRV som zonens måltemperatur efter den valgte forsinkelse og sendes til alle TRV’er. Ændringer accepteres også, når et vindue er åbent."
         }
       },
       "state_menu": {

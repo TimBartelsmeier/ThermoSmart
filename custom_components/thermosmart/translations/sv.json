@@ -33,13 +33,17 @@
           "zone_control_mode": "Zonstyrningsläge",
           "control_interval": "Minsta intervall för styrcykel",
           "temp_tolerance": "Temperaturtolerans",
-          "ext_temp_threshold": "Tröskel för skrivning av externa temperaturer"
+          "ext_temp_threshold": "Tröskel för skrivning av externa temperaturer",
+          "trv_setpoint_debounce": "Fördröjning av fysiska ändringar av TRV-temperatur",
+          "trv_setpoint_settling": "Stabiliseringstid för TRV-temperatur"
         },
         "data_description": {
           "zone_control_mode": "**Endast börvärde:** ThermoSmart skickar den vanliga måltemperaturen och TRV reglerar sin ventil på egen hand.\n\n**TPI-modulering av börvärde:** ThermoSmart beräknar värmebehovet och höjer eller sänker börvärdet som skickas till TRV för att öppna eller stänga dess ventil.\n\n**Direkt ventilstyrning:** ThermoSmart skriver den beräknade ventilöppningen (0–100 %) till TRV:ns ventilpositionsentitet och skickar den vanliga målet som börvärde.",
           "control_interval": "Minsta tid mellan regelbundna styrcykler. Varje cykel räknar om värmebehovet och skriver börvärden, ventilpositioner och tillståndsinställningar till TRV:erna. Händelser som att öppna ett fönster eller en manuell överstyrning kan utlösa en extra cykel tidigare. Kortare intervall ger snabbare reaktioner men kan också överbelasta enheter eller täppa till nätverk, t.ex. Zigbee. I praktiken bör 2–3 minuter i kombination med rimliga tröskelvärden för temperaturändringar, som måste överskridas för att nya värden ska skickas till TRV, fungera bra.",
           "ext_temp_threshold": "Värdet från den externa temperatursensorn skickas till TRV:n först efter att det ändrats mer än detta tröskelvärde sedan senaste uppdateringen. Gäller bara när en extern sensor är konfigurerad och för TRV:er med extern temperaturingång aktiverad.",
-          "temp_tolerance": "Ett nytt börvärde skickas till TRV:n bara om det avviker minst så här mycket från TRV:ns nuvarande börvärde. Större värden minskar radiotrafiken, mindre värden gör att TRV:n följer ThermoSmart tätare."
+          "temp_tolerance": "Ett nytt börvärde skickas till TRV:n bara om det avviker minst så här mycket från TRV:ns nuvarande börvärde. Större värden minskar radiotrafiken, mindre värden gör att TRV:n följer ThermoSmart tätare.",
+          "trv_setpoint_debounce": "Vänta så här länge efter den senaste temperaturuppdateringen från en TRV innan den används som zonens måltemperatur. Då hinner du justera klart; endast det senast rapporterade värdet används.",
+          "trv_setpoint_settling": "Efter att ThermoSmart har skrivit till en TRV ignoreras temperaturrapporter från den under denna tid, så att fördröjda ekon eller mellanvärden inte tolkas som manuella ändringar."
         }
       },
       "device_settings": {
@@ -54,7 +58,8 @@
           "calibration_entity": "Entitet för kalibreringsoffset",
           "calibration_invert": "Invertera kalibreringsoffset",
           "valve_maintenance": "Aktivera ventilmotion / underhåll",
-          "window_off": "Stäng av när ett fönster är öppet"
+          "window_off": "Stäng av när ett fönster är öppet",
+          "accept_setpoint_changes": "Acceptera fysiska temperaturändringar"
         },
         "data_description": {
           "feed_external_temp": "Skickar rumstemperaturen till TRV. Kräver att rätt entitet för extern temperaturingång väljs nedan; ingenting skickas utan den.",
@@ -63,7 +68,8 @@
           "calibration_entity": "Nummerentitet med TRV:ns lokala kalibreringsoffset. Lämna tom för att stänga av kalibrering.",
           "calibration_invert": "Aktivera om TRV:n använder offseten med motsatt tecken.",
           "valve_entity": "Nummerentitet som styr ventilöppningen på denna TRV. Behövs bara om direkt ventilstyrning är aktiverad för denna TRV; annars ignoreras den och kan lämnas tom. ThermoSmart skriver 0–100 (%), eller 0–1 för entiteter med \"level\" i namnet.",
-          "window_off": "Stänger av enheten (HVAC-läge av) när ett fönster är öppet. Om du använder detta bör du se till att din TRV fortfarande har frostskydd aktiverat när den är avstängd (vissa modeller har det, men inte alla) för att undvika frysning. Om du stänger av den här växlingen hålls TRV:n i värmeläge men ställs i stället in på måltemperaturen för öppet fönster som definieras på någon av nästa sidor."
+          "window_off": "Stänger av enheten (HVAC-läge av) när ett fönster är öppet. Om du använder detta bör du se till att din TRV fortfarande har frostskydd aktiverat när den är avstängd (vissa modeller har det, men inte alla) för att undvika frysning. Om du stänger av den här växlingen hålls TRV:n i värmeläge men ställs i stället in på måltemperaturen för öppet fönster som definieras på någon av nästa sidor.",
+          "accept_setpoint_changes": "När det är aktiverat används en ändrad temperatur på denna TRV som zonens måltemperatur efter den inställda fördröjningen och skickas till alla TRV-enheter. Ändringar accepteras även när ett fönster är öppet."
         }
       },
       "state_menu": {
@@ -217,13 +223,17 @@
           "zone_control_mode": "Zonstyrningsläge",
           "control_interval": "Minsta intervall för styrcykel",
           "temp_tolerance": "Temperaturtolerans",
-          "ext_temp_threshold": "Tröskel för skrivning av externa temperaturer"
+          "ext_temp_threshold": "Tröskel för skrivning av externa temperaturer",
+          "trv_setpoint_debounce": "Fördröjning av fysiska ändringar av TRV-temperatur",
+          "trv_setpoint_settling": "Stabiliseringstid för TRV-temperatur"
         },
         "data_description": {
           "zone_control_mode": "**Endast börvärde:** ThermoSmart skickar den vanliga måltemperaturen och TRV reglerar sin ventil på egen hand.\n\n**TPI-modulering av börvärde:** ThermoSmart beräknar värmebehovet och höjer eller sänker börvärdet som skickas till TRV för att öppna eller stänga dess ventil.\n\n**Direkt ventilstyrning:** ThermoSmart skriver den beräknade ventilöppningen (0–100 %) till TRV:ns ventilpositionsentitet och skickar den vanliga målet som börvärde.",
           "control_interval": "Minsta tid mellan regelbundna styrcykler. Varje cykel räknar om värmebehovet och skriver börvärden, ventilpositioner och tillståndsinställningar till TRV:erna. Händelser som att öppna ett fönster eller en manuell överstyrning kan utlösa en extra cykel tidigare. Kortare intervall ger snabbare reaktioner men kan också överbelasta enheter eller täppa till nätverk, t.ex. Zigbee. I praktiken bör 2–3 minuter i kombination med rimliga tröskelvärden för temperaturändringar, som måste överskridas för att nya värden ska skickas till TRV, fungera bra.",
           "ext_temp_threshold": "Värdet från den externa temperatursensorn skickas till TRV:n först efter att det ändrats mer än detta tröskelvärde sedan senaste uppdateringen. Gäller bara när en extern sensor är konfigurerad och för TRV:er med extern temperaturingång aktiverad.",
-          "temp_tolerance": "Ett nytt börvärde skickas till TRV:n bara om det avviker minst så här mycket från TRV:ns nuvarande börvärde. Större värden minskar radiotrafiken, mindre värden gör att TRV:n följer ThermoSmart tätare."
+          "temp_tolerance": "Ett nytt börvärde skickas till TRV:n bara om det avviker minst så här mycket från TRV:ns nuvarande börvärde. Större värden minskar radiotrafiken, mindre värden gör att TRV:n följer ThermoSmart tätare.",
+          "trv_setpoint_debounce": "Vänta så här länge efter den senaste temperaturuppdateringen från en TRV innan den används som zonens måltemperatur. Då hinner du justera klart; endast det senast rapporterade värdet används.",
+          "trv_setpoint_settling": "Efter att ThermoSmart har skrivit till en TRV ignoreras temperaturrapporter från den under denna tid, så att fördröjda ekon eller mellanvärden inte tolkas som manuella ändringar."
         }
       },
       "device_settings": {
@@ -238,7 +248,8 @@
           "calibration_entity": "Entitet för kalibreringsoffset",
           "calibration_invert": "Invertera kalibreringsoffset",
           "valve_maintenance": "Aktivera ventilmotion / underhåll",
-          "window_off": "Stäng av när ett fönster är öppet"
+          "window_off": "Stäng av när ett fönster är öppet",
+          "accept_setpoint_changes": "Acceptera fysiska temperaturändringar"
         },
         "data_description": {
           "feed_external_temp": "Skickar rumstemperaturen till TRV. Kräver att rätt entitet för extern temperaturingång väljs nedan; ingenting skickas utan den.",
@@ -247,7 +258,8 @@
           "calibration_entity": "Nummerentitet med TRV:ns lokala kalibreringsoffset. Lämna tom för att stänga av kalibrering.",
           "calibration_invert": "Aktivera om TRV:n använder offseten med motsatt tecken.",
           "valve_entity": "Nummerentitet som styr ventilöppningen på denna TRV. Behövs bara om direkt ventilstyrning är aktiverad för denna TRV; annars ignoreras den och kan lämnas tom. ThermoSmart skriver 0–100 (%), eller 0–1 för entiteter med \"level\" i namnet.",
-          "window_off": "Stänger av enheten (HVAC-läge av) när ett fönster är öppet. Om du använder detta bör du se till att din TRV fortfarande har frostskydd aktiverat när den är avstängd (vissa modeller har det, men inte alla) för att undvika frysning. Om du stänger av den här växlingen hålls TRV:n i värmeläge men ställs i stället in på måltemperaturen för öppet fönster som definieras på någon av nästa sidor."
+          "window_off": "Stänger av enheten (HVAC-läge av) när ett fönster är öppet. Om du använder detta bör du se till att din TRV fortfarande har frostskydd aktiverat när den är avstängd (vissa modeller har det, men inte alla) för att undvika frysning. Om du stänger av den här växlingen hålls TRV:n i värmeläge men ställs i stället in på måltemperaturen för öppet fönster som definieras på någon av nästa sidor.",
+          "accept_setpoint_changes": "När det är aktiverat används en ändrad temperatur på denna TRV som zonens måltemperatur efter den inställda fördröjningen och skickas till alla TRV-enheter. Ändringar accepteras även när ett fönster är öppet."
         }
       },
       "state_menu": {
