@@ -178,11 +178,6 @@ class TestControlInterval:
         coord = make_coordinator({CONF_CONTROL_INTERVAL: 2})
         assert coord.update_interval == timedelta(minutes=2)
 
-    def test_season_window_covers_72h_for_any_interval(self):
-        coord = make_coordinator({CONF_CONTROL_INTERVAL: 2})
-        assert coord._outdoor_temp_history.maxlen == 72 * 30
-
-
 class TestPerDeviceValveMaintenance:
     async def _run(self, cfg):
         coord = make_coordinator()

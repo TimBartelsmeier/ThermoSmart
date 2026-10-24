@@ -137,15 +137,9 @@ class TestPhysicalSetpoint:
         coordinator.async_request_refresh.assert_called_once()
         assert coordinator.target.value == 21.0
 
-    @pytest.mark.parametrize("inactive", ["control_off", "vacation", "summer"])
-    def test_inactive_zone_ignores_change(self, inactive):
+    def test_control_off_ignores_change(self):
         coordinator = _coordinator()
-        if inactive == "control_off":
-            coordinator._active_control = False
-        elif inactive == "vacation":
-            coordinator._vacation_mode = True
-        else:
-            coordinator._is_summer = True
+        coordinator._active_control = False
         with patch(
             "custom_components.thermosmart.coordinator.async_call_later"
         ) as schedule:
@@ -154,6 +148,34 @@ class TestPhysicalSetpoint:
             )
         schedule.assert_not_called()
         assert coordinator.target.value == 21.0
+        coordinator.async_request_refresh.assert_not_called()
+
+    @pytest.mark.parametrize("held", ["vacation", "summer"])
+    def test_change_during_suspension_is_registered_and_corrected(self, held, caplog):
+        coordinator = _coordinator()
+        coordinator.set_system_state(vacation=held == "vacation", summer=held == "summer")
+        caplog.set_level("INFO")
+        with patch(
+            "custom_components.thermosmart.coordinator.async_call_later"
+        ) as schedule:
+            coordinator._handle_trv_setpoint_change(
+                "climate.trv", _state(19), _state(25), _cfg()
+            )
+        schedule.assert_not_called()
+        assert coordinator.target.value == 21.0  # not adopted
+        assert coordinator._manual_change_pending is True  # registered
+        coordinator.async_request_refresh.assert_called_once()  # corrected back
+        assert f"during {held} mode" in caplog.text
+
+    def test_echo_of_own_write_during_suspension_is_not_a_manual_change(self):
+        coordinator = _coordinator()
+        coordinator.set_system_state(vacation=True, summer=False)
+        coordinator._mark_trv_write("climate.trv", _cfg())
+        coordinator._handle_trv_setpoint_change(
+            "climate.trv", _state(19), _state(12), _cfg()
+        )
+        assert coordinator._manual_change_pending is False
+        coordinator.async_request_refresh.assert_not_called()
 
     def test_no_settling_delay_can_be_configured(self):
         coordinator = _coordinator()

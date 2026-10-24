@@ -1,48 +1,17 @@
-"""Summer mode detection and frost protection – ThermoSmart SeasonMixin."""
+"""Frost protection while summer mode holds the TRVs – ThermoSmart SeasonMixin."""
 from __future__ import annotations
 
 import asyncio
 import logging
 
-from .const import SUMMER_THRESHOLD, WINTER_THRESHOLD, TEMP_FROST_PROTECTION
+from .const import TEMP_FROST_PROTECTION
 from .temperature_units import from_internal_temperature_c, to_internal_temperature_c
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class SeasonMixin:
-    """Sommer-Erkennung (rollierender Puffer bis zu 72h) und Frostschutz im Sommer."""
-
-    def _update_summer_mode(self, weather_data: dict) -> None:
-        """Sommer-Erkennung: rollierender Temperatur-Puffer oder globaler Sommer-Schalter."""
-        # Globaler Override aktiv → bereits in set_summer_override() gesetzt
-        if self._summer_override is not None:
-            return
-
-        prev_summer = self._is_summer
-
-        outdoor = weather_data.get("temperature")
-        if outdoor is None:
-            return
-        self._outdoor_temp_history.append(outdoor)
-
-        if len(self._outdoor_temp_history) < 3:
-            return
-
-        avg = sum(self._outdoor_temp_history) / len(self._outdoor_temp_history)
-
-        if avg >= SUMMER_THRESHOLD:
-            self._is_summer = True
-        elif avg <= WINTER_THRESHOLD:
-            self._is_summer = False
-
-        if self._is_summer != prev_summer:
-            _LOGGER.warning(
-                "ThermoSmart '%s': Saisonwechsel – %s (72h-Ø %.1f°C)",
-                self.zone_name,
-                "SOMMER – Heizung deaktiviert" if self._is_summer else "WINTER – Heizung aktiv",
-                avg,
-            )
+    """Frostschutz im Sommer (Sommer-Erkennung liegt im System-Entry, siehe system.py)."""
 
     async def _apply_frost_protection(self, cfg: dict) -> None:
         """Im Sommer: TRVs auf Frostschutztemperatur (12°C) setzen.

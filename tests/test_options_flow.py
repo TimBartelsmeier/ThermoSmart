@@ -95,14 +95,14 @@ async def _save_section(hass, form_result, data: dict) -> dict:
 
 
 class TestSystemOptionsFlow:
-    async def test_system_options_aborts_immediately(self, hass, enable_custom_integrations):
-        """Options flow for the system entry aborts with system_no_options."""
+    async def test_system_options_open_the_same_form_as_setup(self, hass, enable_custom_integrations):
+        """Options flow for the system entry shows the outdoor/threshold form."""
         entry = MockConfigEntry(domain=DOMAIN, data={"entry_type": "system"})
         entry.add_to_hass(hass)
 
         result = await hass.config_entries.options.async_init(entry.entry_id)
-        assert result["type"] == FlowResultType.ABORT
-        assert result["reason"] == "system_no_options"
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "system"
 
 
 # ── Hub Entry Point ───────────────────────────────────────────────────────────

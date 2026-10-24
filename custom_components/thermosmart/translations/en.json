@@ -11,7 +11,17 @@
       },
       "add_system": {
         "title": "Global Controls",
-        "description": "Sets up the global Summer mode select (Automatic / On / Off) and Vacation switch. No thermostat required. Both controls apply to all zones simultaneously."
+        "description": "Sets up the global Vacation, Force Summer and Auto-enable Summer switches. No thermostat required. They apply to all zones. Automatic summer detection uses the outdoor temperature below (own sensor first, weather entity as fallback); without either it never enables summer mode.",
+        "data": {
+          "weather_entity": "Weather entity (fallback for the outdoor temperature)",
+          "outdoor_temp_sensor": "Outdoor temperature sensor (preferred)",
+          "summer_on_threshold": "Summer mode starts at 72 h average of",
+          "summer_off_threshold": "Summer mode ends at 72 h average of"
+        },
+        "data_description": {
+          "summer_on_threshold": "Automatic summer mode turns on when the 72 h average outdoor temperature is at or above this value.",
+          "summer_off_threshold": "Automatic summer mode turns off when the 72 h average is at or below this value. Must be lower than the start value; in between, the current state is kept."
+        }
       },
       "add_zone": {
         "title": "Step 1 – Devices & Sensors",
@@ -158,6 +168,7 @@
     },
     "error": {
       "entity_not_found": "Weather entity not found. Please select a valid entity or leave the field empty.",
+      "summer_thresholds_inverted": "The end value must be lower than the start value.",
       "name_required": "Please enter a zone name.",
       "required": "At least one thermostat / TRV is required.",
       "night_temp_too_high": "Night temperature must be lower than comfort temperature.",
@@ -165,8 +176,7 @@
     },
     "abort": {
       "already_configured": "This zone is already configured.",
-      "system_already_configured": "The global ThermoSmart controls are already set up.",
-      "system_no_options": "ThermoSmart System has no configurable options. Use the Summer mode select and the Vacation switch to control all zones."
+      "system_already_configured": "The global ThermoSmart controls are already set up."
     }
   },
   "options": {
@@ -323,10 +333,25 @@
           "weather_entity": "Used for forecasts and forecast suppression. Leave empty if using only own sensors.",
           "outdoor_temp_sensor": "Own sensors are more accurate than the weather entity and are preferred."
         }
+      },
+      "system": {
+        "title": "Global Controls",
+        "description": "Outdoor temperature source and thresholds for automatic summer mode. Own sensor first, weather entity as fallback; without either, summer mode is never enabled automatically.",
+        "data": {
+          "weather_entity": "Weather entity (fallback for the outdoor temperature)",
+          "outdoor_temp_sensor": "Outdoor temperature sensor (preferred)",
+          "summer_on_threshold": "Summer mode starts at 72 h average of",
+          "summer_off_threshold": "Summer mode ends at 72 h average of"
+        },
+        "data_description": {
+          "summer_on_threshold": "Automatic summer mode turns on when the 72 h average outdoor temperature is at or above this value.",
+          "summer_off_threshold": "Automatic summer mode turns off when the 72 h average is at or below this value. Must be lower than the start value; in between, the current state is kept."
+        }
       }
     },
-    "abort": {
-      "system_no_options": "ThermoSmart System has no configurable options. Use the Summer mode select and the Vacation switch to control all zones."
+    "error": {
+      "entity_not_found": "Weather entity not found. Please select a valid entity or leave the field empty.",
+      "summer_thresholds_inverted": "The end value must be lower than the start value."
     }
   },
   "entity": {
@@ -359,6 +384,12 @@
       },
       "vacation_mode": {
         "name": "Vacation Mode"
+      },
+      "force_summer_mode": {
+        "name": "Force Summer Mode"
+      },
+      "auto_summer_mode": {
+        "name": "Auto-enable Summer Mode"
       }
     },
     "select": {
@@ -370,14 +401,6 @@
           "night": "Night",
           "away": "Away",
           "vacation": "Vacation"
-        }
-      },
-      "summer_mode": {
-        "name": "Summer Mode",
-        "state": {
-          "automatic": "Automatic",
-          "on": "On",
-          "off": "Off"
         }
       }
     },

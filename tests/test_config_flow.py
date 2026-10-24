@@ -129,7 +129,7 @@ class TestSystemFlow:
         assert "add_zone" in result["menu_options"]
 
     async def test_system_happy_path_creates_entry(self, hass, enable_custom_integrations):
-        """add_system creates an entry with entry_type=system in a single step."""
+        """add_system shows the outdoor/threshold form, then creates a system entry."""
         with patch(_PATCH, return_value=True):
             result = await hass.config_entries.flow.async_init(
                 DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -137,11 +137,34 @@ class TestSystemFlow:
             result = await hass.config_entries.flow.async_configure(
                 result["flow_id"], {"next_step_id": "add_system"}
             )
+            assert result["type"] == FlowResultType.FORM
+            assert result["step_id"] == "add_system"
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"],
+                {"summer_on_threshold": 19.0, "summer_off_threshold": 14.0},
+            )
             await hass.async_block_till_done()
 
         assert result["type"] == FlowResultType.CREATE_ENTRY
         assert result["title"] == "ThermoSmart System"
-        assert result["data"] == {"entry_type": "system"}
+        assert result["data"]["entry_type"] == "system"
+        assert result["data"]["summer_on_threshold"] == 19.0
+        assert result["data"]["summer_off_threshold"] == 14.0
+
+    async def test_system_thresholds_must_not_be_inverted(self, hass, enable_custom_integrations):
+        with patch(_PATCH, return_value=True):
+            result = await hass.config_entries.flow.async_init(
+                DOMAIN, context={"source": config_entries.SOURCE_USER}
+            )
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"], {"next_step_id": "add_system"}
+            )
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"],
+                {"summer_on_threshold": 15.0, "summer_off_threshold": 18.0},
+            )
+        assert result["type"] == FlowResultType.FORM
+        assert result["errors"] == {"summer_off_threshold": "summer_thresholds_inverted"}
 
     async def test_add_system_step_aborts_if_system_already_exists(
         self, hass, enable_custom_integrations
@@ -158,14 +181,20 @@ class TestSystemFlow:
         assert result["type"] == FlowResultType.ABORT
         assert result["reason"] == "system_already_configured"
 
-    async def test_system_options_aborts_immediately(self, hass, enable_custom_integrations):
-        """Options flow on a system entry aborts with system_no_options."""
+    async def test_system_options_edit_thresholds(self, hass, enable_custom_integrations):
+        """The System entry's options use the same form as its setup."""
         entry = MockConfigEntry(domain=DOMAIN, data={"entry_type": "system"})
         entry.add_to_hass(hass)
 
         result = await hass.config_entries.options.async_init(entry.entry_id)
-        assert result["type"] == FlowResultType.ABORT
-        assert result["reason"] == "system_no_options"
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "system"
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {"summer_on_threshold": 20.0, "summer_off_threshold": 16.0},
+        )
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        assert result["data"]["summer_on_threshold"] == 20.0
 
 
 # ── Global setup only offered before any ThermoSmart entry exists ────────────

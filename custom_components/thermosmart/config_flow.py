@@ -44,6 +44,10 @@ from .const import (
     CONF_VACATION_TEMP,
     CONF_WINDOW_OPEN_TEMP,
     CONF_ECO_TEMP,
+    CONF_SUMMER_ON_THRESHOLD,
+    CONF_SUMMER_OFF_THRESHOLD,
+    SUMMER_THRESHOLD,
+    WINTER_THRESHOLD,
     TEMP_ECO,
     WINDOW_OPEN_SETPOINT,
 )
@@ -156,6 +160,38 @@ def _schema_schedule(d: dict) -> vol.Schema:
                 min=5, max=20, step=0.5, unit_of_measurement="°C", mode=selector.NumberSelectorMode.BOX,
             )),
     })
+
+
+def _schema_system(d: dict) -> vol.Schema:
+    return vol.Schema({
+        vol.Optional(CONF_WEATHER_ENTITY, default=d.get(CONF_WEATHER_ENTITY) or None):
+            _NullableEntitySelector(selector.EntitySelectorConfig(domain="weather")),
+        vol.Optional(CONF_OUTDOOR_TEMP_SENSOR, default=d.get(CONF_OUTDOOR_TEMP_SENSOR) or None):
+            _NullableEntitySelector(selector.EntitySelectorConfig(
+                domain="sensor", device_class="temperature"
+            )),
+        vol.Required(CONF_SUMMER_ON_THRESHOLD, default=d.get(CONF_SUMMER_ON_THRESHOLD, SUMMER_THRESHOLD)):
+            selector.NumberSelector(selector.NumberSelectorConfig(
+                min=0, max=40, step=0.5, unit_of_measurement="°C", mode=selector.NumberSelectorMode.BOX,
+            )),
+        vol.Required(CONF_SUMMER_OFF_THRESHOLD, default=d.get(CONF_SUMMER_OFF_THRESHOLD, WINTER_THRESHOLD)):
+            selector.NumberSelector(selector.NumberSelectorConfig(
+                min=0, max=40, step=0.5, unit_of_measurement="°C", mode=selector.NumberSelectorMode.BOX,
+            )),
+    })
+
+
+def _validate_system(hass, data: dict) -> dict[str, str]:
+    errors: dict[str, str] = {}
+    weather = data.get(CONF_WEATHER_ENTITY)
+    if weather and hass.states.get(weather) is None:
+        errors[CONF_WEATHER_ENTITY] = "entity_not_found"
+    try:
+        if float(data[CONF_SUMMER_OFF_THRESHOLD]) >= float(data[CONF_SUMMER_ON_THRESHOLD]):
+            errors[CONF_SUMMER_OFF_THRESHOLD] = "summer_thresholds_inverted"
+    except (KeyError, TypeError, ValueError):
+        pass
+    return errors
 
 
 def _entity_options(values: list[tuple[str, str]]) -> selector.SelectSelector:
@@ -661,9 +697,18 @@ class ThermoSmartConfigFlow(_DeviceSettingsMixin, config_entries.ConfigFlow, dom
         for entry in self.hass.config_entries.async_entries(DOMAIN):
             if entry.data.get("entry_type") == "system":
                 return self.async_abort(reason="system_already_configured")
-        return self.async_create_entry(
-            title="ThermoSmart System",
-            data={"entry_type": "system"},
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            errors = _validate_system(self.hass, user_input)
+            if not errors:
+                return self.async_create_entry(
+                    title="ThermoSmart System",
+                    data={"entry_type": "system", **user_input},
+                )
+        return self.async_show_form(
+            step_id="add_system",
+            data_schema=_schema_system(user_input or {}),
+            errors=errors,
         )
 
     # Option B: Heizzone hinzufügen.
@@ -788,11 +833,24 @@ class ThermoSmartConfigFlow(_DeviceSettingsMixin, config_entries.ConfigFlow, dom
         return ThermoSmartOptionsFlow()
 
 
-# ── Options Flow (System-Entry: keine konfigurierbaren Optionen) ─────────────
+# ── Options Flow (System-Entry: gleiche Felder wie bei der Einrichtung) ──────
 
 class ThermoSmartSystemOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
-        return self.async_abort(reason="system_no_options")
+        return await self.async_step_system(user_input)
+
+    async def async_step_system(self, user_input=None):
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            errors = _validate_system(self.hass, user_input)
+            if not errors:
+                return self.async_create_entry(title="", data=user_input)
+        current = {**self.config_entry.data, **self.config_entry.options}
+        return self.async_show_form(
+            step_id="system",
+            data_schema=_schema_system(user_input or current),
+            errors=errors,
+        )
 
 
 # ── Options Flow (Zone bearbeiten) ───────────────────────────────────────────

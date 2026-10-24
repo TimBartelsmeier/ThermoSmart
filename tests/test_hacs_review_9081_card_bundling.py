@@ -117,8 +117,7 @@ class TestCardRegisteredOnceAcrossEntries:
         hass.config_entries.async_forward_entry_setups = AsyncMock()
         hass.services.has_service = MagicMock(return_value=True)  # skip service registration branch
 
-        with patch("homeassistant.components.frontend.add_extra_js_url") as add_url, \
-             patch("custom_components.thermosmart._migrate_old_summer_switch"):
+        with patch("homeassistant.components.frontend.add_extra_js_url") as add_url:
             await ts_init.async_setup_entry(hass, _system_entry("sys_1"))
             await ts_init.async_setup_entry(hass, _system_entry("sys_2"))
 

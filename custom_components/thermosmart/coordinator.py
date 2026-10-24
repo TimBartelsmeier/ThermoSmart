@@ -4,7 +4,6 @@ from __future__ import annotations
 import dataclasses
 import logging
 import time
-from collections import deque
 from datetime import datetime, timedelta
 
 from collections.abc import Callable
@@ -36,7 +35,6 @@ from .const import (
     CONF_EXT_TEMP_THRESHOLD,
     TEMP_FROST_PROTECTION,
     EMA_1H_ALPHA,
-    SEASON_HOURS,
     HEATING_FAILURE_DELAY_MIN,
     HEATING_FAILURE_SLOPE_THRESH,
     HEATING_FAILURE_CMD_DELTA,
@@ -66,6 +64,7 @@ from .schedule import (
 from .weather_engine import WeatherEngine
 from .learning_engine import LearningEngine
 from .window import WindowMixin
+from .suspension import held_at, resolve
 from .season import SeasonMixin
 from .trv_control import TRVControlMixin, _DispatchStats
 from .maintenance import MaintenanceMixin
@@ -163,7 +162,6 @@ class ThermoSmartCoordinator(
             on_change=lambda: self.async_update_listeners(),
         )
         self._vacation_mode: bool = False
-        self._summer_override: bool | None = None
 
         # Event-Listener
         self._event_unsub: list = []
@@ -230,12 +228,7 @@ class ThermoSmartCoordinator(
         # Device profiles — populated by async_detect_device_entities (TRVControlMixin)
         self._device_profiles: dict[str, DeviceProfile] = {}
 
-        # Sommer (genutzt von SeasonMixin)
-        self._outdoor_temp_history: deque = deque(
-            maxlen=max(3, int(
-                SEASON_HOURS * 3600 / self.update_interval.total_seconds()
-            ))
-        )
+        # Sommer (gesetzt vom System-Entry über set_system_state)
         self._is_summer: bool = False
 
         # Wartung (genutzt von MaintenanceMixin)
@@ -425,32 +418,18 @@ class ThermoSmartCoordinator(
         if new.source in MANUAL_SOURCES:
             self._manual_change_pending = True
 
-    def set_vacation_override(self, active: bool) -> None:
-        """Global vacation mode: the TRVs are held at the vacation temperature."""
-        self._vacation_mode = bool(active)
-        _LOGGER.info(
-            "ThermoSmart '%s': vacation mode %s", self.zone_name, "ON" if active else "OFF",
-        )
-
-    def set_summer_override(self, value: bool | None) -> None:
-        """Global summer override from the domain-wide select.
-
-        value=True  → summer forced   (_is_summer = True)
-        value=False → winter forced   (_is_summer = False)
-        value=None  → automatic       (_is_summer is recomputed by _update_summer_mode)
-        """
-        self._summer_override = value
-        if value is True:
-            self._is_summer = True
-        elif value is False:
-            self._is_summer = False
-        _LOGGER.info(
-            "ThermoSmart '%s': summer override %s",
-            self.zone_name,
-            "ON (forced)" if value is True
-            else ("OFF (forced)" if value is False else "automatic (72 h detection)"),
-        )
-
+    def set_system_state(self, *, vacation: bool, summer: bool) -> bool:
+        """Apply the system-wide vacation/summer state; returns True when it changed."""
+        vacation, summer = bool(vacation), bool(summer)
+        changed = vacation != self._vacation_mode or summer != self._is_summer
+        self._vacation_mode = vacation
+        self._is_summer = summer
+        if changed:
+            _LOGGER.info(
+                "ThermoSmart '%s': system state – vacation %s, summer %s",
+                self.zone_name, "ON" if vacation else "OFF", "ON" if summer else "OFF",
+            )
+        return changed
     @property
     def suspended(self) -> bool:
         """True while summer or vacation mode holds the TRVs."""
@@ -659,7 +638,8 @@ class ThermoSmartCoordinator(
         self, entity_id: str, old_state, new_state, cfg: dict
     ) -> None:
         """Adopt physical TRV setpoint changes after debounce, or correct them."""
-        if not self._active_control or self.suspended:
+        if not self._active_control:
+            return
             return
         if old_state is None or old_state.state in ("unknown", "unavailable"):
             return
@@ -686,6 +666,19 @@ class ThermoSmartCoordinator(
         except (TypeError, ValueError):
             return
         if old_setpoint is None or new_setpoint is None or abs(new_setpoint - old_setpoint) < 0.05:
+            return
+
+        if self.suspended:
+            # The TRVs are held (summer/vacation): the dial change is registered as a
+            # manual change but not adopted; the TRV is driven back to the held value.
+            self._manual_change_pending = True
+            _LOGGER.info(
+                "ThermoSmart '%s': physical setpoint change on %s (%.1f → %.1f°C) during "
+                "%s mode – registered as manual change, not adopted; correcting back",
+                self.zone_name, entity_id, old_setpoint, new_setpoint,
+                "summer" if self._is_summer else "vacation",
+            )
+            self.hass.async_create_task(self.async_request_refresh())
             return
 
         settings = cfg.get(CONF_DEVICE_SETTINGS, {}).get(entity_id, {})
@@ -843,7 +836,6 @@ class ThermoSmartCoordinator(
             cfg = self.zone_cfg
 
             weather_data = await self.weather_engine.async_get_data()
-            self._update_summer_mode(weather_data)
 
             recommendation = await self._compute_recommendation(cfg, weather_data)
 
@@ -1904,14 +1896,17 @@ class ThermoSmartCoordinator(
 
         # ── Driven target ──────────────────────────────────────────────────────
         # The desired target is never altered here. What the TRVs are driven to
-        # is derived from it: vacation holds the vacation temperature, an open
-        # window releases the setpoint (None), otherwise it is the desired target.
-        if self._vacation_mode:
-            effective_target = float(cfg.get(CONF_VACATION_TEMP, TEMP_FROST_PROTECTION))
-        elif window_open:
-            effective_target = None
-        else:
+        # is derived from it by the suspension that applies (summer > vacation >
+        # window): summer/vacation hold a fixed temperature, an open window
+        # releases the setpoint (None), otherwise it is the desired target.
+        suspension = resolve(
+            summer=self._is_summer, vacation=self._vacation_mode, window_open=window_open,
+        )
+        held = held_at(suspension, float(cfg.get(CONF_VACATION_TEMP, TEMP_FROST_PROTECTION)))
+        if suspension is None:
             effective_target = desired_target
+        else:
+            effective_target = held  # None for a window: release the setpoint
 
         # Learning progress from real per-zone model updates (display value, 0.0–1.0).
         # Uses learning_progress_safe() so the value matches ThermoSmartConfidenceSensor.
@@ -1933,6 +1928,8 @@ class ThermoSmartCoordinator(
             "preset": self.target.preset,
             "manual_change": manual_change,
             "effective_target": effective_target,  # what the TRVs are driven to (None: window release)
+            "suspension": suspension,
+            "held_at": held,
             "preheat_minutes": preheat_minutes,
             "preheat_active": False,
             "preheat_status": preheat_status,

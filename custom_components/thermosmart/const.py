@@ -141,6 +141,10 @@ SOLAR_GAIN_MAX_REDUCTION = 0.30  # max. 30 % Reduktion des Heizbedarfs durch Son
 SUMMER_THRESHOLD = 18.0   # °C Außentemperatur über X Stunden → Sommer
 WINTER_THRESHOLD = 15.0   # °C Außentemperatur unter X Stunden → Heizung an
 SEASON_HOURS = 72         # Stunden die der Schwellwert überschritten sein muss
+SEASON_MIN_SPAN_HOURS = 24  # So lange müssen Messwerte vorliegen, bevor automatisch umgeschaltet wird
+SEASON_SAMPLE_MINUTES = 15  # Abtastintervall der System-Außentemperatur
+CONF_SUMMER_ON_THRESHOLD = "summer_on_threshold"    # System-Entry: 72 h-Ø ab hier → Sommer
+CONF_SUMMER_OFF_THRESHOLD = "summer_off_threshold"  # System-Entry: 72 h-Ø bis hier → Winter
 
 # Sensor-Noise-Filter
 NOISE_FILTER_SPIKE_THRESHOLD = 4.0  # °C – Abweichung > Wert vom EMA → Messung ignorieren

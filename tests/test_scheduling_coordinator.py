@@ -92,7 +92,7 @@ class TestEventsApplyThroughDesiredTarget:
 
     def test_event_during_vacation_updates_target_to_restore(self, timers):
         coord, clock = _coord(WED_15)
-        coord.set_vacation_override(True)
+        coord.set_system_state(vacation=True, summer=False)
         _fire_next(coord, clock, timers)
         assert coord.target.value == 23.0
 
