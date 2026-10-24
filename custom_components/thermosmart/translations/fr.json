@@ -33,13 +33,17 @@
           "zone_control_mode": "Mode de contrôle de la zone",
           "control_interval": "Intervalle minimal du cycle de contrôle",
           "temp_tolerance": "Tolérance de température",
-          "ext_temp_threshold": "Seuil d'écriture de la température externe"
+          "ext_temp_threshold": "Seuil d'écriture de la température externe",
+          "trv_setpoint_debounce": "Délai des changements physiques de consigne du TRV",
+          "trv_setpoint_settling": "Temps de stabilisation de la consigne du TRV"
         },
         "data_description": {
           "zone_control_mode": "**Consigne uniquement :** ThermoSmart envoie la température cible simple et le TRV régule sa vanne lui-même.\n\n**Modulation de consigne TPI :** ThermoSmart calcule la demande de chauffage et augmente ou diminue la consigne envoyée au TRV pour ouvrir ou fermer sa vanne.\n\n**Contrôle direct de la vanne :** ThermoSmart écrit l'ouverture de vanne calculée (0–100 %) dans l'entité de position de vanne du TRV et envoie la température cible simple comme consigne.",
           "control_interval": "Durée minimale entre deux cycles de contrôle réguliers. Chaque cycle recalcule la demande de chauffage et écrit les consignes, positions de vanne et réglages d'état dans les TRV. Des événements tels que l'ouverture d'une fenêtre ou une dérogation manuelle peuvent déclencher un cycle supplémentaire plus tôt. Des intervalles plus courts donnent des réactions plus rapides, mais peuvent aussi surcharger les appareils ou congestionner les réseaux, p. ex. Zigbee. En pratique, 2 à 3 minutes combinées à des seuils raisonnables pour les variations de température, qui doivent être dépassés pour que de nouvelles valeurs soient envoyées au TRV, devraient suffire.",
           "ext_temp_threshold": "La valeur du capteur de température externe n'est envoyée au TRV qu'après avoir varié de plus que ce seuil par rapport à la dernière mise à jour. N'a d'effet que si un capteur externe est configuré et pour les TRV dont l'entrée de température externe est activée.",
-          "temp_tolerance": "Une nouvelle consigne n'est envoyée au TRV que si elle diffère de la consigne actuelle du TRV d'au moins cette valeur. Des valeurs plus grandes réduisent le trafic radio, des valeurs plus petites font suivre ThermoSmart de plus près."
+          "temp_tolerance": "Une nouvelle consigne n'est envoyée au TRV que si elle diffère de la consigne actuelle du TRV d'au moins cette valeur. Des valeurs plus grandes réduisent le trafic radio, des valeurs plus petites font suivre ThermoSmart de plus près.",
+          "trv_setpoint_debounce": "Attendez cette durée après la dernière mise à jour de consigne d’un TRV avant de l’appliquer comme température cible de la zone. Cela vous laisse le temps de terminer le réglage ; seule la dernière valeur reçue est utilisée.",
+          "trv_setpoint_settling": "Après une écriture de ThermoSmart vers un TRV, ignorez ses rapports de consigne pendant cette durée afin que les échos retardés ou les valeurs intermédiaires ne soient pas pris pour des changements manuels."
         }
       },
       "device_settings": {
@@ -54,7 +58,8 @@
           "calibration_entity": "Entité du décalage d'étalonnage",
           "calibration_invert": "Inverser le décalage d'étalonnage",
           "valve_maintenance": "Activer l'exercice / l'entretien de la vanne",
-          "window_off": "Éteindre quand une fenêtre est ouverte"
+          "window_off": "Éteindre quand une fenêtre est ouverte",
+          "accept_setpoint_changes": "Accepter les changements physiques de consigne"
         },
         "data_description": {
           "feed_external_temp": "Envoie la température de la pièce au TRV. Nécessite de sélectionner ci-dessous la bonne entité d'entrée de température externe ; rien n'est envoyé sans elle.",
@@ -63,7 +68,8 @@
           "calibration_entity": "Entité numérique contenant le décalage d'étalonnage local du TRV. Laissez vide pour désactiver l'étalonnage.",
           "calibration_invert": "À activer si le TRV applique le décalage avec le signe inverse.",
           "valve_entity": "Entité numérique qui contrôle l'ouverture de la vanne de ce TRV. Nécessaire uniquement si le contrôle direct de la vanne est activé pour ce TRV ; sinon elle est ignorée et peut rester vide. ThermoSmart écrit 0–100 (%), ou 0–1 pour les entités dont le nom contient \"level\".",
-          "window_off": "Éteint l'appareil (mode HVAC off) lorsqu'une fenêtre est ouverte. Si vous l'utilisez, assurez-vous que votre TRV conserve la protection antigel lorsqu'il est éteint (certains modèles l'ont, pas tous) afin d'éviter le gel. Si vous désactivez cette option, le TRV reste en mode chauffage mais est réglé sur la température cible fenêtre ouverte définie sur l'une des pages suivantes."
+          "window_off": "Éteint l'appareil (mode HVAC off) lorsqu'une fenêtre est ouverte. Si vous l'utilisez, assurez-vous que votre TRV conserve la protection antigel lorsqu'il est éteint (certains modèles l'ont, pas tous) afin d'éviter le gel. Si vous désactivez cette option, le TRV reste en mode chauffage mais est réglé sur la température cible fenêtre ouverte définie sur l'une des pages suivantes.",
+          "accept_setpoint_changes": "Lorsque cette option est activée, la consigne modifiée sur ce TRV devient la cible de la zone après le délai configuré et est appliquée à tous les TRV. Les changements sont également acceptés lorsqu’une fenêtre est ouverte."
         }
       },
       "state_menu": {
@@ -217,13 +223,17 @@
           "zone_control_mode": "Mode de contrôle de la zone",
           "control_interval": "Intervalle minimal du cycle de contrôle",
           "temp_tolerance": "Tolérance de température",
-          "ext_temp_threshold": "Seuil d'écriture de la température externe"
+          "ext_temp_threshold": "Seuil d'écriture de la température externe",
+          "trv_setpoint_debounce": "Délai des changements physiques de consigne du TRV",
+          "trv_setpoint_settling": "Temps de stabilisation de la consigne du TRV"
         },
         "data_description": {
           "zone_control_mode": "**Consigne uniquement :** ThermoSmart envoie la température cible simple et le TRV régule sa vanne lui-même.\n\n**Modulation de consigne TPI :** ThermoSmart calcule la demande de chauffage et augmente ou diminue la consigne envoyée au TRV pour ouvrir ou fermer sa vanne.\n\n**Contrôle direct de la vanne :** ThermoSmart écrit l'ouverture de vanne calculée (0–100 %) dans l'entité de position de vanne du TRV et envoie la température cible simple comme consigne.",
           "control_interval": "Durée minimale entre deux cycles de contrôle réguliers. Chaque cycle recalcule la demande de chauffage et écrit les consignes, positions de vanne et réglages d'état dans les TRV. Des événements tels que l'ouverture d'une fenêtre ou une dérogation manuelle peuvent déclencher un cycle supplémentaire plus tôt. Des intervalles plus courts donnent des réactions plus rapides, mais peuvent aussi surcharger les appareils ou congestionner les réseaux, p. ex. Zigbee. En pratique, 2 à 3 minutes combinées à des seuils raisonnables pour les variations de température, qui doivent être dépassés pour que de nouvelles valeurs soient envoyées au TRV, devraient suffire.",
           "ext_temp_threshold": "La valeur du capteur de température externe n'est envoyée au TRV qu'après avoir varié de plus que ce seuil par rapport à la dernière mise à jour. N'a d'effet que si un capteur externe est configuré et pour les TRV dont l'entrée de température externe est activée.",
-          "temp_tolerance": "Une nouvelle consigne n'est envoyée au TRV que si elle diffère de la consigne actuelle du TRV d'au moins cette valeur. Des valeurs plus grandes réduisent le trafic radio, des valeurs plus petites font suivre ThermoSmart de plus près."
+          "temp_tolerance": "Une nouvelle consigne n'est envoyée au TRV que si elle diffère de la consigne actuelle du TRV d'au moins cette valeur. Des valeurs plus grandes réduisent le trafic radio, des valeurs plus petites font suivre ThermoSmart de plus près.",
+          "trv_setpoint_debounce": "Attendez cette durée après la dernière mise à jour de consigne d’un TRV avant de l’appliquer comme température cible de la zone. Cela vous laisse le temps de terminer le réglage ; seule la dernière valeur reçue est utilisée.",
+          "trv_setpoint_settling": "Après une écriture de ThermoSmart vers un TRV, ignorez ses rapports de consigne pendant cette durée afin que les échos retardés ou les valeurs intermédiaires ne soient pas pris pour des changements manuels."
         }
       },
       "device_settings": {
@@ -238,7 +248,8 @@
           "calibration_entity": "Entité du décalage d'étalonnage",
           "calibration_invert": "Inverser le décalage d'étalonnage",
           "valve_maintenance": "Activer l'exercice / l'entretien de la vanne",
-          "window_off": "Éteindre quand une fenêtre est ouverte"
+          "window_off": "Éteindre quand une fenêtre est ouverte",
+          "accept_setpoint_changes": "Accepter les changements physiques de consigne"
         },
         "data_description": {
           "feed_external_temp": "Envoie la température de la pièce au TRV. Nécessite de sélectionner ci-dessous la bonne entité d'entrée de température externe ; rien n'est envoyé sans elle.",
@@ -247,7 +258,8 @@
           "calibration_entity": "Entité numérique contenant le décalage d'étalonnage local du TRV. Laissez vide pour désactiver l'étalonnage.",
           "calibration_invert": "À activer si le TRV applique le décalage avec le signe inverse.",
           "valve_entity": "Entité numérique qui contrôle l'ouverture de la vanne de ce TRV. Nécessaire uniquement si le contrôle direct de la vanne est activé pour ce TRV ; sinon elle est ignorée et peut rester vide. ThermoSmart écrit 0–100 (%), ou 0–1 pour les entités dont le nom contient \"level\".",
-          "window_off": "Éteint l'appareil (mode HVAC off) lorsqu'une fenêtre est ouverte. Si vous l'utilisez, assurez-vous que votre TRV conserve la protection antigel lorsqu'il est éteint (certains modèles l'ont, pas tous) afin d'éviter le gel. Si vous désactivez cette option, le TRV reste en mode chauffage mais est réglé sur la température cible fenêtre ouverte définie sur l'une des pages suivantes."
+          "window_off": "Éteint l'appareil (mode HVAC off) lorsqu'une fenêtre est ouverte. Si vous l'utilisez, assurez-vous que votre TRV conserve la protection antigel lorsqu'il est éteint (certains modèles l'ont, pas tous) afin d'éviter le gel. Si vous désactivez cette option, le TRV reste en mode chauffage mais est réglé sur la température cible fenêtre ouverte définie sur l'une des pages suivantes.",
+          "accept_setpoint_changes": "Lorsque cette option est activée, la consigne modifiée sur ce TRV devient la cible de la zone après le délai configuré et est appliquée à tous les TRV. Les changements sont également acceptés lorsqu’une fenêtre est ouverte."
         }
       },
       "state_menu": {

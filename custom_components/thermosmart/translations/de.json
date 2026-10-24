@@ -33,13 +33,17 @@
           "zone_control_mode": "Zonen-Regelmodus",
           "control_interval": "Minimales Regelzyklus-Intervall",
           "temp_tolerance": "Temperaturtoleranz",
-          "ext_temp_threshold": "Schwellenwert für externe Temperatur"
+          "ext_temp_threshold": "Schwellenwert für externe Temperatur",
+          "trv_setpoint_debounce": "Entprellzeit für physische TRV-Sollwertänderungen",
+          "trv_setpoint_settling": "Einschwingzeit des TRV-Sollwerts"
         },
         "data_description": {
           "zone_control_mode": "**Nur Sollwert:** ThermoSmart sendet die reine Zieltemperatur, und das TRV regelt sein Ventil selbst.\n\n**TPI-Sollwertmodulation:** ThermoSmart berechnet den Heizbedarf und erhöht oder senkt den an das TRV gesendeten Sollwert, um dessen Ventil zu öffnen oder zu schließen.\n\n**Direkte Ventilsteuerung:** ThermoSmart schreibt die berechnete Ventilöffnung (0–100 %) in die Ventilpositions-Entity des TRV und sendet die reine Zieltemperatur als Sollwert.",
           "control_interval": "Minimale Zeit zwischen regulären Regelzyklen. In jedem Zyklus wird der Heizbedarf neu berechnet und Sollwerte, Ventilpositionen und Zustandseinstellungen werden an die TRVs geschrieben. Ereignisse wie das Öffnen eines Fensters oder eine manuelle Änderung können früher einen zusätzlichen Zyklus auslösen. Kürzere Intervalle sorgen für schnellere Reaktionen, können aber Geräte überlasten oder Netzwerke (z. B. Zigbee) verstopfen. In der Praxis sind 2–3 Minuten in Kombination mit sinnvollen Schwellenwerten für Temperaturänderungen, die überschritten werden müssen, damit neue Werte an das TRV gesendet werden, ausreichend.",
           "ext_temp_threshold": "Der Wert des externen Temperatursensors wird erst an den TRV gesendet, wenn er sich seit der letzten Aktualisierung um mehr als diesen Schwellwert geändert hat. Wirkt nur, wenn ein externer Sensor konfiguriert ist und für TRVs mit aktivierter externer Temperatureingabe.",
-          "temp_tolerance": "Eine neue Solltemperatur wird nur an den TRV gesendet, wenn sie sich um mindestens diesen Wert von der aktuellen Solltemperatur des TRV unterscheidet. Größere Werte verringern den Funkverkehr, kleinere Werte lassen den TRV ThermoSmart enger folgen."
+          "temp_tolerance": "Eine neue Solltemperatur wird nur an den TRV gesendet, wenn sie sich um mindestens diesen Wert von der aktuellen Solltemperatur des TRV unterscheidet. Größere Werte verringern den Funkverkehr, kleinere Werte lassen den TRV ThermoSmart enger folgen.",
+          "trv_setpoint_debounce": "Warte nach der letzten Sollwertmeldung eines TRV diese Zeit, bevor der Wert als Zonen-Zieltemperatur übernommen wird. So kannst du die Einstellung beenden; nur der zuletzt gemeldete Wert wird verwendet.",
+          "trv_setpoint_settling": "Nach einem Schreibvorgang von ThermoSmart werden Sollwertmeldungen dieses TRV für diese Zeit ignoriert, damit verzögerte Rückmeldungen oder Zwischenwerte nicht als manuelle Änderungen gelten."
         }
       },
       "device_settings": {
@@ -54,7 +58,8 @@
           "calibration_entity": "Entität für Kalibrierungs-Offset",
           "calibration_invert": "Kalibrierungs-Offset invertieren",
           "valve_maintenance": "Ventilbewegung / Wartung aktivieren",
-          "window_off": "Bei geöffnetem Fenster ausschalten"
+          "window_off": "Bei geöffnetem Fenster ausschalten",
+          "accept_setpoint_changes": "Physische Sollwertänderungen übernehmen"
         },
         "data_description": {
           "feed_external_temp": "Sendet die Raumtemperatur an das TRV. Erfordert die Auswahl der richtigen Entity für den externen Temperatureingang unten; ohne sie wird nichts gesendet.",
@@ -63,7 +68,8 @@
           "calibration_entity": "Number-Entität mit dem lokalen Kalibrierungs-Offset des TRV. Leer lassen, um die Kalibrierung zu deaktivieren.",
           "calibration_invert": "Aktivieren, wenn der TRV den Offset mit umgekehrtem Vorzeichen anwendet.",
           "valve_entity": "Number-Entität, die die Ventilöffnung dieses TRV steuert. Nur nötig, wenn die direkte Ventilsteuerung für diesen TRV aktiviert ist; andernfalls wird sie ignoriert und kann leer bleiben. ThermoSmart schreibt 0–100 (%), bzw. 0–1 bei Entitäten mit \"level\" im Namen.",
-          "window_off": "Schaltet das Gerät aus (HVAC-Modus „Aus“), wenn ein Fenster geöffnet ist. Wenn du dies nutzt, stelle sicher, dass dein TRV auch im ausgeschalteten Zustand noch einen Frostschutz aktiv hat (manche Modelle haben das, andere nicht), damit nichts einfriert. Wenn du diesen Schalter deaktivierst, bleibt der TRV im Heizmodus und wird bei geöffnetem Fenster stattdessen auf die auf einer der nächsten Seiten festgelegte Fenster-offen-Zieltemperatur gesetzt."
+          "window_off": "Schaltet das Gerät aus (HVAC-Modus „Aus“), wenn ein Fenster geöffnet ist. Wenn du dies nutzt, stelle sicher, dass dein TRV auch im ausgeschalteten Zustand noch einen Frostschutz aktiv hat (manche Modelle haben das, andere nicht), damit nichts einfriert. Wenn du diesen Schalter deaktivierst, bleibt der TRV im Heizmodus und wird bei geöffnetem Fenster stattdessen auf die auf einer der nächsten Seiten festgelegte Fenster-offen-Zieltemperatur gesetzt.",
+          "accept_setpoint_changes": "Wenn aktiviert, wird ein an diesem TRV geänderter Sollwert nach der eingestellten Entprellzeit als Zonen-Zieltemperatur übernommen und an alle TRVs verteilt. Änderungen werden auch bei geöffnetem Fenster übernommen."
         }
       },
       "state_menu": {
@@ -217,13 +223,17 @@
           "zone_control_mode": "Zonen-Regelmodus",
           "control_interval": "Minimales Regelzyklus-Intervall",
           "temp_tolerance": "Temperaturtoleranz",
-          "ext_temp_threshold": "Schwellenwert für externe Temperatur"
+          "ext_temp_threshold": "Schwellenwert für externe Temperatur",
+          "trv_setpoint_debounce": "Entprellzeit für physische TRV-Sollwertänderungen",
+          "trv_setpoint_settling": "Einschwingzeit des TRV-Sollwerts"
         },
         "data_description": {
           "zone_control_mode": "**Nur Sollwert:** ThermoSmart sendet die reine Zieltemperatur, und das TRV regelt sein Ventil selbst.\n\n**TPI-Sollwertmodulation:** ThermoSmart berechnet den Heizbedarf und erhöht oder senkt den an das TRV gesendeten Sollwert, um dessen Ventil zu öffnen oder zu schließen.\n\n**Direkte Ventilsteuerung:** ThermoSmart schreibt die berechnete Ventilöffnung (0–100 %) in die Ventilpositions-Entity des TRV und sendet die reine Zieltemperatur als Sollwert.",
           "control_interval": "Minimale Zeit zwischen regulären Regelzyklen. In jedem Zyklus wird der Heizbedarf neu berechnet und Sollwerte, Ventilpositionen und Zustandseinstellungen werden an die TRVs geschrieben. Ereignisse wie das Öffnen eines Fensters oder eine manuelle Änderung können früher einen zusätzlichen Zyklus auslösen. Kürzere Intervalle sorgen für schnellere Reaktionen, können aber Geräte überlasten oder Netzwerke (z. B. Zigbee) verstopfen. In der Praxis sind 2–3 Minuten in Kombination mit sinnvollen Schwellenwerten für Temperaturänderungen, die überschritten werden müssen, damit neue Werte an das TRV gesendet werden, ausreichend.",
           "ext_temp_threshold": "Der Wert des externen Temperatursensors wird erst an den TRV gesendet, wenn er sich seit der letzten Aktualisierung um mehr als diesen Schwellwert geändert hat. Wirkt nur, wenn ein externer Sensor konfiguriert ist und für TRVs mit aktivierter externer Temperatureingabe.",
-          "temp_tolerance": "Eine neue Solltemperatur wird nur an den TRV gesendet, wenn sie sich um mindestens diesen Wert von der aktuellen Solltemperatur des TRV unterscheidet. Größere Werte verringern den Funkverkehr, kleinere Werte lassen den TRV ThermoSmart enger folgen."
+          "temp_tolerance": "Eine neue Solltemperatur wird nur an den TRV gesendet, wenn sie sich um mindestens diesen Wert von der aktuellen Solltemperatur des TRV unterscheidet. Größere Werte verringern den Funkverkehr, kleinere Werte lassen den TRV ThermoSmart enger folgen.",
+          "trv_setpoint_debounce": "Warte nach der letzten Sollwertmeldung eines TRV diese Zeit, bevor der Wert als Zonen-Zieltemperatur übernommen wird. So kannst du die Einstellung beenden; nur der zuletzt gemeldete Wert wird verwendet.",
+          "trv_setpoint_settling": "Nach einem Schreibvorgang von ThermoSmart werden Sollwertmeldungen dieses TRV für diese Zeit ignoriert, damit verzögerte Rückmeldungen oder Zwischenwerte nicht als manuelle Änderungen gelten."
         }
       },
       "device_settings": {
@@ -238,7 +248,8 @@
           "calibration_entity": "Entität für Kalibrierungs-Offset",
           "calibration_invert": "Kalibrierungs-Offset invertieren",
           "valve_maintenance": "Ventilbewegung / Wartung aktivieren",
-          "window_off": "Bei geöffnetem Fenster ausschalten"
+          "window_off": "Bei geöffnetem Fenster ausschalten",
+          "accept_setpoint_changes": "Physische Sollwertänderungen übernehmen"
         },
         "data_description": {
           "feed_external_temp": "Sendet die Raumtemperatur an das TRV. Erfordert die Auswahl der richtigen Entity für den externen Temperatureingang unten; ohne sie wird nichts gesendet.",
@@ -247,7 +258,8 @@
           "calibration_entity": "Number-Entität mit dem lokalen Kalibrierungs-Offset des TRV. Leer lassen, um die Kalibrierung zu deaktivieren.",
           "calibration_invert": "Aktivieren, wenn der TRV den Offset mit umgekehrtem Vorzeichen anwendet.",
           "valve_entity": "Number-Entität, die die Ventilöffnung dieses TRV steuert. Nur nötig, wenn die direkte Ventilsteuerung für diesen TRV aktiviert ist; andernfalls wird sie ignoriert und kann leer bleiben. ThermoSmart schreibt 0–100 (%), bzw. 0–1 bei Entitäten mit \"level\" im Namen.",
-          "window_off": "Schaltet das Gerät aus (HVAC-Modus „Aus“), wenn ein Fenster geöffnet ist. Wenn du dies nutzt, stelle sicher, dass dein TRV auch im ausgeschalteten Zustand noch einen Frostschutz aktiv hat (manche Modelle haben das, andere nicht), damit nichts einfriert. Wenn du diesen Schalter deaktivierst, bleibt der TRV im Heizmodus und wird bei geöffnetem Fenster stattdessen auf die auf einer der nächsten Seiten festgelegte Fenster-offen-Zieltemperatur gesetzt."
+          "window_off": "Schaltet das Gerät aus (HVAC-Modus „Aus“), wenn ein Fenster geöffnet ist. Wenn du dies nutzt, stelle sicher, dass dein TRV auch im ausgeschalteten Zustand noch einen Frostschutz aktiv hat (manche Modelle haben das, andere nicht), damit nichts einfriert. Wenn du diesen Schalter deaktivierst, bleibt der TRV im Heizmodus und wird bei geöffnetem Fenster stattdessen auf die auf einer der nächsten Seiten festgelegte Fenster-offen-Zieltemperatur gesetzt.",
+          "accept_setpoint_changes": "Wenn aktiviert, wird ein an diesem TRV geänderter Sollwert nach der eingestellten Entprellzeit als Zonen-Zieltemperatur übernommen und an alle TRVs verteilt. Änderungen werden auch bei geöffnetem Fenster übernommen."
         }
       },
       "state_menu": {

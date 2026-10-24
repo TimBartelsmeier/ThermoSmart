@@ -33,13 +33,17 @@
           "zone_control_mode": "Način upravljanja cone",
           "control_interval": "Najkrajši interval regulacijskega cikla",
           "temp_tolerance": "Temperaturna toleranca",
-          "ext_temp_threshold": "Prag zapisa zunanje temperature"
+          "ext_temp_threshold": "Prag zapisa zunanje temperature",
+          "trv_setpoint_debounce": "Zakasnitev fizičnih sprememb nastavljene temperature TRV",
+          "trv_setpoint_settling": "Čas umirjanja nastavljene temperature TRV"
         },
         "data_description": {
           "zone_control_mode": "**Samo nastavitvena točka:** ThermoSmart pošlje navadno ciljno temperaturo, TRV pa svoj ventil regulira sam.\n\n**TPI modulacija nastavitvene točke:** ThermoSmart izračuna potrebo po ogrevanju in zvišuje ali znižuje nastavitveno točko, poslano na TRV, da odpre ali zapre njegov ventil.\n\n**Neposredno upravljanje ventila:** ThermoSmart zapiše izračunano odprtost ventila (0–100 %) v entiteto položaja ventila TRV in kot nastavitveno točko pošlje navadni cilj.",
           "control_interval": "Najkrajši čas med rednimi regulacijskimi cikli. Vsak cikel znova izračuna potrebo po ogrevanju ter zapiše nastavitvene točke, položaje ventilov in nastavitve stanja v TRV-je. Dogodki, kot sta odprtje okna ali ročni preglas, lahko sprožijo dodaten cikel prej. Krajši intervali pomenijo hitrejše odzive, vendar lahko preobremenijo naprave ali zasičijo omrežja, npr. Zigbee. V praksi bi morali zadostovati 2–3 minute v kombinaciji z razumnimi pragovi sprememb temperature, ki jih je treba preseči, da se nove vrednosti pošljejo na TRV.",
           "ext_temp_threshold": "Vrednost zunanjega temperaturnega senzorja se pošlje TRV šele, ko se je od zadnje posodobitve spremenila za več kot ta prag. Učinkuje le, če je nastavljen zunanji senzor, in za TRV z omogočenim zunanjim temperaturnim vhodom.",
-          "temp_tolerance": "Nova ciljna temperatura se pošlje TRV le, če se od trenutne ciljne temperature TRV razlikuje za vsaj to vrednost. Večje vrednosti zmanjšajo radijski promet, manjše omogočajo, da TRV natančneje sledi ThermoSmart."
+          "temp_tolerance": "Nova ciljna temperatura se pošlje TRV le, če se od trenutne ciljne temperature TRV razlikuje za vsaj to vrednost. Večje vrednosti zmanjšajo radijski promet, manjše omogočajo, da TRV natančneje sledi ThermoSmart.",
+          "trv_setpoint_debounce": "Po zadnji posodobitvi nastavljene temperature iz TRV počakaj toliko časa, preden jo uporabiš kot ciljno temperaturo območja. Tako lahko dokončaš nastavitev; uporabi se samo zadnja sporočena vrednost.",
+          "trv_setpoint_settling": "Po zapisu ThermoSmart v TRV toliko časa prezri njegova sporočila o nastavljeni temperaturi, da se zakasnjeni odmevi ali vmesne vrednosti ne obravnavajo kot ročne spremembe."
         }
       },
       "device_settings": {
@@ -54,7 +58,8 @@
           "calibration_entity": "Entiteta odmika kalibracije",
           "calibration_invert": "Obrni kalibracijski odmik",
           "valve_maintenance": "Omogoči razgibavanje / vzdrževanje ventila",
-          "window_off": "Izklopi ob odprtem oknu"
+          "window_off": "Izklopi ob odprtem oknu",
+          "accept_setpoint_changes": "Sprejmi fizične spremembe nastavljene temperature"
         },
         "data_description": {
           "feed_external_temp": "Pošilja sobno temperaturo na TRV. Zahteva izbiro ustrezne vhodne entitete zunanje temperature spodaj; brez nje se ne pošlje nič.",
@@ -63,7 +68,8 @@
           "calibration_entity": "Številska entiteta z lokalnim odmikom kalibracije TRV. Pustite prazno, da izklopite kalibracijo.",
           "calibration_invert": "Vklopite, če TRV uporablja odmik z nasprotnim predznakom.",
           "valve_entity": "Številska entiteta, ki nadzoruje odprtost ventila tega TRV. Potrebna le, če je za ta TRV omogočeno neposredno krmiljenje ventila; sicer se prezre in jo lahko pustite prazno. ThermoSmart zapiše 0–100 (%) ali 0–1 za entitete z \"level\" v imenu.",
-          "window_off": "Izklopi napravo (način HVAC izklopljen), ko je okno odprto. Če to uporabljate, poskrbite, da ima TRV tudi v izklopljenem stanju še vedno vklopljeno zaščito pred zmrzaljo (nekateri modeli jo imajo, drugi ne), da ne zmrzne. Če to stikalo izklopite, TRV ostane v načinu ogrevanja, vendar se ob odprtem oknu nastavi na ciljno temperaturo za odprto okno, določeno na eni od naslednjih strani."
+          "window_off": "Izklopi napravo (način HVAC izklopljen), ko je okno odprto. Če to uporabljate, poskrbite, da ima TRV tudi v izklopljenem stanju še vedno vklopljeno zaščito pred zmrzaljo (nekateri modeli jo imajo, drugi ne), da ne zmrzne. Če to stikalo izklopite, TRV ostane v načinu ogrevanja, vendar se ob odprtem oknu nastavi na ciljno temperaturo za odprto okno, določeno na eni od naslednjih strani.",
+          "accept_setpoint_changes": "Če je možnost vklopljena, se spremenjena nastavljena temperatura tega TRV po določeni zakasnitvi uporabi kot cilj območja in pošlje vsem TRV. Spremembe se sprejmejo tudi ob odprtem oknu."
         }
       },
       "state_menu": {
@@ -217,13 +223,17 @@
           "zone_control_mode": "Način upravljanja cone",
           "control_interval": "Najkrajši interval regulacijskega cikla",
           "temp_tolerance": "Temperaturna toleranca",
-          "ext_temp_threshold": "Prag zapisa zunanje temperature"
+          "ext_temp_threshold": "Prag zapisa zunanje temperature",
+          "trv_setpoint_debounce": "Zakasnitev fizičnih sprememb nastavljene temperature TRV",
+          "trv_setpoint_settling": "Čas umirjanja nastavljene temperature TRV"
         },
         "data_description": {
           "zone_control_mode": "**Samo nastavitvena točka:** ThermoSmart pošlje navadno ciljno temperaturo, TRV pa svoj ventil regulira sam.\n\n**TPI modulacija nastavitvene točke:** ThermoSmart izračuna potrebo po ogrevanju in zvišuje ali znižuje nastavitveno točko, poslano na TRV, da odpre ali zapre njegov ventil.\n\n**Neposredno upravljanje ventila:** ThermoSmart zapiše izračunano odprtost ventila (0–100 %) v entiteto položaja ventila TRV in kot nastavitveno točko pošlje navadni cilj.",
           "control_interval": "Najkrajši čas med rednimi regulacijskimi cikli. Vsak cikel znova izračuna potrebo po ogrevanju ter zapiše nastavitvene točke, položaje ventilov in nastavitve stanja v TRV-je. Dogodki, kot sta odprtje okna ali ročni preglas, lahko sprožijo dodaten cikel prej. Krajši intervali pomenijo hitrejše odzive, vendar lahko preobremenijo naprave ali zasičijo omrežja, npr. Zigbee. V praksi bi morali zadostovati 2–3 minute v kombinaciji z razumnimi pragovi sprememb temperature, ki jih je treba preseči, da se nove vrednosti pošljejo na TRV.",
           "ext_temp_threshold": "Vrednost zunanjega temperaturnega senzorja se pošlje TRV šele, ko se je od zadnje posodobitve spremenila za več kot ta prag. Učinkuje le, če je nastavljen zunanji senzor, in za TRV z omogočenim zunanjim temperaturnim vhodom.",
-          "temp_tolerance": "Nova ciljna temperatura se pošlje TRV le, če se od trenutne ciljne temperature TRV razlikuje za vsaj to vrednost. Večje vrednosti zmanjšajo radijski promet, manjše omogočajo, da TRV natančneje sledi ThermoSmart."
+          "temp_tolerance": "Nova ciljna temperatura se pošlje TRV le, če se od trenutne ciljne temperature TRV razlikuje za vsaj to vrednost. Večje vrednosti zmanjšajo radijski promet, manjše omogočajo, da TRV natančneje sledi ThermoSmart.",
+          "trv_setpoint_debounce": "Po zadnji posodobitvi nastavljene temperature iz TRV počakaj toliko časa, preden jo uporabiš kot ciljno temperaturo območja. Tako lahko dokončaš nastavitev; uporabi se samo zadnja sporočena vrednost.",
+          "trv_setpoint_settling": "Po zapisu ThermoSmart v TRV toliko časa prezri njegova sporočila o nastavljeni temperaturi, da se zakasnjeni odmevi ali vmesne vrednosti ne obravnavajo kot ročne spremembe."
         }
       },
       "device_settings": {
@@ -238,7 +248,8 @@
           "calibration_entity": "Entiteta odmika kalibracije",
           "calibration_invert": "Obrni kalibracijski odmik",
           "valve_maintenance": "Omogoči razgibavanje / vzdrževanje ventila",
-          "window_off": "Izklopi ob odprtem oknu"
+          "window_off": "Izklopi ob odprtem oknu",
+          "accept_setpoint_changes": "Sprejmi fizične spremembe nastavljene temperature"
         },
         "data_description": {
           "feed_external_temp": "Pošilja sobno temperaturo na TRV. Zahteva izbiro ustrezne vhodne entitete zunanje temperature spodaj; brez nje se ne pošlje nič.",
@@ -247,7 +258,8 @@
           "calibration_entity": "Številska entiteta z lokalnim odmikom kalibracije TRV. Pustite prazno, da izklopite kalibracijo.",
           "calibration_invert": "Vklopite, če TRV uporablja odmik z nasprotnim predznakom.",
           "valve_entity": "Številska entiteta, ki nadzoruje odprtost ventila tega TRV. Potrebna le, če je za ta TRV omogočeno neposredno krmiljenje ventila; sicer se prezre in jo lahko pustite prazno. ThermoSmart zapiše 0–100 (%) ali 0–1 za entitete z \"level\" v imenu.",
-          "window_off": "Izklopi napravo (način HVAC izklopljen), ko je okno odprto. Če to uporabljate, poskrbite, da ima TRV tudi v izklopljenem stanju še vedno vklopljeno zaščito pred zmrzaljo (nekateri modeli jo imajo, drugi ne), da ne zmrzne. Če to stikalo izklopite, TRV ostane v načinu ogrevanja, vendar se ob odprtem oknu nastavi na ciljno temperaturo za odprto okno, določeno na eni od naslednjih strani."
+          "window_off": "Izklopi napravo (način HVAC izklopljen), ko je okno odprto. Če to uporabljate, poskrbite, da ima TRV tudi v izklopljenem stanju še vedno vklopljeno zaščito pred zmrzaljo (nekateri modeli jo imajo, drugi ne), da ne zmrzne. Če to stikalo izklopite, TRV ostane v načinu ogrevanja, vendar se ob odprtem oknu nastavi na ciljno temperaturo za odprto okno, določeno na eni od naslednjih strani.",
+          "accept_setpoint_changes": "Če je možnost vklopljena, se spremenjena nastavljena temperatura tega TRV po določeni zakasnitvi uporabi kot cilj območja in pošlje vsem TRV. Spremembe se sprejmejo tudi ob odprtem oknu."
         }
       },
       "state_menu": {

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import time
 from collections import deque
 from datetime import datetime, timedelta
 
@@ -22,6 +23,9 @@ from .const import (
     CONF_CONTROL_INTERVAL,
     CONF_ZONE_CONTROL_MODE,
     CONF_DEVICE_SETTINGS,
+    CONF_TRV_SETPOINT_DEBOUNCE,
+    CONF_TRV_SETPOINT_SETTLING,
+    CONF_DEV_ACCEPT_SETPOINT_CHANGES,
     CONF_DEV_CONTROL_MODE,
     CONF_DEV_VALVE_ENTITY,
     CONTROL_MODE_INHERIT,
@@ -175,6 +179,10 @@ class ThermoSmartCoordinator(
         self._window_delay_cancel: dict[str, Callable[[], None]] = {}
 
         self._last_written_setpoints: dict[str, float] = {}
+        self._trv_write_settle_until: dict[str, float] = {}
+        self._manual_setpoint_cancel: Callable[[], None] | None = None
+        self._pending_manual_setpoint: tuple[str, float] | None = None
+        self._manual_setpoint_generation = 0
         # TRVs switched to HVAC off because of an open window (restored on close).
         self._window_off_entities: set[str] = set()
         # Boost tracking per zone (keyed by zone_id; used by TRVControlMixin._apply_temperature).
@@ -606,28 +614,10 @@ class ThermoSmartCoordinator(
                     if trv_t is not None:
                         self._live_temp = trv_t
                         self.async_update_listeners()
-                if not self._active_control:
-                    return
-                # During window-open, the TRV may echo its previous setpoint before
-                # confirming the frost temp — suppress manual-change detection to
-                # prevent ping-pong between frost temp and normal setpoint.
-                if (self.data or {}).get("zone", {}).get("window_open", False):
-                    return
                 entity_id = event.data["entity_id"]
-                new_setpoint = new.attributes.get("temperature")
-                last_written = self._last_written_setpoints.get(entity_id)
-                if new_setpoint is None or last_written is None:
-                    return
-                try:
-                    if abs(float(new_setpoint) - last_written) > 0.4:
-                        _LOGGER.info(
-                            "ThermoSmart '%s': Manuelle TRV-Änderung erkannt %s "
-                            "(%.1f°C statt %.1f°C) – Sofort-Korrektur",
-                            self.zone_name, entity_id, float(new_setpoint), last_written,
-                        )
-                        self.hass.async_create_task(self.async_request_refresh())
-                except (TypeError, ValueError):
-                    pass
+                self._handle_trv_setpoint_change(
+                    entity_id, event.data.get("old_state"), new, cfg
+                )
 
             cancel_trv = async_track_state_change_event(
                 self.hass, list(climate_entities), _handle_trv_change
@@ -671,6 +661,112 @@ class ThermoSmartCoordinator(
         for cancel in self._window_delay_cancel.values():
             cancel()
         self._window_delay_cancel.clear()
+        if self._manual_setpoint_cancel is not None:
+            self._manual_setpoint_cancel()
+            self._manual_setpoint_cancel = None
+        self._pending_manual_setpoint = None
+        self._manual_setpoint_generation += 1
+        self._trv_write_settle_until.clear()
+
+    def _mark_trv_write(self, entity_id: str, cfg: dict) -> None:
+        """Suppress device echoes for the configured settling period after a write."""
+        try:
+            settling = max(0.0, float(cfg.get(CONF_TRV_SETPOINT_SETTLING, 5)))
+        except (TypeError, ValueError):
+            settling = 5.0
+        if settling:
+            self._trv_write_settle_until[entity_id] = time.monotonic() + settling
+        else:
+            self._trv_write_settle_until.pop(entity_id, None)
+
+    def _trv_write_is_settling(self, entity_id: str) -> bool:
+        deadline = self._trv_write_settle_until.get(entity_id)
+        if deadline is None:
+            return False
+        if time.monotonic() < deadline:
+            return True
+        self._trv_write_settle_until.pop(entity_id, None)
+        return False
+
+    def _manual_setpoint_is_pending(self, entity_id: str) -> bool:
+        return (
+            self._pending_manual_setpoint is not None
+            and self._pending_manual_setpoint[0] == entity_id
+        )
+
+    def _handle_trv_setpoint_change(
+        self, entity_id: str, old_state, new_state, cfg: dict
+    ) -> None:
+        """Adopt physical TRV setpoint changes after debounce, or correct them."""
+        if (
+            not self._active_control
+            or self._mode == HEATING_MODE_VACATION
+            or self._is_summer
+            or (self.data or {}).get("presence", {}).get("vacation", False)
+        ):
+            return
+        if old_state is None or old_state.state in ("unknown", "unavailable"):
+            return
+        old_raw = old_state.attributes.get("temperature")
+        new_raw = new_state.attributes.get("temperature")
+        if old_raw is None or new_raw is None or self._trv_write_is_settling(entity_id):
+            return
+        try:
+            old_setpoint = to_internal_temperature_c(self.hass, old_raw)
+            new_setpoint = to_internal_temperature_c(self.hass, new_raw)
+        except (TypeError, ValueError):
+            return
+        if old_setpoint is None or new_setpoint is None or abs(new_setpoint - old_setpoint) < 0.05:
+            return
+
+        settings = cfg.get(CONF_DEVICE_SETTINGS, {}).get(entity_id, {})
+        if not settings.get(CONF_DEV_ACCEPT_SETPOINT_CHANGES, True):
+            last_written = self._last_written_setpoints.get(entity_id)
+            if last_written is not None and abs(new_setpoint - last_written) > 0.4:
+                _LOGGER.info(
+                    "ThermoSmart '%s': correcting manual TRV setpoint change on %s",
+                    self.zone_name, entity_id,
+                )
+                self.hass.async_create_task(self.async_request_refresh())
+            return
+
+        self._pending_manual_setpoint = (entity_id, new_setpoint)
+        self._manual_setpoint_generation += 1
+        generation = self._manual_setpoint_generation
+        if self._manual_setpoint_cancel is not None:
+            self._manual_setpoint_cancel()
+        try:
+            debounce = max(0.0, float(cfg.get(CONF_TRV_SETPOINT_DEBOUNCE, 5)))
+        except (TypeError, ValueError):
+            debounce = 5.0
+
+        @callback
+        def _apply_manual_setpoint(_now) -> None:
+            if generation != self._manual_setpoint_generation:
+                return
+            self._manual_setpoint_cancel = None
+            pending = self._pending_manual_setpoint
+            self._pending_manual_setpoint = None
+            if pending is None:
+                return
+            if (
+                not self._active_control
+                or self._mode == HEATING_MODE_VACATION
+                or self._is_summer
+                or (self.data or {}).get("presence", {}).get("vacation", False)
+            ):
+                return
+            changed_entity, temperature = pending
+            _LOGGER.info(
+                "ThermoSmart '%s': adopting physical setpoint %.1f°C from %s",
+                self.zone_name, temperature, changed_entity,
+            )
+            self.set_override(temperature)
+            self.hass.async_create_task(self.async_request_refresh())
+
+        self._manual_setpoint_cancel = async_call_later(
+            self.hass, debounce, _apply_manual_setpoint
+        )
 
     # ── Authoritative Live Decision Builder ──────────────────────────
 

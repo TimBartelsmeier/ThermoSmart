@@ -33,13 +33,17 @@
           "zone_control_mode": "Mod de control al zonei",
           "control_interval": "Interval minim al ciclului de control",
           "temp_tolerance": "Toleranță de temperatură",
-          "ext_temp_threshold": "Prag de scriere a temperaturii externe"
+          "ext_temp_threshold": "Prag de scriere a temperaturii externe",
+          "trv_setpoint_debounce": "Întârzierea modificărilor fizice ale temperaturii setate pe TRV",
+          "trv_setpoint_settling": "Timpul de stabilizare a temperaturii setate pe TRV"
         },
         "data_description": {
           "zone_control_mode": "**Doar punct de reglaj:** ThermoSmart trimite temperatura țintă simplă, iar TRV își reglează singur ventilul.\n\n**Modulare TPI a punctului de reglaj:** ThermoSmart calculează necesarul de încălzire și crește sau scade punctul de reglaj trimis către TRV pentru a deschide sau închide ventilul.\n\n**Control direct al ventilului:** ThermoSmart scrie deschiderea calculată a ventilului (0–100 %) în entitatea de poziție a ventilului TRV și trimite ținta simplă ca punct de reglaj.",
           "control_interval": "Timpul minim dintre ciclurile de control regulate. Fiecare ciclu recalculează necesarul de încălzire și scrie punctele de reglaj, pozițiile ventilelor și setările de stare în TRV-uri. Evenimente precum deschiderea unei ferestre sau o suprascriere manuală pot declanșa mai devreme un ciclu suplimentar. Intervalele mai scurte duc la reacții mai rapide, dar pot suprasolicita dispozitivele sau aglomera rețelele, de ex. Zigbee. În practică, 2–3 minute, împreună cu praguri rezonabile pentru modificările de temperatură (care trebuie depășite pentru ca noile valori să fie trimise către TRV), ar trebui să fie suficiente.",
           "ext_temp_threshold": "Valoarea senzorului extern de temperatură este trimisă către TRV doar după ce s-a schimbat cu mai mult decât acest prag față de ultima actualizare. Are efect doar când este configurat un senzor extern și pentru TRV cu intrarea de temperatură externă activată.",
-          "temp_tolerance": "O nouă temperatură țintă este trimisă către TRV doar dacă diferă de cea curentă a TRV cu cel puțin această valoare. Valorile mai mari reduc traficul radio, cele mai mici fac TRV să urmeze mai îndeaproape ThermoSmart."
+          "temp_tolerance": "O nouă temperatură țintă este trimisă către TRV doar dacă diferă de cea curentă a TRV cu cel puțin această valoare. Valorile mai mari reduc traficul radio, cele mai mici fac TRV să urmeze mai îndeaproape ThermoSmart.",
+          "trv_setpoint_debounce": "Așteaptă acest interval după ultima actualizare a temperaturii setate de la un TRV înainte de a o aplica drept țintă a zonei. Astfel poți termina reglajul; se folosește doar ultima valoare raportată.",
+          "trv_setpoint_settling": "După ce ThermoSmart scrie pe un TRV, ignoră pentru acest interval rapoartele temperaturii setate de la acesta, pentru ca ecourile întârziate sau valorile intermediare să nu fie interpretate ca modificări manuale."
         }
       },
       "device_settings": {
@@ -54,7 +58,8 @@
           "calibration_entity": "Entitate decalaj de calibrare",
           "calibration_invert": "Inversează offsetul de calibrare",
           "valve_maintenance": "Activare exercitare / întreținere valve",
-          "window_off": "Oprește când o fereastră este deschisă"
+          "window_off": "Oprește când o fereastră este deschisă",
+          "accept_setpoint_changes": "Acceptă modificările fizice ale temperaturii setate"
         },
         "data_description": {
           "feed_external_temp": "Trimite temperatura camerei către TRV. Necesită selectarea entității corecte de intrare pentru temperatura externă de mai jos; fără ea nu se trimite nimic.",
@@ -63,7 +68,8 @@
           "calibration_entity": "Entitate numerică ce conține decalajul de calibrare local al TRV. Lăsați gol pentru a dezactiva calibrarea.",
           "calibration_invert": "Activați dacă TRV aplică decalajul cu semn opus.",
           "valve_entity": "Entitate numerică ce controlează deschiderea supapei acestui TRV. Necesară doar dacă controlul direct al supapei este activat pentru acest TRV; altfel este ignorată și poate rămâne goală. ThermoSmart scrie 0–100 (%), sau 0–1 pentru entitățile cu \"level\" în nume.",
-          "window_off": "Oprește dispozitivul (mod HVAC oprit) când o fereastră este deschisă. Dacă folosiți această opțiune, asigurați-vă că TRV-ul are în continuare protecția la îngheț activă când este oprit (unele modele au, altele nu), pentru a preveni înghețul. Dacă dezactivați acest comutator, TRV-ul rămâne în modul încălzire, dar este setat la temperatura țintă pentru fereastră deschisă definită pe una dintre paginile următoare."
+          "window_off": "Oprește dispozitivul (mod HVAC oprit) când o fereastră este deschisă. Dacă folosiți această opțiune, asigurați-vă că TRV-ul are în continuare protecția la îngheț activă când este oprit (unele modele au, altele nu), pentru a preveni înghețul. Dacă dezactivați acest comutator, TRV-ul rămâne în modul încălzire, dar este setat la temperatura țintă pentru fereastră deschisă definită pe una dintre paginile următoare.",
+          "accept_setpoint_changes": "Când este activată, temperatura setată modificată pe acest TRV devine ținta zonei după întârzierea configurată și se aplică tuturor TRV-urilor. Modificările sunt acceptate și când o fereastră este deschisă."
         }
       },
       "state_menu": {
@@ -217,13 +223,17 @@
           "zone_control_mode": "Mod de control al zonei",
           "control_interval": "Interval minim al ciclului de control",
           "temp_tolerance": "Toleranță de temperatură",
-          "ext_temp_threshold": "Prag de scriere a temperaturii externe"
+          "ext_temp_threshold": "Prag de scriere a temperaturii externe",
+          "trv_setpoint_debounce": "Întârzierea modificărilor fizice ale temperaturii setate pe TRV",
+          "trv_setpoint_settling": "Timpul de stabilizare a temperaturii setate pe TRV"
         },
         "data_description": {
           "zone_control_mode": "**Doar punct de reglaj:** ThermoSmart trimite temperatura țintă simplă, iar TRV își reglează singur ventilul.\n\n**Modulare TPI a punctului de reglaj:** ThermoSmart calculează necesarul de încălzire și crește sau scade punctul de reglaj trimis către TRV pentru a deschide sau închide ventilul.\n\n**Control direct al ventilului:** ThermoSmart scrie deschiderea calculată a ventilului (0–100 %) în entitatea de poziție a ventilului TRV și trimite ținta simplă ca punct de reglaj.",
           "control_interval": "Timpul minim dintre ciclurile de control regulate. Fiecare ciclu recalculează necesarul de încălzire și scrie punctele de reglaj, pozițiile ventilelor și setările de stare în TRV-uri. Evenimente precum deschiderea unei ferestre sau o suprascriere manuală pot declanșa mai devreme un ciclu suplimentar. Intervalele mai scurte duc la reacții mai rapide, dar pot suprasolicita dispozitivele sau aglomera rețelele, de ex. Zigbee. În practică, 2–3 minute, împreună cu praguri rezonabile pentru modificările de temperatură (care trebuie depășite pentru ca noile valori să fie trimise către TRV), ar trebui să fie suficiente.",
           "ext_temp_threshold": "Valoarea senzorului extern de temperatură este trimisă către TRV doar după ce s-a schimbat cu mai mult decât acest prag față de ultima actualizare. Are efect doar când este configurat un senzor extern și pentru TRV cu intrarea de temperatură externă activată.",
-          "temp_tolerance": "O nouă temperatură țintă este trimisă către TRV doar dacă diferă de cea curentă a TRV cu cel puțin această valoare. Valorile mai mari reduc traficul radio, cele mai mici fac TRV să urmeze mai îndeaproape ThermoSmart."
+          "temp_tolerance": "O nouă temperatură țintă este trimisă către TRV doar dacă diferă de cea curentă a TRV cu cel puțin această valoare. Valorile mai mari reduc traficul radio, cele mai mici fac TRV să urmeze mai îndeaproape ThermoSmart.",
+          "trv_setpoint_debounce": "Așteaptă acest interval după ultima actualizare a temperaturii setate de la un TRV înainte de a o aplica drept țintă a zonei. Astfel poți termina reglajul; se folosește doar ultima valoare raportată.",
+          "trv_setpoint_settling": "După ce ThermoSmart scrie pe un TRV, ignoră pentru acest interval rapoartele temperaturii setate de la acesta, pentru ca ecourile întârziate sau valorile intermediare să nu fie interpretate ca modificări manuale."
         }
       },
       "device_settings": {
@@ -238,7 +248,8 @@
           "calibration_entity": "Entitate decalaj de calibrare",
           "calibration_invert": "Inversează offsetul de calibrare",
           "valve_maintenance": "Activare exercitare / întreținere valve",
-          "window_off": "Oprește când o fereastră este deschisă"
+          "window_off": "Oprește când o fereastră este deschisă",
+          "accept_setpoint_changes": "Acceptă modificările fizice ale temperaturii setate"
         },
         "data_description": {
           "feed_external_temp": "Trimite temperatura camerei către TRV. Necesită selectarea entității corecte de intrare pentru temperatura externă de mai jos; fără ea nu se trimite nimic.",
@@ -247,7 +258,8 @@
           "calibration_entity": "Entitate numerică ce conține decalajul de calibrare local al TRV. Lăsați gol pentru a dezactiva calibrarea.",
           "calibration_invert": "Activați dacă TRV aplică decalajul cu semn opus.",
           "valve_entity": "Entitate numerică ce controlează deschiderea supapei acestui TRV. Necesară doar dacă controlul direct al supapei este activat pentru acest TRV; altfel este ignorată și poate rămâne goală. ThermoSmart scrie 0–100 (%), sau 0–1 pentru entitățile cu \"level\" în nume.",
-          "window_off": "Oprește dispozitivul (mod HVAC oprit) când o fereastră este deschisă. Dacă folosiți această opțiune, asigurați-vă că TRV-ul are în continuare protecția la îngheț activă când este oprit (unele modele au, altele nu), pentru a preveni înghețul. Dacă dezactivați acest comutator, TRV-ul rămâne în modul încălzire, dar este setat la temperatura țintă pentru fereastră deschisă definită pe una dintre paginile următoare."
+          "window_off": "Oprește dispozitivul (mod HVAC oprit) când o fereastră este deschisă. Dacă folosiți această opțiune, asigurați-vă că TRV-ul are în continuare protecția la îngheț activă când este oprit (unele modele au, altele nu), pentru a preveni înghețul. Dacă dezactivați acest comutator, TRV-ul rămâne în modul încălzire, dar este setat la temperatura țintă pentru fereastră deschisă definită pe una dintre paginile următoare.",
+          "accept_setpoint_changes": "Când este activată, temperatura setată modificată pe acest TRV devine ținta zonei după întârzierea configurată și se aplică tuturor TRV-urilor. Modificările sunt acceptate și când o fereastră este deschisă."
         }
       },
       "state_menu": {

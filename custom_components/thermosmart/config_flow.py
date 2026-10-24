@@ -14,6 +14,8 @@ from .const import (
     CONF_CONTROL_INTERVAL,
     CONF_TEMP_TOLERANCE,
     CONF_EXT_TEMP_THRESHOLD,
+    CONF_TRV_SETPOINT_DEBOUNCE,
+    CONF_TRV_SETPOINT_SETTLING,
     CONF_DEVICE_SETTINGS,
     CONF_DEV_CONTROL_MODE,
     CONF_DEV_VALVE_ENTITY,
@@ -24,6 +26,7 @@ from .const import (
     CONF_DEV_CALIBRATION_INVERT,
     CONF_DEV_VALVE_MAINTENANCE,
     CONF_DEV_WINDOW_OFF,
+    CONF_DEV_ACCEPT_SETPOINT_CHANGES,
     CONF_DEV_STATE_SETTINGS,
     CONTROL_MODE_INHERIT,
     CONTROL_MODE_SETPOINT,
@@ -227,6 +230,18 @@ def _schema_control_options(d: dict) -> vol.Schema:
                 min=0.1, max=1.5, step=0.1, unit_of_measurement="°C",
                 mode=selector.NumberSelectorMode.BOX,
             )),
+        vol.Required(CONF_TRV_SETPOINT_DEBOUNCE, default=d.get(
+            CONF_TRV_SETPOINT_DEBOUNCE, 5
+        )): selector.NumberSelector(selector.NumberSelectorConfig(
+            min=0, max=60, step=1, unit_of_measurement="s",
+            mode=selector.NumberSelectorMode.BOX,
+        )),
+        vol.Required(CONF_TRV_SETPOINT_SETTLING, default=d.get(
+            CONF_TRV_SETPOINT_SETTLING, 5
+        )): selector.NumberSelector(selector.NumberSelectorConfig(
+            min=0, max=60, step=1, unit_of_measurement="s",
+            mode=selector.NumberSelectorMode.BOX,
+        )),
     })
 
 
@@ -267,6 +282,9 @@ def _schema_device_settings(detected: dict, zone_mode: str) -> vol.Schema:
         )): selector.BooleanSelector(),
         vol.Required(CONF_DEV_WINDOW_OFF, default=settings.get(
             CONF_DEV_WINDOW_OFF, False
+        )): selector.BooleanSelector(),
+        vol.Required(CONF_DEV_ACCEPT_SETPOINT_CHANGES, default=settings.get(
+            CONF_DEV_ACCEPT_SETPOINT_CHANGES, True
         )): selector.BooleanSelector(),
     })
 

@@ -33,13 +33,17 @@
           "zone_control_mode": "Bölge kontrol modu",
           "control_interval": "Minimum kontrol döngüsü aralığı",
           "temp_tolerance": "Sıcaklık toleransı",
-          "ext_temp_threshold": "Dış sıcaklık yazma eşiği"
+          "ext_temp_threshold": "Dış sıcaklık yazma eşiği",
+          "trv_setpoint_debounce": "Fiziksel TRV hedef sıcaklık değişikliği gecikmesi",
+          "trv_setpoint_settling": "TRV hedef sıcaklığı oturma süresi"
         },
         "data_description": {
           "zone_control_mode": "**Yalnızca set noktası:** ThermoSmart düz hedef sıcaklığı gönderir ve TRV vanasını kendisi ayarlar.\n\n**TPI set noktası modülasyonu:** ThermoSmart ısıtma talebini hesaplar ve vanayı açmak veya kapatmak için TRV'ye gönderilen set noktasını yükseltir veya düşürür.\n\n**Doğrudan vana kontrolü:** ThermoSmart hesaplanan vana açıklığını (0–100 %) TRV'nin vana konumu varlığına yazar ve düz hedefi set noktası olarak gönderir.",
           "control_interval": "Düzenli kontrol döngüleri arasındaki minimum süre. Her döngü ısıtma talebini yeniden hesaplar ve set noktalarını, vana konumlarını ve durum ayarlarını TRV'lere yazar. Pencere açma veya manuel geçersiz kılma gibi olaylar daha erken ek bir döngüyü tetikleyebilir. Daha kısa aralıklar daha hızlı tepki verir ancak cihazları aşırı yükleyebilir veya Zigbee gibi ağları tıkayabilir. Pratikte, yeni değerlerin TRV'ye gönderilmesi için aşılması gereken makul sıcaklık değişim eşikleriyle birlikte 2–3 dakika yeterli olmalıdır.",
           "ext_temp_threshold": "Harici sıcaklık sensörünün değeri, son güncellemeye göre bu eşikten fazla değiştikten sonra TRV'ye gönderilir. Yalnızca harici sensör yapılandırıldığında ve harici sıcaklık girişi etkin olan TRV'ler için etkilidir.",
-          "temp_tolerance": "Yeni bir hedef sıcaklık TRV'ye yalnızca TRV'nin mevcut hedef sıcaklığından en az bu değer kadar farklıysa gönderilir. Büyük değerler telsiz trafiğini azaltır, küçük değerler TRV'nin ThermoSmart'ı daha yakından izlemesini sağlar."
+          "temp_tolerance": "Yeni bir hedef sıcaklık TRV'ye yalnızca TRV'nin mevcut hedef sıcaklığından en az bu değer kadar farklıysa gönderilir. Büyük değerler telsiz trafiğini azaltır, küçük değerler TRV'nin ThermoSmart'ı daha yakından izlemesini sağlar.",
+          "trv_setpoint_debounce": "TRV’den gelen son hedef sıcaklık güncellemesinden sonra, bunu bölgenin hedef sıcaklığı olarak uygulamadan önce bu süre kadar bekleyin. Böylece ayarı tamamlayabilirsiniz; yalnızca bildirilen son değer kullanılır.",
+          "trv_setpoint_settling": "ThermoSmart bir TRV’ye yazdıktan sonra gecikmiş yankıların veya ara değerlerin manuel değişiklik olarak algılanmaması için bu süre boyunca TRV’den gelen hedef sıcaklık bildirimlerini yok sayın."
         }
       },
       "device_settings": {
@@ -54,7 +58,8 @@
           "calibration_entity": "Kalibrasyon ofseti varlığı",
           "calibration_invert": "Kalibrasyon ofsetini ters çevir",
           "valve_maintenance": "Vana egzersizi / bakımını etkinleştir",
-          "window_off": "Pencere açıkken kapat"
+          "window_off": "Pencere açıkken kapat",
+          "accept_setpoint_changes": "Fiziksel hedef sıcaklık değişikliklerini kabul et"
         },
         "data_description": {
           "feed_external_temp": "Oda sıcaklığını TRV'ye gönderir. Aşağıda doğru dış sıcaklık giriş varlığının seçilmesini gerektirir; o olmadan hiçbir şey gönderilmez.",
@@ -63,7 +68,8 @@
           "calibration_entity": "TRV'nin yerel kalibrasyon ofsetini tutan sayı varlığı. Kalibrasyonu kapatmak için boş bırakın.",
           "calibration_invert": "TRV ofseti ters işaretle uyguluyorsa açın.",
           "valve_entity": "Bu TRV'nin vana açıklığını kontrol eden sayı varlığı. Yalnızca bu TRV için doğrudan vana kontrolü etkinse gereklidir; aksi halde yok sayılır ve boş bırakılabilir. ThermoSmart 0–100 (%) yazar, adında \"level\" geçen varlıklar için 0–1 yazar.",
-          "window_off": "Pencere açıkken cihazı kapatır (HVAC modu kapalı). Bunu kullanırsanız, TRV'nizin kapalıyken donma koruması etkin kalmaya devam ettiğinden emin olun (bazı modellerde vardır, hepsinde yoktur); aksi halde donabilir. Bu anahtarı kapatırsanız TRV ısıtma modunda kalır, ancak pencere açıkken sonraki sayfalardan birinde tanımlanan pencere açık hedef sıcaklığına ayarlanır."
+          "window_off": "Pencere açıkken cihazı kapatır (HVAC modu kapalı). Bunu kullanırsanız, TRV'nizin kapalıyken donma koruması etkin kalmaya devam ettiğinden emin olun (bazı modellerde vardır, hepsinde yoktur); aksi halde donabilir. Bu anahtarı kapatırsanız TRV ısıtma modunda kalır, ancak pencere açıkken sonraki sayfalardan birinde tanımlanan pencere açık hedef sıcaklığına ayarlanır.",
+          "accept_setpoint_changes": "Etkinleştirildiğinde, bu TRV’de değiştirilen hedef sıcaklık yapılandırılan gecikmeden sonra bölgenin hedefi olarak kabul edilir ve tüm TRV’lere uygulanır. Pencere açıkken yapılan değişiklikler de kabul edilir."
         }
       },
       "state_menu": {
@@ -217,13 +223,17 @@
           "zone_control_mode": "Bölge kontrol modu",
           "control_interval": "Minimum kontrol döngüsü aralığı",
           "temp_tolerance": "Sıcaklık toleransı",
-          "ext_temp_threshold": "Dış sıcaklık yazma eşiği"
+          "ext_temp_threshold": "Dış sıcaklık yazma eşiği",
+          "trv_setpoint_debounce": "Fiziksel TRV hedef sıcaklık değişikliği gecikmesi",
+          "trv_setpoint_settling": "TRV hedef sıcaklığı oturma süresi"
         },
         "data_description": {
           "zone_control_mode": "**Yalnızca set noktası:** ThermoSmart düz hedef sıcaklığı gönderir ve TRV vanasını kendisi ayarlar.\n\n**TPI set noktası modülasyonu:** ThermoSmart ısıtma talebini hesaplar ve vanayı açmak veya kapatmak için TRV'ye gönderilen set noktasını yükseltir veya düşürür.\n\n**Doğrudan vana kontrolü:** ThermoSmart hesaplanan vana açıklığını (0–100 %) TRV'nin vana konumu varlığına yazar ve düz hedefi set noktası olarak gönderir.",
           "control_interval": "Düzenli kontrol döngüleri arasındaki minimum süre. Her döngü ısıtma talebini yeniden hesaplar ve set noktalarını, vana konumlarını ve durum ayarlarını TRV'lere yazar. Pencere açma veya manuel geçersiz kılma gibi olaylar daha erken ek bir döngüyü tetikleyebilir. Daha kısa aralıklar daha hızlı tepki verir ancak cihazları aşırı yükleyebilir veya Zigbee gibi ağları tıkayabilir. Pratikte, yeni değerlerin TRV'ye gönderilmesi için aşılması gereken makul sıcaklık değişim eşikleriyle birlikte 2–3 dakika yeterli olmalıdır.",
           "ext_temp_threshold": "Harici sıcaklık sensörünün değeri, son güncellemeye göre bu eşikten fazla değiştikten sonra TRV'ye gönderilir. Yalnızca harici sensör yapılandırıldığında ve harici sıcaklık girişi etkin olan TRV'ler için etkilidir.",
-          "temp_tolerance": "Yeni bir hedef sıcaklık TRV'ye yalnızca TRV'nin mevcut hedef sıcaklığından en az bu değer kadar farklıysa gönderilir. Büyük değerler telsiz trafiğini azaltır, küçük değerler TRV'nin ThermoSmart'ı daha yakından izlemesini sağlar."
+          "temp_tolerance": "Yeni bir hedef sıcaklık TRV'ye yalnızca TRV'nin mevcut hedef sıcaklığından en az bu değer kadar farklıysa gönderilir. Büyük değerler telsiz trafiğini azaltır, küçük değerler TRV'nin ThermoSmart'ı daha yakından izlemesini sağlar.",
+          "trv_setpoint_debounce": "TRV’den gelen son hedef sıcaklık güncellemesinden sonra, bunu bölgenin hedef sıcaklığı olarak uygulamadan önce bu süre kadar bekleyin. Böylece ayarı tamamlayabilirsiniz; yalnızca bildirilen son değer kullanılır.",
+          "trv_setpoint_settling": "ThermoSmart bir TRV’ye yazdıktan sonra gecikmiş yankıların veya ara değerlerin manuel değişiklik olarak algılanmaması için bu süre boyunca TRV’den gelen hedef sıcaklık bildirimlerini yok sayın."
         }
       },
       "device_settings": {
@@ -238,7 +248,8 @@
           "calibration_entity": "Kalibrasyon ofseti varlığı",
           "calibration_invert": "Kalibrasyon ofsetini ters çevir",
           "valve_maintenance": "Vana egzersizi / bakımını etkinleştir",
-          "window_off": "Pencere açıkken kapat"
+          "window_off": "Pencere açıkken kapat",
+          "accept_setpoint_changes": "Fiziksel hedef sıcaklık değişikliklerini kabul et"
         },
         "data_description": {
           "feed_external_temp": "Oda sıcaklığını TRV'ye gönderir. Aşağıda doğru dış sıcaklık giriş varlığının seçilmesini gerektirir; o olmadan hiçbir şey gönderilmez.",
@@ -247,7 +258,8 @@
           "calibration_entity": "TRV'nin yerel kalibrasyon ofsetini tutan sayı varlığı. Kalibrasyonu kapatmak için boş bırakın.",
           "calibration_invert": "TRV ofseti ters işaretle uyguluyorsa açın.",
           "valve_entity": "Bu TRV'nin vana açıklığını kontrol eden sayı varlığı. Yalnızca bu TRV için doğrudan vana kontrolü etkinse gereklidir; aksi halde yok sayılır ve boş bırakılabilir. ThermoSmart 0–100 (%) yazar, adında \"level\" geçen varlıklar için 0–1 yazar.",
-          "window_off": "Pencere açıkken cihazı kapatır (HVAC modu kapalı). Bunu kullanırsanız, TRV'nizin kapalıyken donma koruması etkin kalmaya devam ettiğinden emin olun (bazı modellerde vardır, hepsinde yoktur); aksi halde donabilir. Bu anahtarı kapatırsanız TRV ısıtma modunda kalır, ancak pencere açıkken sonraki sayfalardan birinde tanımlanan pencere açık hedef sıcaklığına ayarlanır."
+          "window_off": "Pencere açıkken cihazı kapatır (HVAC modu kapalı). Bunu kullanırsanız, TRV'nizin kapalıyken donma koruması etkin kalmaya devam ettiğinden emin olun (bazı modellerde vardır, hepsinde yoktur); aksi halde donabilir. Bu anahtarı kapatırsanız TRV ısıtma modunda kalır, ancak pencere açıkken sonraki sayfalardan birinde tanımlanan pencere açık hedef sıcaklığına ayarlanır.",
+          "accept_setpoint_changes": "Etkinleştirildiğinde, bu TRV’de değiştirilen hedef sıcaklık yapılandırılan gecikmeden sonra bölgenin hedefi olarak kabul edilir ve tüm TRV’lere uygulanır. Pencere açıkken yapılan değişiklikler de kabul edilir."
         }
       },
       "state_menu": {

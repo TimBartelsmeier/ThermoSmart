@@ -33,13 +33,17 @@
           "zone_control_mode": "Zonebesturingsmodus",
           "control_interval": "Minimaal interval van de regelcyclus",
           "temp_tolerance": "Temperatuurtolerantie",
-          "ext_temp_threshold": "Drempel voor schrijven van externe temperatuur"
+          "ext_temp_threshold": "Drempel voor schrijven van externe temperatuur",
+          "trv_setpoint_debounce": "Vertraging van fysieke TRV-setpointwijzigingen",
+          "trv_setpoint_settling": "Stabilisatietijd van het TRV-setpoint"
         },
         "data_description": {
           "zone_control_mode": "**Alleen setpoint:** ThermoSmart stuurt de gewone doeltemperatuur en de TRV regelt zijn klep zelf.\n\n**TPI-setpointmodulatie:** ThermoSmart berekent de warmtevraag en verhoogt of verlaagt het setpoint dat naar de TRV wordt gestuurd om de klep te openen of te sluiten.\n\n**Directe klepsturing:** ThermoSmart schrijft de berekende klepopening (0–100 %) naar de klepstandentiteit van de TRV en stuurt de gewone doeltemperatuur als setpoint.",
           "control_interval": "Minimale tijd tussen reguliere regelcycli. Elke cyclus berekent de warmtevraag opnieuw en schrijft setpoints, klepstanden en statusinstellingen naar de TRV's. Gebeurtenissen zoals het openen van een raam of een handmatige overschrijving kunnen eerder een extra cyclus activeren. Kortere intervallen zorgen voor snellere reacties, maar kunnen ook apparaten overbelasten of netwerken, zoals Zigbee, verstoppen. In de praktijk zijn 2-3 minuten in combinatie met redelijke drempels voor temperatuurveranderingen, die overschreden moeten worden voordat nieuwe waarden naar de TRV worden gestuurd, prima.",
           "ext_temp_threshold": "De waarde van de externe temperatuursensor wordt pas naar de TRV gestuurd nadat deze meer dan deze drempel is veranderd ten opzichte van de laatste update. Heeft alleen effect als een externe sensor is geconfigureerd en voor TRV's waarvoor de externe temperatuuringang is ingeschakeld.",
-          "temp_tolerance": "Een nieuwe streeftemperatuur wordt alleen naar de TRV gestuurd als deze minstens deze waarde afwijkt van de huidige streeftemperatuur van de TRV. Grotere waarden verminderen radioverkeer, kleinere waarden laten de TRV ThermoSmart nauwer volgen."
+          "temp_tolerance": "Een nieuwe streeftemperatuur wordt alleen naar de TRV gestuurd als deze minstens deze waarde afwijkt van de huidige streeftemperatuur van de TRV. Grotere waarden verminderen radioverkeer, kleinere waarden laten de TRV ThermoSmart nauwer volgen.",
+          "trv_setpoint_debounce": "Wacht deze tijd na de laatste setpointupdate van een TRV voordat deze als doeltemperatuur voor de zone wordt toegepast. Zo kun je de draaiknop afstellen; alleen de laatst gemelde waarde wordt gebruikt.",
+          "trv_setpoint_settling": "Negeer gedurende deze tijd setpointmeldingen van een TRV nadat ThermoSmart ernaar heeft geschreven, zodat vertraagde echo’s of tussenwaarden niet als handmatige wijzigingen worden gezien."
         }
       },
       "device_settings": {
@@ -54,7 +58,8 @@
           "calibration_entity": "Entiteit voor kalibratie-offset",
           "calibration_invert": "Kalibratie-offset omkeren",
           "valve_maintenance": "Klepbeweging / onderhoud inschakelen",
-          "window_off": "Uitschakelen als een raam open is"
+          "window_off": "Uitschakelen als een raam open is",
+          "accept_setpoint_changes": "Fysieke setpointwijzigingen accepteren"
         },
         "data_description": {
           "feed_external_temp": "Stuurt de kamertemperatuur naar de TRV. Vereist dat hieronder de juiste invoerentiteit voor externe temperatuur wordt gekozen; zonder deze wordt niets verzonden.",
@@ -63,7 +68,8 @@
           "calibration_entity": "Number-entiteit met de lokale kalibratie-offset van de TRV. Laat leeg om kalibratie uit te schakelen.",
           "calibration_invert": "Inschakelen als de TRV de offset met het tegenovergestelde teken toepast.",
           "valve_entity": "Number-entiteit die de klepopening van deze TRV regelt. Alleen nodig als directe klepsturing voor deze TRV is ingeschakeld; anders wordt ze genegeerd en kan ze leeg blijven. ThermoSmart schrijft 0–100 (%), of 0–1 voor entiteiten met \"level\" in de naam.",
-          "window_off": "Schakelt het apparaat uit (HVAC-modus uit) wanneer een raam open is. Zorg er bij gebruik voor dat je TRV ook uitgeschakeld nog vorstbeveiliging heeft (sommige modellen wel, andere niet) om bevriezing te voorkomen. Als je deze schakelaar uitschakelt, blijft de TRV in verwarmingsmodus, maar wordt hij bij een open raam ingesteld op de streeftemperatuur voor open raam die op een van de volgende pagina's is ingesteld."
+          "window_off": "Schakelt het apparaat uit (HVAC-modus uit) wanneer een raam open is. Zorg er bij gebruik voor dat je TRV ook uitgeschakeld nog vorstbeveiliging heeft (sommige modellen wel, andere niet) om bevriezing te voorkomen. Als je deze schakelaar uitschakelt, blijft de TRV in verwarmingsmodus, maar wordt hij bij een open raam ingesteld op de streeftemperatuur voor open raam die op een van de volgende pagina's is ingesteld.",
+          "accept_setpoint_changes": "Als dit is ingeschakeld, wordt een gewijzigd setpoint op deze TRV na de ingestelde vertraging de doeltemperatuur van de zone en toegepast op alle TRV’s. Wijzigingen worden ook geaccepteerd als een raam open is."
         }
       },
       "state_menu": {
@@ -217,13 +223,17 @@
           "zone_control_mode": "Zonebesturingsmodus",
           "control_interval": "Minimaal interval van de regelcyclus",
           "temp_tolerance": "Temperatuurtolerantie",
-          "ext_temp_threshold": "Drempel voor schrijven van externe temperatuur"
+          "ext_temp_threshold": "Drempel voor schrijven van externe temperatuur",
+          "trv_setpoint_debounce": "Vertraging van fysieke TRV-setpointwijzigingen",
+          "trv_setpoint_settling": "Stabilisatietijd van het TRV-setpoint"
         },
         "data_description": {
           "zone_control_mode": "**Alleen setpoint:** ThermoSmart stuurt de gewone doeltemperatuur en de TRV regelt zijn klep zelf.\n\n**TPI-setpointmodulatie:** ThermoSmart berekent de warmtevraag en verhoogt of verlaagt het setpoint dat naar de TRV wordt gestuurd om de klep te openen of te sluiten.\n\n**Directe klepsturing:** ThermoSmart schrijft de berekende klepopening (0–100 %) naar de klepstandentiteit van de TRV en stuurt de gewone doeltemperatuur als setpoint.",
           "control_interval": "Minimale tijd tussen reguliere regelcycli. Elke cyclus berekent de warmtevraag opnieuw en schrijft setpoints, klepstanden en statusinstellingen naar de TRV's. Gebeurtenissen zoals het openen van een raam of een handmatige overschrijving kunnen eerder een extra cyclus activeren. Kortere intervallen zorgen voor snellere reacties, maar kunnen ook apparaten overbelasten of netwerken, zoals Zigbee, verstoppen. In de praktijk zijn 2-3 minuten in combinatie met redelijke drempels voor temperatuurveranderingen, die overschreden moeten worden voordat nieuwe waarden naar de TRV worden gestuurd, prima.",
           "ext_temp_threshold": "De waarde van de externe temperatuursensor wordt pas naar de TRV gestuurd nadat deze meer dan deze drempel is veranderd ten opzichte van de laatste update. Heeft alleen effect als een externe sensor is geconfigureerd en voor TRV's waarvoor de externe temperatuuringang is ingeschakeld.",
-          "temp_tolerance": "Een nieuwe streeftemperatuur wordt alleen naar de TRV gestuurd als deze minstens deze waarde afwijkt van de huidige streeftemperatuur van de TRV. Grotere waarden verminderen radioverkeer, kleinere waarden laten de TRV ThermoSmart nauwer volgen."
+          "temp_tolerance": "Een nieuwe streeftemperatuur wordt alleen naar de TRV gestuurd als deze minstens deze waarde afwijkt van de huidige streeftemperatuur van de TRV. Grotere waarden verminderen radioverkeer, kleinere waarden laten de TRV ThermoSmart nauwer volgen.",
+          "trv_setpoint_debounce": "Wacht deze tijd na de laatste setpointupdate van een TRV voordat deze als doeltemperatuur voor de zone wordt toegepast. Zo kun je de draaiknop afstellen; alleen de laatst gemelde waarde wordt gebruikt.",
+          "trv_setpoint_settling": "Negeer gedurende deze tijd setpointmeldingen van een TRV nadat ThermoSmart ernaar heeft geschreven, zodat vertraagde echo’s of tussenwaarden niet als handmatige wijzigingen worden gezien."
         }
       },
       "device_settings": {
@@ -238,7 +248,8 @@
           "calibration_entity": "Entiteit voor kalibratie-offset",
           "calibration_invert": "Kalibratie-offset omkeren",
           "valve_maintenance": "Klepbeweging / onderhoud inschakelen",
-          "window_off": "Uitschakelen als een raam open is"
+          "window_off": "Uitschakelen als een raam open is",
+          "accept_setpoint_changes": "Fysieke setpointwijzigingen accepteren"
         },
         "data_description": {
           "feed_external_temp": "Stuurt de kamertemperatuur naar de TRV. Vereist dat hieronder de juiste invoerentiteit voor externe temperatuur wordt gekozen; zonder deze wordt niets verzonden.",
@@ -247,7 +258,8 @@
           "calibration_entity": "Number-entiteit met de lokale kalibratie-offset van de TRV. Laat leeg om kalibratie uit te schakelen.",
           "calibration_invert": "Inschakelen als de TRV de offset met het tegenovergestelde teken toepast.",
           "valve_entity": "Number-entiteit die de klepopening van deze TRV regelt. Alleen nodig als directe klepsturing voor deze TRV is ingeschakeld; anders wordt ze genegeerd en kan ze leeg blijven. ThermoSmart schrijft 0–100 (%), of 0–1 voor entiteiten met \"level\" in de naam.",
-          "window_off": "Schakelt het apparaat uit (HVAC-modus uit) wanneer een raam open is. Zorg er bij gebruik voor dat je TRV ook uitgeschakeld nog vorstbeveiliging heeft (sommige modellen wel, andere niet) om bevriezing te voorkomen. Als je deze schakelaar uitschakelt, blijft de TRV in verwarmingsmodus, maar wordt hij bij een open raam ingesteld op de streeftemperatuur voor open raam die op een van de volgende pagina's is ingesteld."
+          "window_off": "Schakelt het apparaat uit (HVAC-modus uit) wanneer een raam open is. Zorg er bij gebruik voor dat je TRV ook uitgeschakeld nog vorstbeveiliging heeft (sommige modellen wel, andere niet) om bevriezing te voorkomen. Als je deze schakelaar uitschakelt, blijft de TRV in verwarmingsmodus, maar wordt hij bij een open raam ingesteld op de streeftemperatuur voor open raam die op een van de volgende pagina's is ingesteld.",
+          "accept_setpoint_changes": "Als dit is ingeschakeld, wordt een gewijzigd setpoint op deze TRV na de ingestelde vertraging de doeltemperatuur van de zone en toegepast op alle TRV’s. Wijzigingen worden ook geaccepteerd als een raam open is."
         }
       },
       "state_menu": {

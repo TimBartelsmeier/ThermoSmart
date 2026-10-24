@@ -33,13 +33,17 @@
           "zone_control_mode": "Zóna vezérlési módja",
           "control_interval": "Minimális vezérlési ciklusidő",
           "temp_tolerance": "Hőmérséklet-tűrés",
-          "ext_temp_threshold": "Külső hőmérséklet írási küszöbe"
+          "ext_temp_threshold": "Külső hőmérséklet írási küszöbe",
+          "trv_setpoint_debounce": "A TRV fizikai célhőmérséklet-változásának késleltetése",
+          "trv_setpoint_settling": "A TRV célhőmérsékletének beállási ideje"
         },
         "data_description": {
           "zone_control_mode": "**Csak alapjel:** A ThermoSmart a sima célhőmérsékletet küldi, a TRV pedig maga szabályozza a szelepét.\n\n**TPI alapjel-moduláció:** A ThermoSmart kiszámítja a fűtési igényt, és a TRV-nek küldött alapjelet növeli vagy csökkenti a szelep nyitásához vagy zárásához.\n\n**Közvetlen szelepvezérlés:** A ThermoSmart a kiszámított szelepnyitást (0–100 %) a TRV szelepállás-entitásába írja, és a sima célhőmérsékletet küldi alapjelként.",
           "control_interval": "A rendszeres vezérlési ciklusok közötti minimális idő. Minden ciklus újraszámolja a fűtési igényt, és a TRV-kbe írja az alapjeleket, szelepállásokat és állapotbeállításokat. Az olyan események, mint egy ablak kinyitása vagy egy kézi felülbírálás, korábban is elindíthatnak egy további ciklust. A rövidebb időközök gyorsabb reakciót adnak, de túlterhelhetik az eszközöket vagy torlaszthatják a hálózatokat, pl. a Zigbee-t. A gyakorlatban a 2–3 perc, ésszerű hőmérséklet-változási küszöbökkel kombinálva (ezeket túl kell lépni ahhoz, hogy új értékek kerüljenek a TRV-nek elküldésre), megfelelő.",
           "ext_temp_threshold": "A külső hőmérséklet-érzékelő értéke csak akkor kerül elküldésre a TRV-nek, ha az utolsó frissítéshez képest ennél a küszöbnél jobban megváltozott. Csak konfigurált külső érzékelő esetén, és azoknál a TRV-knél hat, amelyeknél a külső hőmérséklet-bemenet engedélyezett.",
-          "temp_tolerance": "Új célhőmérséklet csak akkor kerül elküldésre a TRV-nek, ha legalább ennyivel eltér a TRV jelenlegi célhőmérsékletétől. A nagyobb érték csökkenti a rádióforgalmat, a kisebb pontosabban követi a ThermoSmartot."
+          "temp_tolerance": "Új célhőmérséklet csak akkor kerül elküldésre a TRV-nek, ha legalább ennyivel eltér a TRV jelenlegi célhőmérsékletétől. A nagyobb érték csökkenti a rádióforgalmat, a kisebb pontosabban követi a ThermoSmartot.",
+          "trv_setpoint_debounce": "A TRV utolsó célhőmérséklet-frissítése után várjon ennyi ideig, mielőtt azt a zóna célhőmérsékleteként alkalmazza. Így befejezheti a tekerést; csak az utoljára jelentett érték számít.",
+          "trv_setpoint_settling": "Miután a ThermoSmart írt a TRV-re, ennyi ideig hagyja figyelmen kívül a TRV célhőmérséklet-jelzéseit, hogy a késleltetett visszajelzéseket vagy köztes értékeket ne tekintse kézi módosításnak."
         }
       },
       "device_settings": {
@@ -54,7 +58,8 @@
           "calibration_entity": "Kalibrációs eltolás entitása",
           "calibration_invert": "Kalibrációs eltolás megfordítása",
           "valve_maintenance": "Szelep átmozgatás / karbantartás engedélyezése",
-          "window_off": "Kikapcsolás nyitott ablaknál"
+          "window_off": "Kikapcsolás nyitott ablaknál",
+          "accept_setpoint_changes": "Fizikai célhőmérséklet-változások elfogadása"
         },
         "data_description": {
           "feed_external_temp": "Elküldi a szobahőmérsékletet a TRV-nek. Szükséges hozzá a megfelelő külső hőmérséklet bemeneti entitás kiválasztása alább; enélkül semmi sem kerül elküldésre.",
@@ -63,7 +68,8 @@
           "calibration_entity": "A TRV helyi kalibrációs eltolását tároló szám entitás. Hagyja üresen a kalibráció kikapcsolásához.",
           "calibration_invert": "Kapcsolja be, ha a TRV ellentétes előjellel alkalmazza az eltolást.",
           "valve_entity": "A TRV szelepnyitását vezérlő szám entitás. Csak akkor szükséges, ha a közvetlen szelepvezérlés engedélyezett ennél a TRV-nél; egyébként figyelmen kívül marad és üresen hagyható. A ThermoSmart 0–100 (%) értéket ír, vagy 0–1-et azoknál az entitásoknál, amelyek nevében szerepel a \"level\".",
-          "window_off": "Kikapcsolja az eszközt (HVAC mód ki), ha egy ablak nyitva van. Ha ezt használja, győződjön meg róla, hogy a TRV kikapcsolt állapotban is rendelkezik fagyvédelemmel (egyes modellek igen, mások nem), nehogy befagyjon. Ha kikapcsolja ezt a kapcsolót, a TRV fűtés módban marad, de nyitott ablaknál a következő oldalak egyikén megadott nyitott ablak célhőmérsékletre áll be."
+          "window_off": "Kikapcsolja az eszközt (HVAC mód ki), ha egy ablak nyitva van. Ha ezt használja, győződjön meg róla, hogy a TRV kikapcsolt állapotban is rendelkezik fagyvédelemmel (egyes modellek igen, mások nem), nehogy befagyjon. Ha kikapcsolja ezt a kapcsolót, a TRV fűtés módban marad, de nyitott ablaknál a következő oldalak egyikén megadott nyitott ablak célhőmérsékletre áll be.",
+          "accept_setpoint_changes": "Bekapcsolva az ezen a TRV-n módosított célhőmérséklet a beállított késleltetés után a zóna célhőmérséklete lesz, és minden TRV-re érvényesül. Az ablak nyitott állapotában végzett módosítások is elfogadásra kerülnek."
         }
       },
       "state_menu": {
@@ -217,13 +223,17 @@
           "zone_control_mode": "Zóna vezérlési módja",
           "control_interval": "Minimális vezérlési ciklusidő",
           "temp_tolerance": "Hőmérséklet-tűrés",
-          "ext_temp_threshold": "Külső hőmérséklet írási küszöbe"
+          "ext_temp_threshold": "Külső hőmérséklet írási küszöbe",
+          "trv_setpoint_debounce": "A TRV fizikai célhőmérséklet-változásának késleltetése",
+          "trv_setpoint_settling": "A TRV célhőmérsékletének beállási ideje"
         },
         "data_description": {
           "zone_control_mode": "**Csak alapjel:** A ThermoSmart a sima célhőmérsékletet küldi, a TRV pedig maga szabályozza a szelepét.\n\n**TPI alapjel-moduláció:** A ThermoSmart kiszámítja a fűtési igényt, és a TRV-nek küldött alapjelet növeli vagy csökkenti a szelep nyitásához vagy zárásához.\n\n**Közvetlen szelepvezérlés:** A ThermoSmart a kiszámított szelepnyitást (0–100 %) a TRV szelepállás-entitásába írja, és a sima célhőmérsékletet küldi alapjelként.",
           "control_interval": "A rendszeres vezérlési ciklusok közötti minimális idő. Minden ciklus újraszámolja a fűtési igényt, és a TRV-kbe írja az alapjeleket, szelepállásokat és állapotbeállításokat. Az olyan események, mint egy ablak kinyitása vagy egy kézi felülbírálás, korábban is elindíthatnak egy további ciklust. A rövidebb időközök gyorsabb reakciót adnak, de túlterhelhetik az eszközöket vagy torlaszthatják a hálózatokat, pl. a Zigbee-t. A gyakorlatban a 2–3 perc, ésszerű hőmérséklet-változási küszöbökkel kombinálva (ezeket túl kell lépni ahhoz, hogy új értékek kerüljenek a TRV-nek elküldésre), megfelelő.",
           "ext_temp_threshold": "A külső hőmérséklet-érzékelő értéke csak akkor kerül elküldésre a TRV-nek, ha az utolsó frissítéshez képest ennél a küszöbnél jobban megváltozott. Csak konfigurált külső érzékelő esetén, és azoknál a TRV-knél hat, amelyeknél a külső hőmérséklet-bemenet engedélyezett.",
-          "temp_tolerance": "Új célhőmérséklet csak akkor kerül elküldésre a TRV-nek, ha legalább ennyivel eltér a TRV jelenlegi célhőmérsékletétől. A nagyobb érték csökkenti a rádióforgalmat, a kisebb pontosabban követi a ThermoSmartot."
+          "temp_tolerance": "Új célhőmérséklet csak akkor kerül elküldésre a TRV-nek, ha legalább ennyivel eltér a TRV jelenlegi célhőmérsékletétől. A nagyobb érték csökkenti a rádióforgalmat, a kisebb pontosabban követi a ThermoSmartot.",
+          "trv_setpoint_debounce": "A TRV utolsó célhőmérséklet-frissítése után várjon ennyi ideig, mielőtt azt a zóna célhőmérsékleteként alkalmazza. Így befejezheti a tekerést; csak az utoljára jelentett érték számít.",
+          "trv_setpoint_settling": "Miután a ThermoSmart írt a TRV-re, ennyi ideig hagyja figyelmen kívül a TRV célhőmérséklet-jelzéseit, hogy a késleltetett visszajelzéseket vagy köztes értékeket ne tekintse kézi módosításnak."
         }
       },
       "device_settings": {
@@ -238,7 +248,8 @@
           "calibration_entity": "Kalibrációs eltolás entitása",
           "calibration_invert": "Kalibrációs eltolás megfordítása",
           "valve_maintenance": "Szelep átmozgatás / karbantartás engedélyezése",
-          "window_off": "Kikapcsolás nyitott ablaknál"
+          "window_off": "Kikapcsolás nyitott ablaknál",
+          "accept_setpoint_changes": "Fizikai célhőmérséklet-változások elfogadása"
         },
         "data_description": {
           "feed_external_temp": "Elküldi a szobahőmérsékletet a TRV-nek. Szükséges hozzá a megfelelő külső hőmérséklet bemeneti entitás kiválasztása alább; enélkül semmi sem kerül elküldésre.",
@@ -247,7 +258,8 @@
           "calibration_entity": "A TRV helyi kalibrációs eltolását tároló szám entitás. Hagyja üresen a kalibráció kikapcsolásához.",
           "calibration_invert": "Kapcsolja be, ha a TRV ellentétes előjellel alkalmazza az eltolást.",
           "valve_entity": "A TRV szelepnyitását vezérlő szám entitás. Csak akkor szükséges, ha a közvetlen szelepvezérlés engedélyezett ennél a TRV-nél; egyébként figyelmen kívül marad és üresen hagyható. A ThermoSmart 0–100 (%) értéket ír, vagy 0–1-et azoknál az entitásoknál, amelyek nevében szerepel a \"level\".",
-          "window_off": "Kikapcsolja az eszközt (HVAC mód ki), ha egy ablak nyitva van. Ha ezt használja, győződjön meg róla, hogy a TRV kikapcsolt állapotban is rendelkezik fagyvédelemmel (egyes modellek igen, mások nem), nehogy befagyjon. Ha kikapcsolja ezt a kapcsolót, a TRV fűtés módban marad, de nyitott ablaknál a következő oldalak egyikén megadott nyitott ablak célhőmérsékletre áll be."
+          "window_off": "Kikapcsolja az eszközt (HVAC mód ki), ha egy ablak nyitva van. Ha ezt használja, győződjön meg róla, hogy a TRV kikapcsolt állapotban is rendelkezik fagyvédelemmel (egyes modellek igen, mások nem), nehogy befagyjon. Ha kikapcsolja ezt a kapcsolót, a TRV fűtés módban marad, de nyitott ablaknál a következő oldalak egyikén megadott nyitott ablak célhőmérsékletre áll be.",
+          "accept_setpoint_changes": "Bekapcsolva az ezen a TRV-n módosított célhőmérséklet a beállított késleltetés után a zóna célhőmérséklete lesz, és minden TRV-re érvényesül. Az ablak nyitott állapotában végzett módosítások is elfogadásra kerülnek."
         }
       },
       "state_menu": {
