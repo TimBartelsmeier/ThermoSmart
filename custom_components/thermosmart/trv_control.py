@@ -10,7 +10,7 @@ from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.util.unit_conversion import TemperatureConverter
 
-from .device_profiles import DeviceProfile, get_profile, VALVE_MAX_LIMIT, SETPOINT_HVAC_FIRST
+from .device_profiles import DeviceProfile, get_profile, SETPOINT_HVAC_FIRST
 from .temperature_units import from_internal_temperature_c, to_internal_temperature_c
 from .const import (
     CONF_WINDOW_OPEN_TEMP,
@@ -249,8 +249,6 @@ class TRVControlMixin:
         Sonderfall no-off-Mode: TRVs ohne 'heat'-Unterstützung werden übersprungen.
         """
         if recommendation.get("window_open"):
-            return
-        if recommendation.get("forecast_suppression", 0) >= 100:
             return
 
         for entity_id in cfg.get("climate_entities", []):

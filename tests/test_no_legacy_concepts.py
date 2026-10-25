@@ -16,6 +16,8 @@ _FORBIDDEN = [
     r"CONF_HOME_ZONE",
     r"CONF_SCHEDULE_ENABLED",
     r"\bpresence\b",
+    r"forecast_suppression",
+    r"weather_engine",
 ]
 
 # The learning package keeps its own historical vocabulary (e.g. stored schemas).

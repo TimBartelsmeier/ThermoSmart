@@ -1,8 +1,8 @@
 # ThermoSmart (fork) – Implementation Plan
 
 Companion to [PROJECT_DESCRIPTION.md](./PROJECT_DESCRIPTION.md) (the *what*).
-This document is the *how and in which order*. Status: **DRAFT v1 – awaiting
-your review**; nothing below has been executed yet.
+This document is the *how and in which order*. Status: **WP0–WP10 implemented**
+(kept as a record; the code and README are authoritative).
 
 Run tests with `uv run python -m pytest --asyncio-mode=auto` (repo root `.venv`).
 

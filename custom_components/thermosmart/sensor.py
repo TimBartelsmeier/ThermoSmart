@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    DOMAIN, VERSION, ICON_ZONE, ICON_LEARNING, ICON_PREHEAT,
+    DOMAIN, VERSION, ICON_LEARNING, ICON_PREHEAT,
     SOLAR_GAIN_THRESHOLD_W, SOLAR_GAIN_MIN_OUTDOOR_C, SOLAR_GAIN_MAX_REDUCTION,
 )
 from .coordinator import ThermoSmartCoordinator
@@ -295,7 +295,6 @@ class ThermoSmartStatusSensor(_Base):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         z = self._zone
-        data = self.coordinator.data or {}
         le = self.coordinator.learning_engine
         learning_enabled = le.is_zone_enabled(self.coordinator.zone_id) if le else True
 

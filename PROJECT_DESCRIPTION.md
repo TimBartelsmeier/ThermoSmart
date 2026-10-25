@@ -1,6 +1,6 @@
 # ThermoSmart (fork) – Project Description
 
-Status: **v4 – all open questions settled, pending your final read-through** – derived from `main`, `feature/improved-control-modes` and
+Status: **implemented (WP0–WP10)** – derived from `main`, `feature/improved-control-modes` and
 `feature/flexible-scheduling` plus the decisions made in the planning session.
 This describes *what the user sees and can do*, not how it is implemented.
 Backwards compatibility with earlier versions is explicitly **not** a goal.
