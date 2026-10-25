@@ -114,6 +114,11 @@ async def _navigate_to_weather(hass) -> dict:
         result["flow_id"], {"next_step_id": "state_done"}
     )
     result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
+    assert result["type"] == FlowResultType.MENU
+    assert result["step_id"] == "schedule"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "schedule_done"}
+    )
     return result
 
 
@@ -267,6 +272,9 @@ class TestGlobalSetupOnlyInitial:
                 result["flow_id"], _SCHEDULE
             )
             result = await hass.config_entries.flow.async_configure(
+                result["flow_id"], {"next_step_id": "schedule_done"}
+            )
+            result = await hass.config_entries.flow.async_configure(
                 result["flow_id"], _WEATHER_NONE
             )
             await hass.async_block_till_done()
@@ -300,6 +308,9 @@ class TestNoGlobalLearningStep:
         )
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
 
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "schedule_done"}
+        )
         assert result["step_id"] == "outdoor"
         schema_keys = {str(k) for k in result["data_schema"].schema}
         assert CONF_LEARNING_ENABLED not in schema_keys
@@ -427,7 +438,7 @@ class TestZoneFlowDeviceValidation:
         assert result["step_id"] == "control_options"
 
 
-# ── Zone Flow – schedule step validation ──────────────────────────────────────
+# ── Zone Flow – temperature and schedule validation ───────────────────────────
 
 class TestZoneFlowScheduleValidation:
     async def _to_schedule(self, hass) -> dict:
@@ -473,11 +484,92 @@ class TestZoneFlowScheduleValidation:
         assert "night_temp" in result["errors"]
         assert "away_temp" in result["errors"]
 
-    async def test_valid_schedule_advances_to_weather(self, hass, enable_custom_integrations):
+    async def test_valid_temperatures_advances_to_schedule_editor(
+        self, hass, enable_custom_integrations
+    ):
         result = await self._to_schedule(hass)
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
-        assert result["type"] == FlowResultType.FORM
+        assert result["type"] == FlowResultType.MENU
+        assert result["step_id"] == "schedule"
+
+    async def test_schedule_done_advances_to_weather(self, hass, enable_custom_integrations):
+        result = await self._to_schedule(hass)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "schedule_done"}
+        )
         assert result["step_id"] == "outdoor"
+
+    async def test_add_event_is_saved_with_the_zone_entry(
+        self, hass, enable_custom_integrations
+    ):
+        result = await self._to_schedule(hass)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "schedule_add"}
+        )
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {
+            "days": ["mon", "tue", "wed", "thu", "fri"],
+            "time": "06:00:00", "preheat": True,
+        })
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "schedule_target_temperature"}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"target": 22.0}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "schedule_done"}
+        )
+        assert result["step_id"] == "outdoor"
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], _WEATHER_NONE
+        )
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        assert result["data"]["schedule_events"] == [{
+            "days": [0, 1, 2, 3, 4], "time": "06:00", "target": 22.0, "preheat": True,
+        }]
+
+    async def test_overlapping_weekday_time_is_rejected(
+        self, hass, enable_custom_integrations
+    ):
+        result = await self._to_schedule(hass)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "schedule_add"}
+        )
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {
+            "days": ["mon", "tue"], "time": "06:00:00", "preheat": False,
+        })
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "schedule_target_preset"}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"target": "comfort"}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "schedule_add"}
+        )
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {
+            "days": ["tue", "wed"], "time": "06:00:00", "preheat": False,
+        })
+        assert result["step_id"] == "schedule_event"
+        assert result["errors"]["base"] == "schedule_conflict"
+
+    async def test_event_requires_at_least_one_weekday(
+        self, hass, enable_custom_integrations
+    ):
+        result = await self._to_schedule(hass)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "schedule_add"}
+        )
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {
+            "days": [], "time": "06:00:00", "preheat": False,
+        })
+        assert result["step_id"] == "schedule_event"
+        assert result["errors"]["base"] == "schedule_invalid"
 
 
 # ── Zone Flow – weather step validation ───────────────────────────────────────
@@ -607,6 +699,7 @@ class TestStateSettingsSubFlow:
 
         await flow.async_configure(flow_id, {"next_step_id": "state_done"})
         await flow.async_configure(flow_id, _SCHEDULE)
+        await flow.async_configure(flow_id, {"next_step_id": "schedule_done"})
         with patch(_PATCH, return_value=True):
             result = await flow.async_configure(flow_id, _WEATHER_NONE)
             await hass.async_block_till_done()

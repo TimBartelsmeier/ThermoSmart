@@ -8,7 +8,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr, entity_registry as er, selector
 
 from .device_profiles import get_preset
-from .schedule import async_schedule_zone_warnings, zone_key
+from .schedule import ScheduleConflictError, ScheduleError, parse_events
 from .const import (
     DOMAIN,
     CONF_ZONE_CONTROL_MODE,
@@ -29,6 +29,7 @@ from .const import (
     CONF_DEV_WINDOW_OFF,
     CONF_DEV_ACCEPT_SETPOINT_CHANGES,
     CONF_DEV_STATE_SETTINGS,
+    CONF_SCHEDULE_EVENTS,
     CONTROL_MODE_INHERIT,
     CONTROL_MODE_SETPOINT,
     CONTROL_MODE_TPI_BOOST,
@@ -159,6 +160,64 @@ def _schema_schedule(d: dict) -> vol.Schema:
         vol.Required(CONF_WINDOW_OPEN_TEMP, default=d.get(CONF_WINDOW_OPEN_TEMP, WINDOW_OPEN_SETPOINT)):
             selector.NumberSelector(selector.NumberSelectorConfig(
                 min=5, max=20, step=0.5, unit_of_measurement="°C", mode=selector.NumberSelectorMode.BOX,
+            )),
+    })
+
+
+_SCHEDULE_DAYS = [
+    {"value": value, "label": name}
+    for value, name in zip(
+        ("mon", "tue", "wed", "thu", "fri", "sat", "sun"),
+        ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+    )
+]
+_SCHEDULE_DAY_VALUES = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+_SCHEDULE_PRESETS = [
+    {"value": preset, "label": preset.replace("_", " ").title()}
+    for preset in ("comfort", "eco", "night", "away", "vacation")
+]
+
+
+def _schema_schedule_event(d: dict) -> vol.Schema:
+    days = d.get("days", [0, 1, 2, 3, 4])
+    selector_days = [
+        _SCHEDULE_DAY_VALUES[day] if isinstance(day, int) and 0 <= day < 7 else day
+        for day in days
+    ]
+    event_time = str(d.get("time", "06:00:00"))
+    if len(event_time.split(":")) == 2:
+        event_time = f"{event_time}:00"
+    return vol.Schema({
+        vol.Required("days", default=selector_days):
+            selector.SelectSelector(selector.SelectSelectorConfig(
+                options=_SCHEDULE_DAYS, multiple=True, mode=selector.SelectSelectorMode.LIST,
+            )),
+        vol.Required("time", default=event_time):
+            selector.TimeSelector(),
+        vol.Required("preheat", default=d.get("preheat", False)):
+            selector.BooleanSelector(),
+    })
+
+
+def _schema_schedule_target_temperature(d: dict) -> vol.Schema:
+    target = d.get("target")
+    default = target if isinstance(target, (int, float)) else 21.0
+    return vol.Schema({
+        vol.Required("target", default=default):
+            selector.NumberSelector(selector.NumberSelectorConfig(
+                min=5, max=30, step=0.5, unit_of_measurement="°C",
+                mode=selector.NumberSelectorMode.BOX,
+            )),
+    })
+
+
+def _schema_schedule_target_preset(d: dict) -> vol.Schema:
+    target = d.get("target")
+    default = target if isinstance(target, str) else "comfort"
+    return vol.Schema({
+        vol.Required("target", default=default):
+            selector.SelectSelector(selector.SelectSelectorConfig(
+                options=_SCHEDULE_PRESETS, mode=selector.SelectSelectorMode.DROPDOWN,
             )),
     })
 
@@ -673,7 +732,9 @@ class _DeviceSettingsMixin:
 
 # ── Shared zone steps (setup and options) ────────────────────────────────────
 
-ZONE_STEPS = ("devices", "control_options", "device_settings", "temperatures", "outdoor")
+ZONE_STEPS = (
+    "devices", "control_options", "device_settings", "temperatures", "schedule", "outdoor"
+)
 
 
 def _validate_outdoor(hass, data: dict) -> dict[str, str]:
@@ -683,44 +744,241 @@ def _validate_outdoor(hass, data: dict) -> dict[str, str]:
     return {}
 
 
-def _schedule_warning_text(code: str) -> str:
-    kind, _, rest = code.partition(":")
-    if kind == "duplicate":
-        key, _, names = rest.partition(":")
-        return (
-            f"Another zone ({names}) already uses the schedule key `{key}`; both zones "
-            "will follow the same schedule events."
+class _ScheduleEditorMixin:
+    """In-flow CRUD editor for a zone's recurring schedule events."""
+
+    _schedule_events_cache: list[dict] | None = None
+    _schedule_pending: dict | None = None
+    _schedule_edit_index: int | None = None
+
+    def _schedule_events(self) -> list[dict]:
+        if self._schedule_events_cache is None:
+            cfg = self._zone_data()
+            parsed = parse_events(cfg.get(CONF_SCHEDULE_EVENTS, []))
+            self._schedule_events_cache = [
+                {
+                    "days": list(event.days),
+                    "time": f"{event.minute // 60:02d}:{event.minute % 60:02d}",
+                    "target": event.target,
+                    "preheat": event.preheat,
+                }
+                for event in parsed
+            ]
+        return self._schedule_events_cache
+
+    @staticmethod
+    def _schedule_event_label(event: dict) -> str:
+        names = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+        days = ", ".join(names[day] for day in event["days"])
+        target = event["target"]
+        if isinstance(target, str):
+            target = target.title()
+        else:
+            target = f"{target:g} °C"
+        preheat = ", pre-heat" if event["preheat"] else ""
+        return f"{days} {event['time']} → {target}{preheat}"
+
+    def _schedule_description(self) -> str:
+        events = self._schedule_events()
+        return "\n".join(
+            f"{index + 1}. {self._schedule_event_label(event)}"
+            for index, event in enumerate(events)
+        ) or "_No schedule events configured._"
+
+    async def async_step_schedule(self, user_input: dict | None = None):
+        self._schedule_events_cache = None
+        self._schedule_pending = None
+        self._schedule_edit_index = None
+        self._schedule_events()
+        return await self.async_step_schedule_menu()
+
+    async def async_step_schedule_menu(self, user_input: dict | None = None):
+        options = ["schedule_add"]
+        if self._schedule_events():
+            options.extend(("schedule_edit", "schedule_remove"))
+        options.append("schedule_done")
+        return self.async_show_menu(
+            step_id="schedule",
+            menu_options=options,
+            description_placeholders={"events": self._schedule_description()},
         )
-    if kind == "existing":
-        return (
-            f"The schedule file already contains events for `{rest}`; this zone will use them."
+
+    async def async_step_schedule_add(self, user_input: dict | None = None):
+        self._schedule_edit_index = None
+        self._schedule_pending = None
+        return await self.async_step_schedule_event(user_input)
+
+    async def async_step_schedule_edit(self, user_input: dict | None = None):
+        events = self._schedule_events()
+        if user_input is not None:
+            try:
+                index = int(user_input["event"])
+            except (KeyError, TypeError, ValueError):
+                return await self.async_step_schedule_menu()
+            if not 0 <= index < len(events):
+                return await self.async_step_schedule_menu()
+            self._schedule_edit_index = index
+            self._schedule_pending = dict(events[index])
+            return await self.async_step_schedule_event()
+        return self.async_show_form(
+            step_id="schedule_edit",
+            data_schema=vol.Schema({
+                vol.Required("event"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": str(i), "label": self._schedule_event_label(event)}
+                            for i, event in enumerate(events)
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
         )
-    if kind == "renamed":
-        old, _, new = rest.partition(":")
-        return (
-            f"Renaming changes the schedule key from `{old}` to `{new}`. Events under "
-            f"`{old}` stay in the schedule file but no longer apply to this zone."
+
+    async def async_step_schedule_event(self, user_input: dict | None = None):
+        current = self._schedule_pending or {}
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                draft = {
+                    "days": user_input["days"],
+                    "time": user_input["time"],
+                    "target": current.get("target", 21.0),
+                    "preheat": user_input["preheat"],
+                }
+                remaining = [
+                    event for i, event in enumerate(self._schedule_events())
+                    if i != self._schedule_edit_index
+                ]
+                parse_events([*remaining, draft])
+                # Store canonical weekday/time values before moving to the target step.
+                normalized = parse_events([draft])[0]
+                draft["days"] = list(normalized.days)
+                draft["time"] = (
+                    f"{normalized.minute // 60:02d}:{normalized.minute % 60:02d}"
+                )
+                self._schedule_pending = draft
+                return await self.async_step_schedule_target_type()
+            except ScheduleConflictError:
+                errors["base"] = "schedule_conflict"
+            except ScheduleError:
+                errors["base"] = "schedule_invalid"
+        return self.async_show_form(
+            step_id="schedule_event",
+            data_schema=_schema_schedule_event({**current, **(user_input or {})}),
+            errors=errors,
         )
-    return code
+
+    async def async_step_schedule_target_type(self, user_input: dict | None = None):
+        target = (self._schedule_pending or {}).get("target")
+        return self.async_show_menu(
+            step_id="schedule_target_type",
+            menu_options=["schedule_target_temperature", "schedule_target_preset"],
+            description_placeholders={"current_target": str(target) if target is not None else ""},
+        )
+
+    async def _schedule_save_target(
+        self, user_input: dict, target_step: str
+    ):
+        pending = dict(self._schedule_pending or {})
+        pending["target"] = user_input["target"]
+        candidate = list(self._schedule_events())
+        if self._schedule_edit_index is None:
+            candidate.append(pending)
+        else:
+            candidate[self._schedule_edit_index] = pending
+        try:
+            parsed = parse_events(candidate)
+        except ScheduleConflictError:
+            schema = (
+                _schema_schedule_target_preset(pending)
+                if target_step == "schedule_target_preset"
+                else _schema_schedule_target_temperature(pending)
+            )
+            return self.async_show_form(
+                step_id=target_step,
+                data_schema=schema,
+                errors={"base": "schedule_conflict"},
+            )
+        except ScheduleError:
+            schema = (
+                _schema_schedule_target_preset(pending)
+                if target_step == "schedule_target_preset"
+                else _schema_schedule_target_temperature(pending)
+            )
+            return self.async_show_form(
+                step_id=target_step,
+                data_schema=schema,
+                errors={"base": "schedule_invalid"},
+            )
+        self._schedule_events_cache = [
+            {
+                "days": list(event.days),
+                "time": f"{event.minute // 60:02d}:{event.minute % 60:02d}",
+                "target": event.target,
+                "preheat": event.preheat,
+            }
+            for event in parsed
+        ]
+        self._schedule_pending = None
+        self._schedule_edit_index = None
+        return await self.async_step_schedule_menu()
+
+    async def async_step_schedule_target_temperature(self, user_input: dict | None = None):
+        if user_input is not None:
+            return await self._schedule_save_target(user_input, "schedule_target_temperature")
+        return self.async_show_form(
+            step_id="schedule_target_temperature",
+            data_schema=_schema_schedule_target_temperature(self._schedule_pending or {}),
+        )
+
+    async def async_step_schedule_target_preset(self, user_input: dict | None = None):
+        if user_input is not None:
+            return await self._schedule_save_target(user_input, "schedule_target_preset")
+        return self.async_show_form(
+            step_id="schedule_target_preset",
+            data_schema=_schema_schedule_target_preset(self._schedule_pending or {}),
+        )
+
+    async def async_step_schedule_remove(self, user_input: dict | None = None):
+        events = self._schedule_events()
+        if user_input is not None:
+            remove = {int(index) for index in user_input.get("remove", [])}
+            self._schedule_events_cache = [
+                event for index, event in enumerate(events) if index not in remove
+            ]
+            return await self.async_step_schedule_menu()
+        return self.async_show_form(
+            step_id="schedule_remove",
+            data_schema=vol.Schema({
+                vol.Optional("remove", default=[]): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": str(i), "label": self._schedule_event_label(event)}
+                            for i, event in enumerate(events)
+                        ],
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                ),
+            }),
+        )
+
+    async def async_step_schedule_done(self, user_input: dict | None = None):
+        return await self._zone_saved(
+            "schedule", {CONF_SCHEDULE_EVENTS: list(self._schedule_events())}
+        )
 
 
-class _ZoneStepsMixin(_DeviceSettingsMixin):
+class _ZoneStepsMixin(_DeviceSettingsMixin, _ScheduleEditorMixin):
     """The zone configuration steps, identical in the setup and the options flow.
 
     Hosts provide the zone data and decide what happens after a step was saved
     (setup: continue with the next step; options: store the section and finish).
     """
 
-    _name_warned: str | None = None
-
     def _zone_data(self) -> dict:
         raise NotImplementedError
-
-    def _zone_entry_id(self) -> str | None:
-        return None
-
-    def _zone_previous_name(self) -> str | None:
-        return None
 
     async def _zone_saved(self, step: str, update: dict):
         raise NotImplementedError
@@ -730,45 +988,24 @@ class _ZoneStepsMixin(_DeviceSettingsMixin):
 
     # ── Devices & sensors ────────────────────────────────────────────
 
-    async def _name_warnings(self, name: str) -> list[str]:
-        entries = self.hass.config_entries.async_entries(DOMAIN)
-        codes = list(await async_schedule_zone_warnings(
-            self.hass, entries, name, current_entry_id=self._zone_entry_id(),
-        ))
-        previous = self._zone_previous_name()
-        if previous is not None and zone_key(previous) != zone_key(name):
-            codes.append(f"renamed:{zone_key(previous)}:{zone_key(name)}")
-        return [_schedule_warning_text(code) for code in codes]
-
-    def _show_devices(self, data: dict, errors: dict, warnings: list[str]):
-        name = str(data.get("name", ""))
-        warning_text = "".join(f"\n\n⚠️ **Warning:** {text}" for text in warnings)
+    def _show_devices(self, data: dict, errors: dict):
         return self.async_show_form(
             step_id="devices",
             data_schema=_schema_devices(data),
             errors=errors,
-            description_placeholders={
-                "schedule_key": zone_key(name) if name.strip() else "(derived from the name)",
-                "name_warnings": warning_text,
-            },
         )
 
     async def async_step_devices(self, user_input: dict | None = None):
         errors: dict[str, str] = {}
         current = self._zone_data()
         if user_input is None:
-            return self._show_devices(current, errors, [])
+            return self._show_devices(current, errors)
         name = user_input.get("name", "").strip()
         if not name:
             errors["name"] = "name_required"
         elif not user_input.get("climate_entities"):
             errors["climate_entities"] = "required"
         else:
-            warnings = await self._name_warnings(name)
-            if warnings and self._name_warned != name:
-                # Warnings are shown once; submitting the same name again confirms it.
-                self._name_warned = name
-                return self._show_devices({**current, **user_input}, errors, warnings)
             settings = dict(current.get(CONF_DEVICE_SETTINGS, {}))
             for climate_id in user_input["climate_entities"]:
                 if climate_id not in settings:
@@ -776,7 +1013,7 @@ class _ZoneStepsMixin(_DeviceSettingsMixin):
             return await self._zone_saved(
                 "devices", {**user_input, "name": name, CONF_DEVICE_SETTINGS: settings},
             )
-        return self._show_devices({**current, **user_input}, errors, [])
+        return self._show_devices({**current, **user_input}, errors)
 
     # ── Control strategy ─────────────────────────────────────────────
 
@@ -982,12 +1219,6 @@ class ThermoSmartOptionsFlow(_ZoneStepsMixin, config_entries.OptionsFlow):
     def _zone_data(self) -> dict:
         return self._current()
 
-    def _zone_entry_id(self) -> str | None:
-        return self.config_entry.entry_id
-
-    def _zone_previous_name(self) -> str | None:
-        return str(self._current().get("name", ""))
-
     async def _zone_saved(self, step: str, update: dict):
         return self.async_create_entry(title="", data={**self._current(), **update})
 
@@ -995,4 +1226,3 @@ class ThermoSmartOptionsFlow(_ZoneStepsMixin, config_entries.OptionsFlow):
         if getattr(self, "_settings_cache", None) is None:
             self._settings_cache = dict(self._current().get(CONF_DEVICE_SETTINGS, {}))
         return self._settings_cache
-

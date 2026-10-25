@@ -93,13 +93,12 @@ The setup flow and the options flow ask **the same questions with the same texts
 
 | Step | What you configure |
 |---|---|
-| **Devices** | Zone name (the dialog shows the *schedule key* derived from it), TRVs, room temperature and humidity sensors (optional – the TRV's own sensor is the fallback), window/door sensors with open and close delay |
+| **Devices** | Zone name, TRVs, room temperature and humidity sensors (optional – the TRV's own sensor is the fallback), window/door sensors with open and close delay |
 | **Control strategy** | Zone control mode, minimum control interval, temperature tolerance, external temperature write threshold, physical-setpoint debounce and settling time |
 | **Per TRV** | See [Per-TRV options](#per-trv-options); one pass per TRV |
 | **Temperatures** | Comfort, Eco, Night, Away, Vacation and the window-open temperature |
+| **Schedule** | Add, edit and remove weekly events |
 | **Outdoor** | Optional outdoor sensors (temperature, humidity, wind, solar, rain) and an optional weather entity as fallback |
-
-If a name would produce the same schedule key as another zone, or a changed name starts a new schedule block, the dialog warns you once; submit again to confirm. ThermoSmart never changes the name silently.
 
 Changes in the options flow reload the zone and run one control pass.
 
@@ -111,34 +110,7 @@ A schedule is a list of **events**. An event means: *at time T on these weekdays
 
 Events fire **at their exact time**, not at the next control cycle. An event that was missed because scheduling was off, paused, or Home Assistant was not running is **skipped, never caught up**.
 
-Schedules live in `/config/thermosmart_schedules.yaml`, one block per zone, keyed by the *schedule key* (a slug of the zone name, shown in the zone's setup dialog):
-
-```yaml
-zones:
-  living_room:
-    events:
-      - days: [mon, tue, wed, thu, fri]
-        time: "06:00"
-        target: comfort        # a preset name ...
-        preheat: true          # reach the target AT 06:00, see Pre-heating
-      - days: [mon, tue, wed, thu, fri]
-        time: "08:30"
-        target: 17.5           # ... or a temperature
-      - days: [sat, sun]
-        time: "08:00"
-        target: 21
-      - days: [mon, tue, wed, thu, fri, sat, sun]
-        time: "22:30"
-        target: night
-```
-
-* `days`: weekday names (`mon` … `sun`) or numbers `0` (Monday) … `6`.
-* `time`: `"HH:MM"`, local time.
-* `target`: number, or one of `comfort`, `eco`, `night` (`sleep` is accepted as alias), `away`, `vacation`.
-* `preheat`: optional, default `false`.
-* Two events at the same time: the last one listed wins.
-* ThermoSmart manages the file: missing zones are added with an empty list and zone keys are kept sorted. Existing blocks – including ones whose zone no longer exists, e.g. after a rename – are never modified or deleted.
-* A broken file does not stop ThermoSmart; the affected zone reports the problem in the *Next scheduled event* sensor's `schedule_error` attribute and no events fire for it.
+Edit the event list in the zone's setup flow or under **Settings → Devices & services → ThermoSmart zone → Configure → Schedule**. Each event has one or more weekdays, a local time, a target temperature or preset, and an optional pre-heat flag. Events with an overlapping weekday and time are rejected rather than silently overriding each other. The schedule is stored with that zone's Home Assistant config entry; editing it does not require a separate YAML file. Existing `thermosmart_schedules.yaml` files are not imported; recreate those events in the flow.
 
 Controls per zone:
 
@@ -402,7 +374,7 @@ For debug logs use Home Assistant's built-in logger configuration for `custom_co
 ## What is different from the original
 
 * One desired target; no *Auto* mode, no override state, no presence-based *Away*, no weekday/weekend fields.
-* Free-form schedule events in YAML, independent of presets and modes, with exact-time firing and optional per-event pre-heating.
+* Free-form schedule events configured in the zone flow, independent of presets and modes, with exact-time firing and optional per-event pre-heating.
 * Window, summer and vacation share one suspension mechanism.
 * Control strategy (zone and per-TRV), state settings and physical-setpoint handling are configurable; setup and options flows are one implementation.
 * A fixed list of reasons for control passes.
@@ -425,7 +397,6 @@ For debug logs use Home Assistant's built-in logger configuration for `custom_co
 * Translations other than English: new strings exist in English only; other languages fall back to English and are not checked by the completeness test.
 * The bundled Lovelace card has not been updated; it still shows an *Auto* button that no longer has an effect.
 * Early cutoff / coasting (stop heating slightly early and let after-heat finish).
-* A schedule editor in the config flow (events are edited in the YAML file).
 * Weather-based correction (see above).
 
 ---

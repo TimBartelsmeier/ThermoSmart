@@ -38,11 +38,6 @@ from .const import (
 from .coordinator import ThermoSmartCoordinator
 from .system import SYSTEM_KEY, SystemController
 from .triggers import TRIGGER_SYSTEM_STATE
-from .schedule import (
-    ScheduleError,
-    async_manage_schedule_yaml,
-    async_orphaned_zone_keys,
-)
 from .outdoor import OutdoorConditions
 from .learning_engine import LearningEngine
 
@@ -222,18 +217,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator.setup_event_listeners()
     entry.async_on_unload(coordinator.cleanup_event_listeners)
 
-    # Schedule YAML: add missing zone blocks, then load this zone's events
-    # (re-read on every entry reload, i.e. after options changes).
-    try:
-        all_entries = hass.config_entries.async_entries(DOMAIN)
-        await async_manage_schedule_yaml(hass, all_entries)
-        if orphans := await async_orphaned_zone_keys(hass, all_entries):
-            _LOGGER.warning(
-                "ThermoSmart: schedule blocks without a matching zone (kept untouched): %s",
-                ", ".join(orphans),
-            )
-    except ScheduleError as err:
-        _LOGGER.error("ThermoSmart: schedule file not managed – %s", err)
+    # Schedule events are stored with the zone config entry and reloaded here.
     await coordinator.async_load_schedule()
     coordinator.start_scheduler()
 
@@ -313,7 +297,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         else:
             remaining = [
                 k for k in hass.data[DOMAIN]
-                if k not in ("learning_engine", SYSTEM_KEY, "schedule_write_lock")
+                if k not in ("learning_engine", SYSTEM_KEY)
                 and not (isinstance(hass.data[DOMAIN].get(k), dict)
                          and hass.data[DOMAIN][k].get("type") == "system")
             ]

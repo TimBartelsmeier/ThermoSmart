@@ -126,7 +126,7 @@ class TestOptionsHub:
         result = await _open_hub(hass, entry)
         for section in (
             "devices", "control_options", "device_settings",
-            "temperatures", "outdoor",
+            "temperatures", "schedule", "outdoor",
         ):
             assert section in result["menu_options"], f"section '{section}' missing"
         assert "presence" not in result["menu_options"]
@@ -148,6 +148,65 @@ class TestOptionsHub:
         result = await _select_section(hass, hub, "temperatures")
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "temperatures"
+
+    async def test_hub_schedule_editor_opens_and_saves(self, hass, enable_custom_integrations):
+        entry = _zone_entry(schedule_events=[])
+        entry.add_to_hass(hass)
+
+        hub = await _open_hub(hass, entry)
+        menu = await _select_section(hass, hub, "schedule")
+        assert menu["type"] == FlowResultType.MENU
+        assert menu["step_id"] == "schedule"
+        result = await hass.config_entries.options.async_configure(
+            menu["flow_id"], {"next_step_id": "schedule_done"}
+        )
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        assert result["data"]["schedule_events"] == []
+
+    async def test_schedule_editor_edits_and_removes_events(
+        self, hass, enable_custom_integrations
+    ):
+        events = [
+            {"days": ["mon"], "time": "06:00", "target": 21.0, "preheat": False},
+            {"days": ["sat", "sun"], "time": "08:00", "target": "eco", "preheat": True},
+        ]
+        entry = _zone_entry(schedule_events=events)
+        entry.add_to_hass(hass)
+        hub = await _open_hub(hass, entry)
+        form = await _select_section(hass, hub, "schedule")
+        flow_id = form["flow_id"]
+
+        form = await hass.config_entries.options.async_configure(
+            flow_id, {"next_step_id": "schedule_edit"}
+        )
+        form = await hass.config_entries.options.async_configure(flow_id, {"event": "0"})
+        days_key = next(
+            key for key in form["data_schema"].schema if str(key) == "days"
+        )
+        assert days_key.default() == ["mon"]
+        menu = await hass.config_entries.options.async_configure(flow_id, {
+            "days": ["mon"], "time": "07:00:00", "preheat": True,
+        })
+        menu = await hass.config_entries.options.async_configure(
+            flow_id, {"next_step_id": "schedule_target_preset"}
+        )
+        menu = await hass.config_entries.options.async_configure(
+            flow_id, {"target": "comfort"}
+        )
+        form = await hass.config_entries.options.async_configure(
+            flow_id, {"next_step_id": "schedule_remove"}
+        )
+        menu = await hass.config_entries.options.async_configure(
+            flow_id, {"remove": ["1"]}
+        )
+        result = await hass.config_entries.options.async_configure(
+            flow_id, {"next_step_id": "schedule_done"}
+        )
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        assert result["data"]["schedule_events"] == [{
+            "days": [0], "time": "07:00", "target": "comfort", "preheat": True,
+        }]
 
     async def test_hub_weather_section_shows_form(self, hass, enable_custom_integrations):
         entry = _zone_entry()
@@ -404,20 +463,17 @@ class TestOptionsHubOldConfigCompatibility:
         hub = await hass.config_entries.options.async_init(entry.entry_id)
         assert hub["type"] == FlowResultType.MENU
 
-    async def test_name_change_via_devices_section_from_old_entry(
+    async def test_name_change_via_devices_section_saves_immediately(
         self, hass, enable_custom_integrations
     ):
-        """Old flat entry can have its name changed via the hub's devices section."""
+        """Zone names no longer depend on a shared schedule-file key."""
         entry = _zone_entry()
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
         form = await _select_section(hass, hub, "devices")
         data = {**_STEP_DEVICES, "name": "Neuer Name"}
-        warned = await _save_section(hass, form, data)
-        assert warned["type"] == FlowResultType.FORM
-        assert "schedule key" in warned["description_placeholders"]["name_warnings"]
-        result = await _save_section(hass, warned, data)
+        result = await _save_section(hass, form, data)
         assert result["type"] == FlowResultType.CREATE_ENTRY
         assert result["data"]["name"] == "Neuer Name"
 

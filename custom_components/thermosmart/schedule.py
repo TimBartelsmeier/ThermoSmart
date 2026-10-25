@@ -1,4 +1,4 @@
-"""Weekly schedule events: parsing, YAML management and exact-time timers.
+"""Weekly schedule events: validation, time computation and exact-time timers.
 
 An event means "at time T on these weekdays, set the target to X" – nothing
 more. There is no notion of a currently active event and nothing is caught up
@@ -6,29 +6,20 @@ after a restart or while scheduling is off.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
-import os
-import re
-import tempfile
-import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import yaml
-
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_point_in_utc_time
 
-from .const import DOMAIN, PRESETS, PRESET_NIGHT
+from .const import PRESETS, PRESET_NIGHT
 from .target import TARGET_MAX_C, TARGET_MIN_C
 
 _LOGGER = logging.getLogger(__name__)
 
-SCHEDULE_FILENAME = "thermosmart_schedules.yaml"
 _DAY_NAMES = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 # "sleep" is accepted as an alias of the night preset (HA's own preset name).
 _PRESET_ALIASES = {"sleep": PRESET_NIGHT}
@@ -60,11 +51,17 @@ class ScheduleError(ValueError):
     """Invalid schedule configuration."""
 
 
+class ScheduleConflictError(ScheduleError):
+    """Two events overlap on at least one weekday at the same time."""
+
+
 # ── Parsing ───────────────────────────────────────────────────────────────────
 
 def _parse_time(value: Any) -> int:
     try:
         parts = str(value).split(":")
+        if len(parts) not in (2, 3) or (len(parts) == 3 and int(parts[2]) != 0):
+            raise ValueError
         hour, minute = int(parts[0]), int(parts[1])
     except (TypeError, ValueError, IndexError) as err:
         raise ScheduleError(f"invalid time {value!r}; expected HH:MM") from err
@@ -112,7 +109,7 @@ def _parse_target(value: Any) -> float | str:
 
 
 def parse_events(raw: Any) -> list[ScheduleEvent]:
-    """Validate and normalize the ``events`` YAML list."""
+    """Validate and normalize the saved event list."""
     if not isinstance(raw, list):
         raise ScheduleError("events must be a list")
     events: list[ScheduleEvent] = []
@@ -120,33 +117,25 @@ def parse_events(raw: Any) -> list[ScheduleEvent]:
         if not isinstance(item, dict):
             raise ScheduleError(f"event {order + 1} must be a mapping")
         try:
-            events.append(ScheduleEvent(
+            event = ScheduleEvent(
                 days=_parse_days(item.get("days")),
                 minute=_parse_time(item.get("time")),
                 target=_parse_target(item.get("target")),
-                preheat=bool(item.get("preheat", False)),
+                preheat=item.get("preheat", False),
                 order=order,
-            ))
+            )
         except ScheduleError as err:
             raise ScheduleError(f"event {order + 1}: {err}") from err
+        if not isinstance(event.preheat, bool):
+            raise ScheduleError(f"event {order + 1}: preheat must be true or false")
+        for previous in events:
+            if event.minute == previous.minute and set(event.days).intersection(previous.days):
+                raise ScheduleConflictError(
+                    f"event {order + 1}: conflicts with event {previous.order + 1} "
+                    "on an overlapping weekday and time"
+                )
+        events.append(event)
     return events
-
-
-def zone_key(name: str) -> str:
-    """Return the human-readable, YAML-safe key for a zone name."""
-    normalized = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
-    slug = re.sub(r"[^a-z0-9]+", "_", normalized.lower()).strip("_")
-    return slug or "zone"
-
-
-def _entry_name(entry: Any) -> str:
-    """Zone name as currently configured (options override the initial data)."""
-    merged = {**entry.data, **(getattr(entry, "options", None) or {})}
-    return str(merged.get("name", "Zone"))
-
-
-def entry_zone_key(entry: Any) -> str:
-    return zone_key(_entry_name(entry))
 
 
 def event_preset(target: float | str) -> str | None:
@@ -319,138 +308,3 @@ class ScheduleRunner:
             _LOGGER.exception("schedule event %s failed", occurrence.event.key)
         finally:
             self._arm(after)
-
-
-# ── YAML file ─────────────────────────────────────────────────────────────────
-
-def _path(hass: HomeAssistant) -> str:
-    return hass.config.path(SCHEDULE_FILENAME)
-
-
-def _read_text(path: str) -> str:
-    with open(path, encoding="utf-8") as file:
-        return file.read()
-
-
-async def _read_yaml(hass: HomeAssistant) -> dict:
-    path = _path(hass)
-    if not os.path.exists(path):
-        return {}
-    text = await hass.async_add_executor_job(_read_text, path)
-    try:
-        data = yaml.safe_load(text) or {}
-    except yaml.YAMLError as err:
-        raise ScheduleError(f"cannot parse {SCHEDULE_FILENAME}: {err}") from err
-    if not isinstance(data, dict):
-        raise ScheduleError(f"{SCHEDULE_FILENAME} must contain a mapping")
-    return data
-
-
-def _atomic_write(path: str, text: str) -> None:
-    directory = os.path.dirname(path) or "."
-    os.makedirs(directory, exist_ok=True)
-    fd, temp_path = tempfile.mkstemp(
-        prefix=f"{os.path.basename(path)}.", suffix=".tmp", dir=directory
-    )
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as file:
-            file.write(text)
-            file.flush()
-            os.fsync(file.fileno())
-        os.replace(temp_path, path)
-    except Exception:
-        try:
-            os.unlink(temp_path)
-        except FileNotFoundError:
-            pass
-        raise
-
-
-async def _write_yaml(hass: HomeAssistant, data: dict) -> None:
-    text = yaml.safe_dump(data, sort_keys=False, allow_unicode=False)
-    await hass.async_add_executor_job(_atomic_write, _path(hass), text)
-
-
-def _zone_entries(entries: list[ConfigEntry]) -> list[ConfigEntry]:
-    return [e for e in entries if e.data.get("entry_type") != "system"]
-
-
-async def _manage_locked(hass: HomeAssistant, entries: list[ConfigEntry]) -> None:
-    file_exists = os.path.exists(_path(hass))
-    data = await _read_yaml(hass)
-    zones = data.setdefault("zones", {})
-    if not isinstance(zones, dict):
-        raise ScheduleError("zones in schedule YAML must be a mapping")
-    managed = dict(zones)
-    for entry in _zone_entries(entries):
-        managed.setdefault(entry_zone_key(entry), {"events": []})
-    sorted_zones = dict(sorted(managed.items()))
-    if sorted_zones != zones or not file_exists:
-        data["zones"] = sorted_zones
-        await _write_yaml(hass, data)
-
-
-async def async_manage_schedule_yaml(
-    hass: HomeAssistant, entries: list[ConfigEntry]
-) -> None:
-    """Add missing zone blocks and keep the zone keys sorted.
-
-    Existing blocks – including ones that belong to no zone any more – are
-    never modified or deleted.
-    """
-    lock = hass.data.setdefault(DOMAIN, {}).setdefault("schedule_write_lock", asyncio.Lock())
-    async with lock:
-        await _manage_locked(hass, entries)
-
-
-async def async_schedule_zone_warnings(
-    hass: HomeAssistant,
-    entries: list[ConfigEntry],
-    name: str,
-    *,
-    current_entry_id: str | None = None,
-) -> tuple[str, ...]:
-    """Warnings for a zone name: ``duplicate:<key>:<names>`` / ``existing:<key>``."""
-    key = zone_key(name)
-    matching = [
-        e for e in _zone_entries(entries)
-        if e.entry_id != current_entry_id and entry_zone_key(e) == key
-    ]
-    warnings: list[str] = []
-    if matching:
-        warnings.append(f"duplicate:{key}:{', '.join(_entry_name(e) for e in matching)}")
-    try:
-        zones = (await _read_yaml(hass)).get("zones", {})
-    except ScheduleError:
-        return tuple(warnings)
-    if isinstance(zones, dict) and key in zones and current_entry_id is None and not matching:
-        warnings.append(f"existing:{key}")
-    return tuple(warnings)
-
-
-async def async_orphaned_zone_keys(
-    hass: HomeAssistant, entries: list[ConfigEntry]
-) -> tuple[str, ...]:
-    """Schedule blocks that belong to no configured zone (reported, never removed)."""
-    zones = (await _read_yaml(hass)).get("zones", {})
-    if not isinstance(zones, dict):
-        return ()
-    known = {entry_zone_key(e) for e in _zone_entries(entries)}
-    return tuple(sorted(str(k) for k in zones if k not in known))
-
-
-async def async_load_schedule(hass: HomeAssistant, entry: ConfigEntry) -> list[ScheduleEvent]:
-    """Events of the zone, or raise ScheduleError with a user-readable message."""
-    zones = (await _read_yaml(hass)).get("zones", {})
-    if not isinstance(zones, dict):
-        raise ScheduleError("zones in schedule YAML must be a mapping")
-    key = entry_zone_key(entry)
-    zone = zones.get(key)
-    if not zone:
-        return []
-    if not isinstance(zone, dict):
-        raise ScheduleError(f"zone {key!r} must be a mapping")
-    try:
-        return parse_events(zone.get("events", []))
-    except ScheduleError as err:
-        raise ScheduleError(f"zone {key!r}, {err}") from err

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -10,7 +10,7 @@ from homeassistant.util import dt as dt_util
 
 from custom_components.thermosmart import schedule as sched
 from custom_components.thermosmart.learning.clock import FakeClock
-from custom_components.thermosmart.schedule import ScheduleError, parse_events
+from custom_components.thermosmart.schedule import parse_events
 from custom_components.thermosmart.target import SOURCE_EVENT, SOURCE_USER
 from tests.helpers import make_coordinator
 from tests.test_schedule import _Timers
@@ -171,22 +171,21 @@ class TestEnableAndPause:
 
 
 class TestLoadAndLifecycle:
-    async def test_load_failure_runs_without_events_and_exposes_error(self, timers, caplog):
+    async def test_invalid_saved_schedule_runs_without_events_and_logs(self, timers, caplog):
         coord, _ = _coord(WED_15)
-        with patch("custom_components.thermosmart.coordinator.async_load_schedule",
-                   AsyncMock(side_effect=ScheduleError("zone 'x', event 1: bad time"))):
-            await coord.async_load_schedule()
-        assert coord.schedule_error == "zone 'x', event 1: bad time"
+        coord.entry.data["schedule_events"] = [
+            {"days": ["wed"], "time": "25:00", "target": 23}
+        ]
+        await coord.async_load_schedule()
+        assert "event 1" in coord.schedule_error
         assert coord.scheduler.events == [] and coord.scheduler.next_event is None
-        assert "schedule not loaded" in caplog.text
+        assert "saved schedule is invalid" in caplog.text
 
-    async def test_reload_replaces_events_and_clears_error(self, timers):
+    async def test_load_uses_entry_options_and_clears_error(self, timers):
         coord, _ = _coord([])
         coord.schedule_error = "old"
-        events = parse_events(WED_15)
-        with patch("custom_components.thermosmart.coordinator.async_load_schedule",
-                   AsyncMock(return_value=events)):
-            await coord.async_load_schedule()
+        coord.entry.options = {"schedule_events": WED_15}
+        await coord.async_load_schedule()
         assert coord.schedule_error is None
         assert coord.scheduler.next_event is not None
 

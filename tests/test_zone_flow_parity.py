@@ -43,8 +43,12 @@ class TestSharedImplementation:
             (Path(config_flow.__file__).parent / "strings.json").read_text("utf-8")
         )
         setup, options = strings["config"]["step"], strings["options"]["step"]
-        for step in (*config_flow.ZONE_STEPS, "state_menu", "state_add_device",
-                     "state_add_any", "state_value", "state_remove"):
+        for step in (
+            *config_flow.ZONE_STEPS, "state_menu", "state_add_device", "state_add_any",
+            "state_value", "state_remove", "schedule_edit",
+            "schedule_event", "schedule_target_type", "schedule_target_temperature",
+            "schedule_target_preset", "schedule_remove",
+        ):
             assert setup[step] == options[step], step
         assert strings["config"]["error"] == strings["options"]["error"]
 
@@ -58,6 +62,9 @@ async def _setup_flow_data(hass) -> dict:
     result = await flow.async_configure(result["flow_id"], _DEVICE_SETTINGS)
     result = await flow.async_configure(result["flow_id"], {"next_step_id": "state_done"})
     result = await flow.async_configure(result["flow_id"], _SCHEDULE)
+    result = await flow.async_configure(
+        result["flow_id"], {"next_step_id": "schedule_done"}
+    )
     result = await flow.async_configure(result["flow_id"], _WEATHER_NONE)
     assert result["type"] == FlowResultType.CREATE_ENTRY
     return dict(result["data"])
@@ -85,6 +92,7 @@ async def _options_flow_data(hass) -> dict:
     await section("control_options", _CONTROL)
     await section("device_settings", _DEVICE_SETTINGS, {"next_step_id": "state_done"})
     await section("temperatures", _SCHEDULE)
+    await section("schedule", {"next_step_id": "schedule_done"})
     await section("outdoor", _WEATHER_NONE)
     merged = {**entry.data, **entry.options}
     merged.pop("entry_type")
@@ -101,30 +109,3 @@ class TestSameInputSameData:
             await hass.config_entries.async_remove(entry.entry_id)
         from_options = await _options_flow_data(hass)
         assert from_options == from_setup
-
-
-class TestNameWarnings:
-    async def test_duplicate_schedule_key_warns_once_then_accepts(
-        self, hass, enable_custom_integrations
-    ):
-        MockConfigEntry(
-            domain=DOMAIN, data={"entry_type": "zone", "name": "Wohn Zimmer",
-                                 "climate_entities": ["climate.a"]},
-        ).add_to_hass(hass)
-        flow = hass.config_entries.flow
-        result = await flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
-        assert result["step_id"] == "devices"
-        data = {**_DEVICES, "name": "wohn-zimmer"}
-        warned = await flow.async_configure(result["flow_id"], data)
-        assert warned["type"] == FlowResultType.FORM
-        assert warned["step_id"] == "devices"
-        assert "wohn_zimmer" in warned["description_placeholders"]["name_warnings"]
-        accepted = await flow.async_configure(warned["flow_id"], data)
-        assert accepted["step_id"] == "control_options"
-
-    async def test_form_shows_schedule_key(self, hass, enable_custom_integrations):
-        flow = hass.config_entries.flow
-        result = await flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
-        result = await flow.async_configure(result["flow_id"], {"next_step_id": "add_zone"})
-        assert result["step_id"] == "devices"
-        assert "schedule_key" in result["description_placeholders"]

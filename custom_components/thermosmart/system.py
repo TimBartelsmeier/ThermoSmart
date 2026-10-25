@@ -27,7 +27,7 @@ from .outdoor import OutdoorConditions
 _LOGGER = logging.getLogger(__name__)
 
 SYSTEM_KEY = "system"
-_NON_ZONE_KEYS = {"learning_engine", SYSTEM_KEY, "schedule_write_lock"}
+_NON_ZONE_KEYS = {"learning_engine", SYSTEM_KEY}
 
 
 def iter_zone_coordinators(hass: HomeAssistant) -> Iterator:

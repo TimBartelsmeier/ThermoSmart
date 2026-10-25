@@ -79,12 +79,9 @@ Priority: **summer > vacation > window**; the others are registered state only.
 * Events fire at their **exact time** (timers), not at the next control cycle.
   Events missed while scheduling was off/paused or HA was down are **skipped, never
   caught up**.
-* Events live in `/config/thermosmart_schedules.yaml`, one block per zone, keyed by
-  a slug of the zone name (shown in the zone setup dialog). The file is managed:
-  missing zones are added with an empty list, keys are sorted, existing and
-  orphaned blocks are never modified or deleted; duplicate day/time → last wins.
-  The file is re-read on options reload. A broken file is non-fatal and surfaces as
-  the `schedule_error` attribute of the *Next scheduled event* sensor.
+* Events are edited in the setup/options config flow and stored with the zone's
+  config entry. Overlapping weekday/time events are rejected. Existing
+  `/config/thermosmart_schedules.yaml` files are not read or migrated.
 * Per event flag `preheat`.
 * Controls per zone: *Scheduling enabled* switch, *Scheduling disabled until*
   date/time; sensors *Next scheduled event* and *Pre-heat start*.
@@ -162,10 +159,9 @@ Nothing else (attribute noise, humidity, small drift) causes a pass.
 
 Setup and options flow use one implementation (`_ZoneStepsMixin`), the same steps and
 identical texts (tested): **Devices → Control strategy → Per TRV (incl. state
-settings) → Temperatures → Outdoor**. The devices step shows the schedule key and
-warns once (confirm by resubmitting) about duplicate or renamed schedule keys. The
-only differences: the options flow starts with a section menu; setup pre-fills the
-outdoor section from the System entry's weather entity.
+settings) → Temperatures → Schedule editor → Outdoor**. The only differences: the
+options flow starts with a section menu; setup pre-fills the outdoor section from
+the System entry's weather entity.
 
 ## 9. Entities
 
@@ -192,7 +188,7 @@ safety bypass, global debug switch, *Adjusted target* and *Weather offset* senso
 |---|---|
 | `target.py` | `TargetState`/`DesiredTarget`, single writer API, change listeners |
 | `suspension.py` | `resolve()` (priority, held temperature), `SummerDetector` |
-| `schedule.py` | parsing, YAML management, next/previous occurrence, timers |
+| `schedule.py` | event validation, next/previous occurrence, timers |
 | `preheat.py` | pure pre-heat planner |
 | `outdoor.py` | `OutdoorConditions.read()` (sensor → weather → None) |
 | `system.py` | System entry controller (summer detection, vacation/summer state) |
@@ -231,8 +227,6 @@ Guard tests: `test_no_legacy_concepts.py` (removed concepts must not return),
    implementation is in git history (`main`, `feature/improved-control-modes`).
    Re-implement as a separate pure module with tests, consuming the desired target
    change event.
-4. **Config-flow schedule editor.** Events are edited in the YAML file only. A flow
-   editor would be a nice-to-have; the YAML stays the source of truth.
 5. **Weather-based correction of the target** (weather offset, forecast
    suppression). Deliberately removed; outdoor data is used for learning/control
    only. Re-add it as an explicit option, or remove the leftovers below for good.
@@ -269,8 +263,6 @@ Guard tests: `test_no_legacy_concepts.py` (removed concepts must not return),
   not persisted). Option: persist the samples, or make the span configurable.
 * **Schedule file reload:** only on options reload. A `thermosmart.reload_schedules`
   service or a file watcher was discussed and judged unnecessary for now.
-* Name warnings in the flow are confirmed by resubmitting the same name (no
-  explicit checkbox).
 
 ## D. Needs a live test (not testable in the test harness)
 
@@ -281,8 +273,8 @@ Guard tests: `test_no_legacy_concepts.py` (removed concepts must not return),
   rebuilt on the first refresh).
 * Real TRV dispatch of the pre-heat target (effective target above the desired
   target).
-* The zone setup/options flow in the real UI: the name-warning form and the options
-  section menu.
+* The zone setup/options flow in the real UI: schedule event add/edit/remove and the
+  options section menu.
 * After the climate-attribute fix (`target.current.source`): all entities of a new
   zone must be available; any other entity errors in the HA log should be reported.
 * TRV state-settings and external-temperature feed in Active Control (and no writes

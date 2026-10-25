@@ -34,6 +34,7 @@ from .const import (
     CONTROL_MODE_SETPOINT,
     CONTROL_MODE_TPI_BOOST,
     CONF_VACATION_TEMP,
+    CONF_SCHEDULE_EVENTS,
     NOISE_FILTER_SPIKE_THRESHOLD,
     NOISE_FILTER_EMA_ALPHA,
     CONF_EXT_TEMP_THRESHOLD,
@@ -61,8 +62,8 @@ from .schedule import (
     ScheduleError,
     ScheduleOccurrence,
     ScheduleRunner,
-    async_load_schedule,
     event_preset,
+    parse_events,
     previous_occurrence_time,
     resolve_target,
 )
@@ -381,18 +382,15 @@ class ThermoSmartCoordinator(
                      self.zone_name, until.isoformat() if until else "– (not paused)")
 
     async def async_load_schedule(self) -> None:
-        """(Re-)read this zone's events from the schedule YAML.
-
-        An invalid file never stops the zone: it runs without events and the
-        reason is logged and exposed as ``schedule_error``.
-        """
+        """Load and validate this zone's saved events."""
         try:
-            events = await async_load_schedule(self.hass, self.entry)
+            cfg = {**self.entry.data, **self.entry.options}
+            events = parse_events(cfg.get(CONF_SCHEDULE_EVENTS, []))
             self.schedule_error = None
         except ScheduleError as err:
             events = []
             self.schedule_error = str(err)
-            _LOGGER.error("ThermoSmart '%s': schedule not loaded – %s",
+            _LOGGER.error("ThermoSmart '%s': saved schedule is invalid – %s",
                           self.zone_name, err)
         self.scheduler.set_events(events)
 

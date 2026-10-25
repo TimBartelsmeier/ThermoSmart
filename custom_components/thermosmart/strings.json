@@ -25,7 +25,7 @@
       },
       "devices": {
         "title": "Devices & Sensors",
-        "description": "Select the TRVs and sensors of this heating zone. Calibration entities and quirk switches are detected automatically.\n\nThe zone name determines the key of this zone in the schedule file: `{schedule_key}`.{name_warnings}",
+        "description": "Select the TRVs and sensors of this heating zone. Calibration entities and quirk switches are detected automatically.",
         "data": {
           "name": "Zone name (e.g. Living Room)",
           "climate_entities": "Thermostats / TRVs",
@@ -35,9 +35,7 @@
           "window_open_delay": "Heating off – delay after window opens",
           "window_close_delay": "Heating on – delay after window closes"
         },
-        "data_description": {
-          "name": "Also used as the schedule key. If a warning appears below, submit again to confirm the name."
-        }
+        "data_description": {}
       },
       "control_options": {
         "title": "Zone Control Strategy",
@@ -150,6 +148,57 @@
         },
         "data_description": {
           "window_open_temp": "Target temperature set on a TRV while a window is open, unless that TRV is configured to be turned off when a window is open (see the per-device settings). For thermostats that do not support very low setpoints, use a higher value such as 10 °C."
+        }
+      },
+      "schedule": {
+        "title": "Schedule Events",
+        "description": "Configure weekly events for this zone. Events with overlapping weekdays and the same time are rejected.\n\n**Currently configured:**\n\n{events}",
+        "menu_options": {
+          "schedule_add": "Add event",
+          "schedule_edit": "Edit event",
+          "schedule_remove": "Remove events",
+          "schedule_done": "Done with schedule"
+        }
+      },
+      "schedule_edit": {
+        "title": "Edit Schedule Event",
+        "data": {
+          "event": "Event"
+        }
+      },
+      "schedule_event": {
+        "title": "Schedule Event",
+        "description": "Choose the weekdays, local time and whether this event should pre-heat. You choose or edit its target next.",
+        "data": {
+          "days": "Weekdays",
+          "time": "Time",
+          "preheat": "Pre-heat before event"
+        }
+      },
+      "schedule_target_type": {
+        "title": "Schedule Event Target",
+        "description": "Choose the target type. Current target: {current_target}",
+        "menu_options": {
+          "schedule_target_temperature": "Temperature",
+          "schedule_target_preset": "Preset"
+        }
+      },
+      "schedule_target_temperature": {
+        "title": "Schedule Target Temperature",
+        "data": {
+          "target": "Target temperature"
+        }
+      },
+      "schedule_target_preset": {
+        "title": "Schedule Target Preset",
+        "data": {
+          "target": "Target preset"
+        }
+      },
+      "schedule_remove": {
+        "title": "Remove Schedule Events",
+        "data": {
+          "remove": "Events to remove"
         }
       },
       "outdoor": {
@@ -175,7 +224,9 @@
       "name_required": "Please enter a zone name.",
       "required": "At least one thermostat / TRV is required.",
       "night_temp_too_high": "Night temperature must be lower than comfort temperature.",
-      "away_temp_too_high": "Away temperature must not be higher than night temperature."
+      "away_temp_too_high": "Away temperature must not be higher than night temperature.",
+      "schedule_conflict": "This event overlaps an existing event on at least one weekday at the same time. Choose a different day or time.",
+      "schedule_invalid": "The schedule event is invalid. Select at least one weekday and review its time and target."
     },
     "abort": {
       "already_configured": "This zone is already configured.",
@@ -192,12 +243,13 @@
           "control_options": "Zone Control Strategy (default mode, interval, thresholds)",
           "device_settings": "Per-TRV Settings (mode override, entities, state settings)",
           "temperatures": "Temperatures",
+          "schedule": "Schedule Events",
           "outdoor": "Outdoor Data"
         }
       },
       "devices": {
         "title": "Devices & Sensors",
-        "description": "Select the TRVs and sensors of this heating zone. Calibration entities and quirk switches are detected automatically.\n\nThe zone name determines the key of this zone in the schedule file: `{schedule_key}`.{name_warnings}",
+        "description": "Select the TRVs and sensors of this heating zone. Calibration entities and quirk switches are detected automatically.",
         "data": {
           "name": "Zone name (e.g. Living Room)",
           "climate_entities": "Thermostats / TRVs",
@@ -207,9 +259,7 @@
           "window_open_delay": "Heating off – delay after window opens",
           "window_close_delay": "Heating on – delay after window closes"
         },
-        "data_description": {
-          "name": "Also used as the schedule key. If a warning appears below, submit again to confirm the name."
-        }
+        "data_description": {}
       },
       "control_options": {
         "title": "Zone Control Strategy",
@@ -322,6 +372,57 @@
         },
         "data_description": {
           "window_open_temp": "Target temperature set on a TRV while a window is open, unless that TRV is configured to be turned off when a window is open (see the per-device settings). For thermostats that do not support very low setpoints, use a higher value such as 10 °C."
+        }
+      },
+      "schedule": {
+        "title": "Schedule Events",
+        "description": "Configure weekly events for this zone. Events with overlapping weekdays and the same time are rejected.\n\n**Currently configured:**\n\n{events}",
+        "menu_options": {
+          "schedule_add": "Add event",
+          "schedule_edit": "Edit event",
+          "schedule_remove": "Remove events",
+          "schedule_done": "Done with schedule"
+        }
+      },
+      "schedule_edit": {
+        "title": "Edit Schedule Event",
+        "data": {
+          "event": "Event"
+        }
+      },
+      "schedule_event": {
+        "title": "Schedule Event",
+        "description": "Choose the weekdays, local time and whether this event should pre-heat. You choose or edit its target next.",
+        "data": {
+          "days": "Weekdays",
+          "time": "Time",
+          "preheat": "Pre-heat before event"
+        }
+      },
+      "schedule_target_type": {
+        "title": "Schedule Event Target",
+        "description": "Choose the target type. Current target: {current_target}",
+        "menu_options": {
+          "schedule_target_temperature": "Temperature",
+          "schedule_target_preset": "Preset"
+        }
+      },
+      "schedule_target_temperature": {
+        "title": "Schedule Target Temperature",
+        "data": {
+          "target": "Target temperature"
+        }
+      },
+      "schedule_target_preset": {
+        "title": "Schedule Target Preset",
+        "data": {
+          "target": "Target preset"
+        }
+      },
+      "schedule_remove": {
+        "title": "Remove Schedule Events",
+        "data": {
+          "remove": "Events to remove"
         }
       },
       "outdoor": {
@@ -361,7 +462,9 @@
       "name_required": "Please enter a zone name.",
       "required": "At least one thermostat / TRV is required.",
       "night_temp_too_high": "Night temperature must be lower than comfort temperature.",
-      "away_temp_too_high": "Away temperature must not be higher than night temperature."
+      "away_temp_too_high": "Away temperature must not be higher than night temperature.",
+      "schedule_conflict": "This event overlaps an existing event on at least one weekday at the same time. Choose a different day or time.",
+      "schedule_invalid": "The schedule event is invalid. Select at least one weekday and review its time and target."
     }
   },
   "entity": {

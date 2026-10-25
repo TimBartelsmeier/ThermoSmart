@@ -1,9 +1,7 @@
 """Schedule parsing, next-occurrence maths, timer runner and YAML management."""
 from __future__ import annotations
 
-import os
 from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from zoneinfo import ZoneInfo
 
@@ -12,11 +10,9 @@ import pytest
 from custom_components.thermosmart import schedule as sched
 from custom_components.thermosmart.schedule import (
     ScheduleError,
-    ScheduleEvent,
     ScheduleRunner,
     next_occurrence,
     parse_events,
-    zone_key,
 )
 
 BERLIN = ZoneInfo("Europe/Berlin")
@@ -83,16 +79,21 @@ class TestParse:
     def test_empty_list(self):
         assert parse_events([]) == []
 
+    def test_overlapping_weekday_and_time_is_rejected(self):
+        with pytest.raises(ScheduleError, match="overlapping weekday and time"):
+            _events(
+                _ev(["mon", "tue"], "06:00", 21),
+                _ev(["tue", "wed"], "06:00", "comfort"),
+            )
 
-class TestZoneKey:
-    @pytest.mark.parametrize("name,key", [
-        ("Wohnzimmer", "wohnzimmer"),
-        ("Küche & Bad", "kuche_bad"),
-        ("  Living  Room 2 ", "living_room_2"),
-        ("日本", "zone"),
-    ])
-    def test_zone_key(self, name, key):
-        assert zone_key(name) == key
+    def test_same_time_on_disjoint_weekdays_is_allowed(self):
+        events = _events(_ev(["mon"], "06:00", 21), _ev(["tue"], "06:00", 20))
+        assert len(events) == 2
+
+    def test_time_selector_seconds_must_be_zero(self):
+        assert _events(_ev(["mon"], "06:30:00", 21))[0].minute == 390
+        with pytest.raises(ScheduleError, match="HH:MM"):
+            _events(_ev(["mon"], "06:30:15", 21))
 
 
 # ── next_occurrence ───────────────────────────────────────────────────────────
@@ -127,11 +128,6 @@ class TestNextOccurrence:
         )
         now = datetime(2026, 5, 6, 12, 0, tzinfo=BERLIN)
         assert next_occurrence(events, now).event.target == 19.0
-
-    def test_duplicate_timestamp_last_listed_wins(self):
-        events = _events(_ev(["wed"], "15:00", 19), _ev(["wed"], "15:00", 23))
-        now = datetime(2026, 5, 6, 12, 0, tzinfo=BERLIN)
-        assert next_occurrence(events, now).event.target == 23.0
 
     def test_no_events(self):
         assert next_occurrence([], datetime(2026, 5, 6, tzinfo=BERLIN)) is None
@@ -346,117 +342,3 @@ class TestRunner:
         runner.start()
         _fire(timers, clock)
         assert len(changes) == 2
-
-
-# ── YAML file management ──────────────────────────────────────────────────────
-
-def _entry(entry_id, name, **extra):
-    return SimpleNamespace(
-        entry_id=entry_id, data={"name": name, **extra}, options={},
-    )
-
-
-def _hass(tmp_path):
-    async def run_in_executor(func, *args):
-        return func(*args)
-
-    hass = SimpleNamespace(
-        data={},
-        config=SimpleNamespace(path=lambda name: str(tmp_path / name)),
-        async_add_executor_job=run_in_executor,
-    )
-    return hass
-
-
-def _file(tmp_path):
-    return tmp_path / sched.SCHEDULE_FILENAME
-
-
-class TestYamlManagement:
-    async def test_creates_file_with_empty_zone_blocks_sorted(self, tmp_path):
-        import yaml
-
-        hass = _hass(tmp_path)
-        entries = [_entry("2", "Wohnzimmer"), _entry("1", "Bad"),
-                   _entry("sys", "ignored", entry_type="system")]
-        await sched.async_manage_schedule_yaml(hass, entries)
-        data = yaml.safe_load(_file(tmp_path).read_text())
-        assert list(data["zones"]) == ["bad", "wohnzimmer"]
-        assert data["zones"]["bad"] == {"events": []}
-
-    async def test_never_modifies_or_deletes_existing_blocks(self, tmp_path):
-        import yaml
-
-        _file(tmp_path).write_text(yaml.safe_dump({"zones": {
-            "wohnzimmer": {"events": [{"days": ["mon"], "time": "06:00", "target": 21}]},
-            "old_room": {"events": [{"days": ["tue"], "time": "07:00", "target": "eco"}]},
-        }}))
-        hass = _hass(tmp_path)
-        await sched.async_manage_schedule_yaml(hass, [_entry("1", "Wohnzimmer"), _entry("2", "Bad")])
-        data = yaml.safe_load(_file(tmp_path).read_text())
-        assert list(data["zones"]) == ["bad", "old_room", "wohnzimmer"]
-        assert data["zones"]["wohnzimmer"]["events"][0]["target"] == 21
-        assert data["zones"]["old_room"]["events"][0]["target"] == "eco"
-
-    async def test_untouched_file_is_not_rewritten(self, tmp_path):
-        hass = _hass(tmp_path)
-        entries = [_entry("1", "Bad")]
-        await sched.async_manage_schedule_yaml(hass, entries)
-        before = _file(tmp_path).stat().st_mtime_ns
-        await sched.async_manage_schedule_yaml(hass, entries)
-        assert _file(tmp_path).stat().st_mtime_ns == before
-
-    async def test_invalid_yaml_is_reported_not_overwritten(self, tmp_path):
-        _file(tmp_path).write_text("zones: [unclosed")
-        hass = _hass(tmp_path)
-        with pytest.raises(ScheduleError, match="cannot parse"):
-            await sched.async_manage_schedule_yaml(hass, [_entry("1", "Bad")])
-        assert _file(tmp_path).read_text() == "zones: [unclosed"
-
-    async def test_orphans_are_reported(self, tmp_path):
-        _file(tmp_path).write_text("zones:\n  bad: {events: []}\n  gone: {events: []}\n")
-        orphans = await sched.async_orphaned_zone_keys(_hass(tmp_path), [_entry("1", "Bad")])
-        assert orphans == ("gone",)
-
-    async def test_load_schedule_for_zone(self, tmp_path):
-        _file(tmp_path).write_text(
-            "zones:\n  bad:\n    events:\n"
-            "      - {days: [mon], time: '06:00', target: 21, preheat: true}\n"
-        )
-        events = await sched.async_load_schedule(_hass(tmp_path), _entry("1", "Bad"))
-        assert events == [ScheduleEvent((0,), 360, 21.0, True, 0)]
-
-    async def test_load_missing_file_or_zone_is_empty(self, tmp_path):
-        hass = _hass(tmp_path)
-        assert await sched.async_load_schedule(hass, _entry("1", "Bad")) == []
-        _file(tmp_path).write_text("zones: {other: {events: []}}")
-        assert await sched.async_load_schedule(hass, _entry("1", "Bad")) == []
-
-    async def test_load_invalid_event_names_zone_and_event(self, tmp_path):
-        _file(tmp_path).write_text(
-            "zones:\n  bad:\n    events:\n      - {days: [mon], time: '25:00', target: 21}\n"
-        )
-        with pytest.raises(ScheduleError, match="zone 'bad', event 1"):
-            await sched.async_load_schedule(_hass(tmp_path), _entry("1", "Bad"))
-
-    async def test_load_uses_renamed_zone_from_options(self, tmp_path):
-        _file(tmp_path).write_text(
-            "zones:\n  kuche:\n    events:\n      - {days: [mon], time: '06:00', target: 21}\n"
-        )
-        entry = _entry("1", "Bad")
-        entry.options = {"name": "Küche"}
-        assert len(await sched.async_load_schedule(_hass(tmp_path), entry)) == 1
-
-    async def test_duplicate_and_existing_warnings(self, tmp_path):
-        _file(tmp_path).write_text("zones: {bad: {events: []}}")
-        hass = _hass(tmp_path)
-        entries = [_entry("1", "Bad")]
-        assert await sched.async_schedule_zone_warnings(hass, entries, "Bad") == (
-            "duplicate:bad:Bad",)
-        assert await sched.async_schedule_zone_warnings(
-            hass, entries, "Bad", current_entry_id="1") == ()
-        assert await sched.async_schedule_zone_warnings(hass, [], "Bad") == ("existing:bad",)
-        assert await sched.async_schedule_zone_warnings(hass, [], "New") == ()
-
-    def test_file_lives_in_config_dir(self, tmp_path):
-        assert os.path.basename(sched._path(_hass(tmp_path))) == "thermosmart_schedules.yaml"
