@@ -1,7 +1,7 @@
 {
   "issues": {
     "entity_unavailable": {
-      "title": "Configured entity unavailable: {name}",
+      "title": "Entity unavailable: {entity_id} [Zone {name}]",
       "description": "**{name}** cannot currently use `{entity_id}` ({roles}) because it is missing, unknown or unavailable.\n\nCheck the entity's integration, device connection and the ThermoSmart configuration. ThermoSmart continues with its existing fallbacks where available; affected inputs or device operations may be skipped. This issue clears automatically when the entity is available again. A warning is logged if the outage lasts at least three minutes after Home Assistant has started."
     }
   },
