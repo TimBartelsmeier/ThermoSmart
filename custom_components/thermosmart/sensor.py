@@ -29,6 +29,7 @@ async def async_setup_entry(
         ThermoSmartTRVSetpointSensor(coordinator, entry),
         ThermoSmartTpiSensor(coordinator, entry),
         ThermoSmartPreheatSensor(coordinator, entry),
+        ThermoSmartPreheatStartSensor(coordinator, entry),
         ThermoSmartNextEventSensor(coordinator, entry),
         ThermoSmartConfidenceSensor(coordinator, entry),
         ThermoSmartStatusSensor(coordinator, entry),
@@ -109,7 +110,8 @@ class ThermoSmartTRVSetpointSensor(_Base):
 
 
 class ThermoSmartPreheatSensor(_Base):
-    _attr_entity_registry_enabled_default = True
+    _attr_entity_registry_enabled_default = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_translation_key = "preheat_minutes"
 
     def __init__(self, coordinator, entry):
@@ -122,6 +124,47 @@ class ThermoSmartPreheatSensor(_Base):
     @property
     def native_value(self):
         return self._zone.get("preheat_minutes", 0)
+
+
+class ThermoSmartPreheatStartSensor(_Base):
+    """When pre-heating for the next event starts (a timestamp), with its plan."""
+    _attr_entity_registry_enabled_default = True
+    _attr_translation_key = "preheat_start"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_icon = ICON_PREHEAT
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry, "preheat_start")
+        self._attr_unique_id = f"{entry.entry_id}_preheat_start"
+
+    @property
+    def _plan(self):
+        return self.coordinator.preheat_plan
+
+    @property
+    def native_value(self):
+        plan = self._plan
+        if plan is None or plan.state == "none":
+            return None
+        return plan.start
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        plan = self._plan
+        zone = self._zone
+        suspension = zone.get("suspension")
+        state = plan.state if plan else "none"
+        reason = plan.reason if plan else "no_event"
+        if state == "active" and suspension is not None:
+            state, reason = "suspended", suspension
+        return {
+            "state": state,
+            "reason": reason,
+            "event_at": plan.event_at if plan else None,
+            "event_target_temperature": plan.event_target if plan else None,
+            "duration_minutes": plan.duration_min if plan else 0.0,
+            "duration_source": zone.get("preheat_status"),
+        }
 
 
 class ThermoSmartNextEventSensor(_Base):

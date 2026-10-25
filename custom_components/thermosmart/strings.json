@@ -418,7 +418,10 @@
         }
       },
       "preheat_minutes": {
-        "name": "Preheat time"
+        "name": "Pre-heat minutes"
+      },
+      "preheat_start": {
+        "name": "Pre-heat start"
       },
       "next_scheduled_event": {
         "name": "Next scheduled event"

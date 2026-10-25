@@ -4,13 +4,17 @@ from __future__ import annotations
 import dataclasses
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from collections.abc import Callable
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.event import async_call_later, async_track_state_change_event
+from homeassistant.helpers.event import (
+    async_call_later,
+    async_track_point_in_utc_time,
+    async_track_state_change_event,
+)
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -59,8 +63,13 @@ from .schedule import (
     ScheduleRunner,
     async_load_schedule,
     event_preset,
+    previous_occurrence_time,
     resolve_target,
 )
+from .preheat import ACTIVE as PREHEAT_ACTIVE
+from .preheat import PLANNED as PREHEAT_PLANNED
+from .preheat import PreheatPlan
+from .preheat import plan as plan_preheat
 from .weather_engine import WeatherEngine
 from .learning_engine import LearningEngine
 from .window import WindowMixin
@@ -162,6 +171,14 @@ class ThermoSmartCoordinator(
             on_change=lambda: self.async_update_listeners(),
         )
         self._vacation_mode: bool = False
+        # Pre-heating (see preheat.py): the plan for the next event plus the
+        # per-event latches. ``_preheat_ident`` identifies that event occurrence.
+        self._preheat_plan: PreheatPlan | None = None
+        self._preheat_ident: tuple[str, datetime] | None = None
+        self._preheat_started_at: datetime | None = None
+        self._preheat_cancelled: bool = False
+        self._preheat_timer_at: datetime | None = None
+        self._preheat_timer_cancel: Callable[[], None] | None = None
 
         # Event-Listener
         self._event_unsub: list = []
@@ -417,6 +434,104 @@ class ThermoSmartCoordinator(
         )
         if new.source in MANUAL_SOURCES:
             self._manual_change_pending = True
+            self._cancel_running_preheat()
+
+    # ── Pre-heating ─────────────────────────────────────────────────
+
+    @property
+    def preheat_plan(self) -> PreheatPlan | None:
+        return self._preheat_plan
+
+    def _cancel_running_preheat(self) -> None:
+        """A manual change during pre-heat cancels it for the current event."""
+        plan = self._preheat_plan
+        if plan is not None and plan.state == PREHEAT_ACTIVE and not self._preheat_cancelled:
+            self._preheat_cancelled = True
+            _LOGGER.info(
+                "ThermoSmart '%s': pre-heating for the event at %s cancelled by manual change",
+                self.zone_name, plan.event_at.isoformat() if plan.event_at else "?",
+            )
+
+    def _disarm_preheat_timer(self) -> None:
+        if self._preheat_timer_cancel is not None:
+            self._preheat_timer_cancel()
+            self._preheat_timer_cancel = None
+        self._preheat_timer_at = None
+
+    def _sync_preheat_timer(self, plan: PreheatPlan) -> None:
+        """Keep exactly one timer armed for a planned (future) pre-heat start."""
+        want = plan.start if plan.state == PREHEAT_PLANNED else None
+        if want is not None:
+            want = want.astimezone(timezone.utc)
+        if want == self._preheat_timer_at:
+            return
+        self._disarm_preheat_timer()
+        if want is None:
+            return
+
+        @callback
+        def _start_due(_now) -> None:
+            self._preheat_timer_cancel = None
+            self._preheat_timer_at = None
+            self.hass.async_create_task(self.async_request_refresh())
+
+        self._preheat_timer_at = want
+        self._preheat_timer_cancel = async_track_point_in_utc_time(
+            self.hass, _start_due, want
+        )
+
+    def _plan_preheat(
+        self, cfg: dict, *, now: datetime, current_temp: float | None,
+        desired_target: float, outdoor_temp: float | None, learning_on: bool,
+    ) -> tuple[PreheatPlan, str | None]:
+        """Compute the plan for the next event; returns (plan, duration status)."""
+        from .learning.runtime.ha_integration import LearningShadowController
+
+        occurrence = self.scheduler.next_event
+        ident = (
+            (occurrence.event.key, occurrence.at.astimezone(timezone.utc))
+            if occurrence else None
+        )
+        if ident != self._preheat_ident:
+            self._preheat_ident = ident
+            self._preheat_started_at = None
+            self._preheat_cancelled = False
+
+        event_target = (
+            resolve_target(occurrence.event.target, cfg) if occurrence else None
+        )
+        minutes, status = 0.0, None
+        if occurrence is not None and event_target > desired_target:
+            if learning_on and self._learning_shadow is not None:
+                minutes, status = self._learning_shadow.read_preheat_minutes_safe(
+                    current_temp, event_target, outdoor_temp=outdoor_temp
+                )
+            else:
+                minutes, status = (
+                    LearningShadowController.compute_deterministic_preheat_baseline(
+                        current_temp, event_target
+                    )
+                )
+        plan = plan_preheat(
+            now=now,
+            scheduling_active=self._scheduling_active_at(now),
+            event_at=occurrence.at if occurrence else None,
+            event_target=event_target,
+            event_preheat=bool(occurrence and occurrence.event.preheat),
+            desired_target=desired_target,
+            previous_event_at=previous_occurrence_time(self.scheduler.events, now),
+            duration_min=float(minutes or 0.0),
+            duration_status=status,
+            cancelled=self._preheat_cancelled,
+            started_at=self._preheat_started_at,
+        )
+        if plan.state == PREHEAT_ACTIVE and self._preheat_started_at is None:
+            self._preheat_started_at = plan.start
+        elif plan.state != PREHEAT_ACTIVE:
+            self._preheat_started_at = None
+        self._preheat_plan = plan
+        self._sync_preheat_timer(plan)
+        return plan, status
 
     def set_system_state(self, *, vacation: bool, summer: bool) -> bool:
         """Apply the system-wide vacation/summer state; returns True when it changed."""
@@ -574,6 +689,7 @@ class ThermoSmartCoordinator(
 
     def cleanup_event_listeners(self) -> None:
         self.scheduler.stop()
+        self._disarm_preheat_timer()
         for cancel in self._event_unsub:
             cancel()
         self._event_unsub.clear()
@@ -672,6 +788,7 @@ class ThermoSmartCoordinator(
             # The TRVs are held (summer/vacation): the dial change is registered as a
             # manual change but not adopted; the TRV is driven back to the held value.
             self._manual_change_pending = True
+            self._cancel_running_preheat()
             _LOGGER.info(
                 "ThermoSmart '%s': physical setpoint change on %s (%.1f → %.1f°C) during "
                 "%s mode – registered as manual change, not adopted; correcting back",
@@ -754,7 +871,7 @@ class ThermoSmartCoordinator(
             return None
         target = recommendation.get("effective_target")
         # Map coordinator state to DecisionType for ID stability domain
-        if recommendation.get("preheat_status") in ("heating", "preheating"):
+        if recommendation.get("preheat_active"):
             dec_type = DecisionType.PREHEAT
             dtype_str = "preheat"
         elif recommendation.get("learning_boost_adjusted"):
@@ -1879,20 +1996,19 @@ class ThermoSmartCoordinator(
         # Onset delay is separate from HeatRate learning (never folded in).
         from .learning.runtime.ha_integration import LearningShadowController
         if _learning_mode_on and self._learning_shadow is not None:
-            preheat_minutes, preheat_status = self._learning_shadow.read_preheat_minutes_safe(
-                current_temp, desired_target,
-                outdoor_temp=weather_data.get("temperature") if weather_data else None,
-            )
             _onset_delay_min, _onset_delay_status = self._learning_shadow.read_onset_delay_safe()
         else:
-            # No shadow: deterministic baseline (1.5 °C/h prior; onset prior 5 min).
-            preheat_minutes, preheat_status = (
-                LearningShadowController.compute_deterministic_preheat_baseline(
-                    current_temp, desired_target
-                )
-            )
             _onset_delay_min = LearningShadowController._ONSET_DELAY_PRIOR_MIN
             _onset_delay_status = "cold_start_prior"
+
+        # The plan covers the immediately next event; it is computed while
+        # suspended too, so pre-heating can start the moment the suspension ends.
+        preheat_plan, preheat_status = self._plan_preheat(
+            cfg, now=now, current_temp=current_temp, desired_target=desired_target,
+            outdoor_temp=weather_data.get("temperature") if weather_data else None,
+            learning_on=_learning_mode_on,
+        )
+        preheat_minutes = preheat_plan.duration_min
 
         # ── Driven target ──────────────────────────────────────────────────────
         # The desired target is never altered here. What the TRVs are driven to
@@ -1903,10 +2019,13 @@ class ThermoSmartCoordinator(
             summer=self._is_summer, vacation=self._vacation_mode, window_open=window_open,
         )
         held = held_at(suspension, float(cfg.get(CONF_VACATION_TEMP, TEMP_FROST_PROTECTION)))
-        if suspension is None:
-            effective_target = desired_target
-        else:
+        preheat_active = preheat_plan.state == PREHEAT_ACTIVE and suspension is None
+        if suspension is not None:
             effective_target = held  # None for a window: release the setpoint
+        elif preheat_active:
+            effective_target = preheat_plan.event_target
+        else:
+            effective_target = desired_target
 
         # Learning progress from real per-zone model updates (display value, 0.0–1.0).
         # Uses learning_progress_safe() so the value matches ThermoSmartConfidenceSensor.
@@ -1931,8 +2050,10 @@ class ThermoSmartCoordinator(
             "suspension": suspension,
             "held_at": held,
             "preheat_minutes": preheat_minutes,
-            "preheat_active": False,
+            "preheat_active": preheat_active,
             "preheat_status": preheat_status,
+            "preheat_state": preheat_plan.state,
+            "preheat_reason": preheat_plan.reason,
             # Onset delay and baseline for DecisionTrace (computed once above)
             "onset_delay_min": _onset_delay_min,
             "onset_delay_status": _onset_delay_status,

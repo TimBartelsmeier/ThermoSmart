@@ -1,7 +1,7 @@
 """Scheduling entities: switch, pause datetime and next-event sensor."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 from zoneinfo import ZoneInfo
@@ -128,3 +128,50 @@ class TestNextEventSensor:
         assert sensor.native_value is None
         assert sensor.extra_state_attributes == {
             "scheduling_active": False, "schedule_error": "bad yaml"}
+
+
+class TestPreheatStartSensor:
+    EVENT_AT = datetime(2026, 5, 6, 22, 0, tzinfo=BERLIN)
+
+    def _sensor(self, plan, zone=None):
+        from custom_components.thermosmart.sensor import ThermoSmartPreheatStartSensor
+
+        coord = MagicMock()
+        coord.preheat_plan = plan
+        coord.data = {"zone": {"preheat_status": "deterministic_baseline", **(zone or {})}}
+        return ThermoSmartPreheatStartSensor(coord, _entry())
+
+    def _plan(self, state, reason=None):
+        from custom_components.thermosmart.preheat import PreheatPlan
+
+        return PreheatPlan(state, reason, self.EVENT_AT - timedelta(minutes=85), 85.0,
+                           self.EVENT_AT, 21.0)
+
+    def test_planned(self):
+        sensor = self._sensor(self._plan("planned"))
+        assert sensor.native_value == self.EVENT_AT - timedelta(minutes=85)
+        assert sensor.extra_state_attributes == {
+            "state": "planned", "reason": None, "event_at": self.EVENT_AT,
+            "event_target_temperature": 21.0, "duration_minutes": 85.0,
+            "duration_source": "deterministic_baseline",
+        }
+
+    def test_active(self):
+        assert self._sensor(self._plan("active")).extra_state_attributes["state"] == "active"
+
+    def test_active_but_suspended_reports_the_suspension(self):
+        attrs = self._sensor(
+            self._plan("active"), {"suspension": "window_open"}).extra_state_attributes
+        assert (attrs["state"], attrs["reason"]) == ("suspended", "window_open")
+
+    def test_no_plan_has_no_value_but_a_reason(self):
+        from custom_components.thermosmart.preheat import PreheatPlan
+
+        sensor = self._sensor(PreheatPlan("none", "target_not_higher"))
+        assert sensor.native_value is None
+        assert sensor.extra_state_attributes["reason"] == "target_not_higher"
+
+    def test_before_first_cycle(self):
+        sensor = self._sensor(None)
+        assert sensor.native_value is None
+        assert sensor.extra_state_attributes["reason"] == "no_event"

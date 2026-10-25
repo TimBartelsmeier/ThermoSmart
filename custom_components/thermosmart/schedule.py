@@ -201,6 +201,28 @@ def next_occurrence(
     return ScheduleOccurrence(event, at, max(1, int((seconds + 59) // 60)))
 
 
+def previous_occurrence_time(
+    events: list[ScheduleEvent], now: datetime
+) -> datetime | None:
+    """Time of the latest occurrence at or before ``now`` (None without events)."""
+    if now.tzinfo is None:
+        raise ValueError("now must be timezone-aware")
+    tz = now.tzinfo
+    now_utc = now.astimezone(timezone.utc)
+    best: datetime | None = None
+    for day_offset in range(0, -9, -1):
+        date = (now + timedelta(days=day_offset)).date()
+        for event in events:
+            if date.weekday() not in event.days:
+                continue
+            at = _local_instant(date, event.minute, tz)
+            if at.astimezone(timezone.utc) > now_utc:
+                continue
+            if best is None or at.astimezone(timezone.utc) > best.astimezone(timezone.utc):
+                best = at
+    return best
+
+
 def resolve_target(target: float | str, cfg: dict) -> float:
     """Temperature of an event target (preset names resolve via the zone config)."""
     if isinstance(target, float):
