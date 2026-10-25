@@ -17,6 +17,12 @@ ThermoSmart controls the thermostatic radiator valves (TRVs) of a **heating zone
 
 This is a fork that reworks control and scheduling. If you know the original project, read [What is different from the original](#what-is-different-from-the-original) first.
 
+Upstream fixes through v1.3.2 are integrated while retaining this fork's target,
+scheduling and suspension model. Bundled-card registration is retryable, and its
+browser cache version follows the card version independently of the integration
+version. Unloading the last zone releases the shared learning engine without
+removing the session-wide card registration.
+
 ---
 
 ## Contents
@@ -160,6 +166,12 @@ There is one mechanism, not one restore routine per case: when the last suspensi
 
 **Windows.** Open/close are detected from window/door sensors with separate open and close delays; without sensors, a falling-temperature (slope) detection is used. Per TRV, *Turn off when window is open* switches HVAC to `off` instead of using the window-open temperature (only enable for TRVs with frost protection while off).
 
+The open delay must elapse before window suspension starts. Closing a window
+before that point starts neither a suspension nor a close delay. After a
+confirmed opening, the close delay holds the window state before normal control
+resumes with the latest desired target. Without configured contact sensors,
+slope detection does not use the contact-sensor delays.
+
 **Vacation and summer** are controlled by the ThermoSmart System entry (required):
 
 | Entity | Meaning |
@@ -273,7 +285,7 @@ These devices have a named profile with device-specific handling applied automat
 
 | Device | Protocol | Profile-specific behavior |
 |---|---|---|
-| SONOFF TRVZB | Zigbee (Z2M) | `valve_opening_degree` treated as max-opening limit (not written). Room temperature pushed to `external_temperature_input` for improved TRV-internal accuracy. Motor-protection on valve close. HVAC watchdog active. |
+| SONOFF TRVZB | Zigbee (Z2M) | `valve_opening_degree` treated as max-opening limit (not written). While Active Control is on, the room temperature is pushed to `external_temperature_input` for improved TRV-internal accuracy. Motor-protection on valve close. HVAC watchdog active. |
 | Eurotronic Spirit | Zigbee (Z2M / ZHA) | HVAC mode written to `heat` before each setpoint — required for the TRV to accept external setpoints reliably. |
 | Eurotronic SPZB0001 | Zigbee (Z2M / ZHA) | Same HVAC-first setpoint workflow as Eurotronic Spirit. |
 | Avatto ME167 | Zigbee (Z2M) | Calibration offset sign is inverted to match this device's firmware convention. |

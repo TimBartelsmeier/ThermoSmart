@@ -930,7 +930,16 @@ class TRVControlMixin:
 
         Schreibt nur wenn Wert sich um mehr als 0.5°C geändert hat.
         Klemmt auf 0–99.9°C (TRVZB-Wertebereich).
+
+        Nur bei aktiver Steuerung (Active Control): Im Beobachtungsmodus schreibt
+        ThermoSmart nichts auf die Geräte — der Wert würde sonst die interne
+        Regelung eines TRV beeinflussen, der noch von seinem eigenen Controller
+        gesteuert wird. Learning liest die konfigurierten HA-Temperatursensoren,
+        nicht diese Entity, und ist davon nicht betroffen.
         """
+        if not self._active_control:
+            return
+
         room_temp = recommendation.get("current_temp")
         if room_temp is None:
             return

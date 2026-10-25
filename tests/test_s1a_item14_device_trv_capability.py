@@ -645,6 +645,7 @@ class TestConfigurableControlStrategies:
 
     async def test_external_temperature_respects_configured_threshold(self):
         coord = _coord_with_svc()
+        coord.set_active_control(True)
         coord.hass.async_create_task.side_effect = asyncio.create_task
         cfg = {
             "climate_entities": ["climate.trv"],

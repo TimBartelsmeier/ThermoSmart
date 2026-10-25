@@ -20,6 +20,7 @@ import os
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant, Event
+from homeassistant.helpers import config_validation as cv
 
 from .const import (
     DOMAIN,
@@ -33,7 +34,7 @@ from .const import (
     CONF_LEARNING_ENABLED,
     CARD_FILENAME,
     CARD_URL_PATH,
-    VERSION,
+    CARD_ASSET_VERSION,
 )
 from .coordinator import ThermoSmartCoordinator
 from .availability import EntityAvailabilityMonitor
@@ -44,6 +45,15 @@ from .learning_engine import LearningEngine
 
 _LOGGER = logging.getLogger(__name__)
 
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+# Keys in hass.data[DOMAIN] that are session-wide state, not per-config-entry
+# data. async_unload_entry() must not count them as still-loaded entries.
+_NON_ENTRY_DATA_KEYS = (
+    "learning_engine", SYSTEM_KEY,
+    "card_registered", "card_static_registered", "card_frontend_registered",
+)
+
 ZONE_PLATFORMS = PLATFORMS               # ["climate", "sensor", "switch", "select"]
 SYSTEM_PLATFORMS = ["switch"]            # System-Entry: Urlaubs- und Sommer-Schalter
 
@@ -51,8 +61,7 @@ SYSTEM_PLATFORMS = ["switch"]            # System-Entry: Urlaubs- und Sommer-Sch
 async def _async_register_card(hass: HomeAssistant) -> None:
     """Serve the bundled Lovelace card and register it as a frontend module URL.
 
-    Runs at most once per HA session (guarded by the caller via
-    hass.data[DOMAIN]["card_registered"]). Two independent, non-fatal steps:
+    Registration is idempotent and retryable. Two independent, non-fatal steps:
 
     1. Static path: custom_components/thermosmart/www/thermosmart-card.js is
        exposed at CARD_URL_PATH via the async, non-blocking HA 2024.x static
@@ -63,40 +72,55 @@ async def _async_register_card(hass: HomeAssistant) -> None:
        stores URLs in a set, so calling it again (e.g. a second HA session)
        never creates a duplicate <script> tag.
 
-    A `?v=<VERSION>` query string on the frontend URL only busts the browser
+    A `?v=<CARD_ASSET_VERSION>` query string on the frontend URL only busts the browser
     cache after a ThermoSmart update; it does not affect static-path routing
     (aiohttp matches on path, not query string), so it is safe to combine
     with cache_headers=True on the static route itself.
     """
+    hass.data.setdefault(DOMAIN, {})
+    card_state = hass.data[DOMAIN]
+    if card_state.get("card_registered"):
+        return
+
     www_dir = os.path.join(os.path.dirname(__file__), "www")
     card_path = os.path.join(www_dir, CARD_FILENAME)
 
-    try:
-        from homeassistant.components.http import StaticPathConfig
-        await hass.http.async_register_static_paths([
-            StaticPathConfig(CARD_URL_PATH, card_path, True)
-        ])
-    except Exception as err:  # http component missing/unavailable is non-fatal
-        _LOGGER.warning("ThermoSmart: card static path registration skipped: %s", err)
-        return
+    if not card_state.get("card_static_registered"):
+        try:
+            from homeassistant.components.http import StaticPathConfig
+            await hass.http.async_register_static_paths([
+                StaticPathConfig(CARD_URL_PATH, card_path, True)
+            ])
+            card_state["card_static_registered"] = True
+        except Exception as err:  # http component missing/unavailable is non-fatal
+            _LOGGER.warning("ThermoSmart: card static path registration skipped: %s", err)
+            return
 
-    try:
-        from homeassistant.components.frontend import add_extra_js_url
-        add_extra_js_url(hass, f"{CARD_URL_PATH}?v={VERSION}")
-    except Exception as err:  # frontend component missing/unavailable is non-fatal
-        _LOGGER.warning("ThermoSmart: card frontend registration skipped: %s", err)
+    if not card_state.get("card_frontend_registered"):
+        try:
+            from homeassistant.components.frontend import add_extra_js_url
+            add_extra_js_url(hass, f"{CARD_URL_PATH}?v={CARD_ASSET_VERSION}")
+            card_state["card_frontend_registered"] = True
+        except Exception as err:  # frontend component missing/unavailable is non-fatal
+            _LOGGER.warning("ThermoSmart: card frontend registration skipped: %s", err)
+            return
+
+    card_state["card_registered"] = True
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Register the bundled card before config entries are loaded."""
+    hass.data.setdefault(DOMAIN, {})
+    await _async_register_card(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     cfg = {**entry.data, **entry.options}
 
-    # Einmalig pro HA-Session, unabhängig von Entry-Typ und -Anzahl: die
-    # gebündelte Lovelace-Card servieren und als Frontend-Modul registrieren.
-    # Kein separates HACS-Plugin mehr nötig (Frenck-Review #9081/#9082).
-    if "card_registered" not in hass.data[DOMAIN]:
-        hass.data[DOMAIN]["card_registered"] = True
-        await _async_register_card(hass)
+    # Retry if early integration setup could not register the card yet.
+    await _async_register_card(hass)
 
     # ── System-Entry: globale Schalter, kein Coordinator ────────────
     if cfg.get("entry_type") == "system":
@@ -261,7 +285,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         else:
             remaining = [
                 k for k in hass.data[DOMAIN]
-                if k not in ("learning_engine", SYSTEM_KEY)
+                if k not in _NON_ENTRY_DATA_KEYS
                 and not (isinstance(hass.data[DOMAIN].get(k), dict)
                          and hass.data[DOMAIN][k].get("type") == "system")
             ]

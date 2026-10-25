@@ -289,6 +289,7 @@ class TestNoRuntimeAutoDetection:
 
     async def test_ext_temp_not_written_without_feed_flag(self):
         coord = _coord()
+        coord.set_active_control(True)
         set_hass_states(coord, {"number.ext": make_state("10")})
         cfg = {
             "climate_entities": ["climate.trv"],
