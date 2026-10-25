@@ -317,6 +317,10 @@ class ThermoSmartStatusSensor(_Base):
             "summer_mode": z.get("is_summer", False),
             "vacation_mode": z.get("vacation_mode", False),
             "heating_failure": z.get("heating_failure", False),
+            "suspension": z.get("suspension"),
+            "held_at": z.get("held_at"),
+            "pass_triggers": z.get("pass_triggers", []),
+            "outdoor_sources": z.get("outdoor_sources"),
             "slope_window_active": getattr(self.coordinator, "_slope_window_active", False),
             # Effective control mode this cycle — inactive/shadow_only/deterministic/
             # adaptive — derived once per cycle in coordinator.py from the Learning

@@ -2080,6 +2080,7 @@ class ThermoSmartCoordinator(
             "preheat_status": preheat_status,
             "preheat_state": preheat_plan.state,
             "pass_triggers": list(self.last_pass_triggers),
+            "outdoor_sources": weather_data.get("sources"),
             "preheat_reason": preheat_plan.reason,
             # Onset delay and baseline for DecisionTrace (computed once above)
             "onset_delay_min": _onset_delay_min,
