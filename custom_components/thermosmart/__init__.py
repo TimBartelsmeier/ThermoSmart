@@ -10,7 +10,7 @@ Modulstruktur:
   maintenance.py  – Wöchentliche Ventilübung
   season.py       – Sommer-Erkennung, Frostschutz
   window.py       – Fenstererkennung
-  weather_engine.py / learning_engine.py – eigenständige Engines
+  outdoor.py / learning_engine.py – eigenständige Engines
 """
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ from .schedule import (
     async_manage_schedule_yaml,
     async_orphaned_zone_keys,
 )
-from .weather_engine import WeatherEngine
+from .outdoor import OutdoorConditions
 from .learning_engine import LearningEngine
 
 _LOGGER = logging.getLogger(__name__)
@@ -156,9 +156,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     def _sensor(key: str) -> str | None:
         return cfg.get(key) or None
 
-    weather_engine = WeatherEngine(
+    outdoor = OutdoorConditions(
         hass,
-        cfg.get(CONF_WEATHER_ENTITY) or "weather.home",
+        cfg.get(CONF_WEATHER_ENTITY) or None,
         outdoor_temp_sensor=_sensor(CONF_OUTDOOR_TEMP_SENSOR),
         outdoor_humidity_sensor=_sensor(CONF_OUTDOOR_HUMIDITY_SENSOR),
         outdoor_wind_sensor=_sensor(CONF_OUTDOOR_WIND_SENSOR),
@@ -206,7 +206,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     coordinator = ThermoSmartCoordinator(
         hass, entry,
-        weather_engine=weather_engine,
+        outdoor=outdoor,
         learning_engine=learning_engine,
     )
     await coordinator.async_config_entry_first_refresh()
@@ -238,7 +238,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry_store: dict = {
         "coordinator": coordinator,
-        "weather_engine": weather_engine,
+        "outdoor": outdoor,
     }
     hass.data[DOMAIN][entry.entry_id] = entry_store
 

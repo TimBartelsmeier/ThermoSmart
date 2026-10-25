@@ -53,7 +53,7 @@ class Scenario:
         base = make_coordinator(overrides, clock=self.clock)
         with patch("homeassistant.helpers.frame.report_usage"):
             self.coord = _TestableCoordinator(
-                base.hass, base.entry, base.weather_engine, base.learning_engine,
+                base.hass, base.entry, base.outdoor, base.learning_engine,
                 clock=self.clock,
             )
         self.coord.hass.async_create_task = lambda coro: coro.close()

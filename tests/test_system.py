@@ -45,8 +45,8 @@ def _controller(*, options=None, temperature=None, zones=2):
         entry_id="sys", data={"entry_type": "system"}, options=options or {},
     )
     controller = SystemController(hass, entry)
-    controller.weather = SimpleNamespace(
-        async_get_data=AsyncMock(side_effect=lambda: {"temperature": controller._test_temp})
+    controller.outdoor = SimpleNamespace(
+        read=lambda: {"temperature": controller._test_temp}
     )
     controller._test_temp = temperature
     return controller, coords

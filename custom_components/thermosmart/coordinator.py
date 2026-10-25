@@ -70,7 +70,7 @@ from .preheat import ACTIVE as PREHEAT_ACTIVE
 from .preheat import PLANNED as PREHEAT_PLANNED
 from .preheat import PreheatPlan
 from .preheat import plan as plan_preheat
-from .weather_engine import WeatherEngine
+from .outdoor import OutdoorConditions
 from .learning_engine import LearningEngine
 from .window import WindowMixin
 from .suspension import held_at, resolve
@@ -137,7 +137,7 @@ class ThermoSmartCoordinator(
         self,
         hass: HomeAssistant,
         entry: ConfigEntry,
-        weather_engine: WeatherEngine,
+        outdoor: OutdoorConditions,
         learning_engine: LearningEngine,
         *,
         clock: "Clock | None" = None,
@@ -150,7 +150,7 @@ class ThermoSmartCoordinator(
             )),
         )
         self.entry = entry
-        self.weather_engine = weather_engine
+        self.outdoor = outdoor
         self.learning_engine = learning_engine
 
         # Steuerungszustand
@@ -952,7 +952,7 @@ class ThermoSmartCoordinator(
             self._last_live_decision = None
             cfg = self.zone_cfg
 
-            weather_data = await self.weather_engine.async_get_data()
+            weather_data = self.outdoor.read()
 
             recommendation = await self._compute_recommendation(cfg, weather_data)
 

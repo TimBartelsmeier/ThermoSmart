@@ -5,7 +5,7 @@ Covers:
     (Celsius/Fahrenheit/Kelvin, missing unit + system-unit fallback, invalid states),
   - coordinator.py's temperature reads (_read_avg_sensor, _read_raw_avg_sensor,
     _read_trv_avg_temp) normalize Fahrenheit sensors correctly,
-  - weather_engine.py's outdoor temperature + forecast reads,
+  - outdoor.py's outdoor temperature reads (see test_outdoor.py),
   - trv_control.py's min/max clamp + climate.set_temperature dispatch conversion,
   - season.py's frost-protection setpoint read/dispatch,
   - Learning/TPI: a Fahrenheit-reported room temperature yields the identical
@@ -20,11 +20,11 @@ import pytest
 
 from homeassistant.const import UnitOfTemperature
 
+from custom_components.thermosmart.outdoor import OutdoorConditions
 from custom_components.thermosmart.temperature_units import (
     from_internal_temperature_c,
     to_internal_temperature_c,
 )
-from custom_components.thermosmart.weather_engine import WeatherEngine
 from tests.helpers import make_coordinator, make_state, set_hass_states
 
 
@@ -165,7 +165,7 @@ class TestCoordinatorTemperatureReads:
 
 # ── Weather / Season ──────────────────────────────────────────────────────────
 
-class TestWeatherEngineUnits:
+class TestOutdoorUnits:
     async def test_fahrenheit_outdoor_sensor_normalized(self):
         hass = MagicMock()
         hass.config.units.temperature_unit = UnitOfTemperature.CELSIUS
@@ -174,12 +174,8 @@ class TestWeatherEngineUnits:
             "sensor.outdoor": make_state("50.0", {"unit_of_measurement": "°F"}),  # 10°C
         }.get(eid)
 
-        async def _fail(*a, **kw):
-            raise RuntimeError("no forecast service in this test")
-        hass.services.async_call = AsyncMock(side_effect=_fail)
-
-        engine = WeatherEngine(hass, "weather.home", outdoor_temp_sensor="sensor.outdoor")
-        data = await engine.async_get_data()
+        engine = OutdoorConditions(hass, "weather.home", outdoor_temp_sensor="sensor.outdoor")
+        data = engine.read()
         assert data["temperature"] == pytest.approx(10.0, abs=0.1)
 
     async def test_weather_entity_temperature_unit_attribute_used(self):
@@ -192,12 +188,8 @@ class TestWeatherEngineUnits:
             }),
         }.get(eid)
 
-        async def _fail(*a, **kw):
-            raise RuntimeError("no forecast service in this test")
-        hass.services.async_call = AsyncMock(side_effect=_fail)
-
-        engine = WeatherEngine(hass, "weather.home")
-        data = await engine.async_get_data()
+        engine = OutdoorConditions(hass, "weather.home")
+        data = engine.read()
         assert data["temperature"] == pytest.approx(20.0, abs=0.1)
         # humidity/wind must never be unit-converted
         assert data["humidity"] == pytest.approx(40)

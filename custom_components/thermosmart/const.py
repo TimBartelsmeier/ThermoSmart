@@ -115,11 +115,6 @@ TEMP_FROST_PROTECTION = 12.0
 TEMP_ECO = 19.0
 WINDOW_OPEN_SETPOINT = 5.0  # TRV-Setpoint bei geöffnetem Fenster
 
-# Weather-based adjustments
-WEATHER_COLD_THRESHOLD = 0.0     # °C outdoor — boost heating
-WEATHER_MILD_THRESHOLD = 10.0   # °C outdoor — reduce heating
-WEATHER_WARM_THRESHOLD = 18.0   # °C outdoor — consider disabling
-WEATHER_HOT_THRESHOLD = 22.0    # °C outdoor — disable heating
 
 # Learning algorithm settings
 LEARNING_MIN_SAMPLES = 5        # Mindest-Beobachtungen bevor Lernen aktiv wird

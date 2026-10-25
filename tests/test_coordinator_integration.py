@@ -12,6 +12,8 @@ import asyncio
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from custom_components.thermosmart.coordinator import ThermoSmartCoordinator
 
 from tests.helpers import make_coordinator, make_state, set_hass_states
@@ -65,7 +67,7 @@ def _make_testable(zone_cfg_overrides: dict | None = None) -> _TestableCoordinat
     base = make_coordinator(zone_cfg_overrides)
     with _patch("homeassistant.helpers.frame.report_usage"):
         coord = _TestableCoordinator(
-            base.hass, base.entry, base.weather_engine, base.learning_engine
+            base.hass, base.entry, base.outdoor, base.learning_engine
         )
     return coord
 
@@ -95,6 +97,22 @@ class TestSummerNoIndoorBypass:
 
 
 # ── TestUpdateDataStructure ───────────────────────────────────────────────────
+
+
+class TestNoOutdoorData:
+    @pytest.mark.parametrize("learning", [True, False])
+    async def test_cycles_work_without_any_outdoor_data(self, learning):
+        coord = _make_testable({"learning_enabled": learning})
+        coord.outdoor.read.return_value = {
+            k: None for k in ("temperature", "humidity", "wind_speed",
+                              "solar_radiation", "rain", "condition")
+        }
+        set_hass_states(coord, {"sensor.test_temp": make_state("19.0")})
+
+        for _ in range(3):
+            result = await coord._async_update_data()
+            assert result["zone"]["effective_target"] is not None
+            assert "error" not in result["zone"]
 
 
 class TestUpdateDataStructure:

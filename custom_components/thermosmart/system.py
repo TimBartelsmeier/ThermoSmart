@@ -22,7 +22,7 @@ from .const import (
     WINTER_THRESHOLD,
 )
 from .suspension import SummerDetector
-from .weather_engine import WeatherEngine
+from .outdoor import OutdoorConditions
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,9 +62,9 @@ class SystemController:
             window=timedelta(hours=SEASON_HOURS),
             min_span=timedelta(hours=SEASON_MIN_SPAN_HOURS),
         )
-        self.weather = WeatherEngine(
+        self.outdoor = OutdoorConditions(
             hass,
-            cfg.get(CONF_WEATHER_ENTITY) or "",
+            cfg.get(CONF_WEATHER_ENTITY) or None,
             outdoor_temp_sensor=cfg.get(CONF_OUTDOOR_TEMP_SENSOR) or None,
         )
         self.has_outdoor_source = bool(
@@ -116,7 +116,7 @@ class SystemController:
         """Read the outdoor temperature once and feed the detector."""
         now = now or datetime.now(timezone.utc)
         before = self.summer_active
-        data = await self.weather.async_get_data()
+        data = self.outdoor.read()
         temperature = data.get("temperature")
         self.outdoor_temperature = temperature
         if temperature is None:

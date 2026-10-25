@@ -313,7 +313,6 @@ class ThermoSmartStatusSensor(_Base):
             "current_temperature": z.get("current_temp"),
             "target_temperature": z.get("desired_target"),
             "outdoor_temperature": z.get("outdoor_temp"),
-            "forecast_high": z.get("forecast_high"),
             "weather_condition": z.get("weather_condition"),
             "summer_mode": z.get("is_summer", False),
             "vacation_mode": z.get("vacation_mode", False),
