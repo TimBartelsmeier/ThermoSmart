@@ -79,6 +79,9 @@ Priority: **summer > vacation > window**; the others are registered state only.
 * Events fire at their **exact time** (timers), not at the next control cycle.
   Events missed while scheduling was off/paused or HA was down are **skipped, never
   caught up**.
+  The timer handler is marked as an HA callback so target updates, refresh
+  requests and entity notifications run on the event loop (covered by a real-timer
+  integration test).
 * Events are edited in the setup/options config flow and stored with the zone's
   config entry. Overlapping weekday/time events are rejected. Existing
   `/config/thermosmart_schedules.yaml` files are not read or migrated.

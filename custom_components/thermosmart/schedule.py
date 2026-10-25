@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_point_in_utc_time
 
 from .const import PRESETS, PRESET_NIGHT
@@ -288,6 +288,7 @@ class ScheduleRunner:
         if self._on_change is not None:
             self._on_change()
 
+    @callback
     def _fire(self, _now_utc: datetime) -> None:
         occurrence = self._next
         self._cancel = None
