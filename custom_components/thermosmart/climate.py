@@ -29,6 +29,7 @@ from .const import (
     PRESET_COMFORT, PRESET_ECO, PRESET_NIGHT, PRESET_AWAY, PRESET_VACATION,
 )
 from .coordinator import ThermoSmartCoordinator
+from .triggers import TRIGGER_SWITCH, TRIGGER_TARGET_CHANGE
 from .target import SOURCE_USER, TARGET_MAX_C, TARGET_MIN_C
 
 _LOGGER = logging.getLogger(__name__)
@@ -241,14 +242,14 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
                 f"Target must be between {TARGET_MIN_C:g} and {TARGET_MAX_C:g} °C"
             ) from err
         self.async_write_ha_state()
-        await self.coordinator.async_request_refresh()
+        self.coordinator.request_pass(TRIGGER_TARGET_CHANGE)
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Aktive Steuerung ein- oder ausschalten."""
         active = hvac_mode == HVACMode.HEAT
         self.coordinator.set_active_control(active)
         self.async_write_ha_state()
-        await self.coordinator.async_request_refresh()
+        self.coordinator.request_pass(TRIGGER_SWITCH)
 
     async def async_turn_on(self) -> None:
         await self.async_set_hvac_mode(HVACMode.HEAT)
@@ -263,5 +264,5 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
             raise ServiceValidationError(f"Unknown preset '{preset_mode}'")
         self.coordinator.set_preset(preset)
         self.async_write_ha_state()
-        await self.coordinator.async_request_refresh()
+        self.coordinator.request_pass(TRIGGER_TARGET_CHANGE)
 

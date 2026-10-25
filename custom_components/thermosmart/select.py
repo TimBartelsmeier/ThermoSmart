@@ -10,6 +10,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN, VERSION, PRESETS
 from .coordinator import ThermoSmartCoordinator
+from .triggers import TRIGGER_TARGET_CHANGE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,4 +64,4 @@ class ThermoSmartModeSelect(SelectEntity):
             return
         self._coordinator.set_preset(option)
         self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
+        self._coordinator.request_pass(TRIGGER_TARGET_CHANGE)

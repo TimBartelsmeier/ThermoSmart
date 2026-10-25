@@ -23,7 +23,6 @@ def _entry():
 
 def _coord():
     coord = MagicMock()
-    coord.async_request_refresh = AsyncMock()
     return coord
 
 
@@ -62,7 +61,7 @@ class TestSwitch:
         coord.set_scheduling_enabled.assert_called_with(False)
         await switch.async_turn_on()
         coord.set_scheduling_enabled.assert_called_with(True)
-        assert coord.async_request_refresh.await_count == 2
+        assert coord.request_pass.call_count == 2
 
 
 class TestDisabledUntil:
@@ -93,7 +92,7 @@ class TestDisabledUntil:
         await entity.async_set_value(value)
         assert entity.native_value == value
         coord.set_scheduling_disabled_until.assert_called_once()
-        coord.async_request_refresh.assert_awaited_once()
+        coord.request_pass.assert_called_once()
 
 
 class TestNextEventSensor:

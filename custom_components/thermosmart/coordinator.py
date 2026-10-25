@@ -74,6 +74,15 @@ from .outdoor import OutdoorConditions
 from .learning_engine import LearningEngine
 from .window import WindowMixin
 from .suspension import held_at, resolve
+from .triggers import (
+    TRIGGER_PHYSICAL_SETPOINT,
+    TRIGGER_PREHEAT_START,
+    TRIGGER_ROOM_TEMPERATURE,
+    TRIGGER_SCHEDULE_EVENT,
+    TRIGGER_STARTUP,
+    TRIGGER_WINDOW,
+    TRIGGERS,
+)
 from .season import SeasonMixin
 from .trv_control import TRVControlMixin, _DispatchStats
 from .maintenance import MaintenanceMixin
@@ -159,6 +168,8 @@ class ThermoSmartCoordinator(
         self.target = TargetState()
         self.target.add_listener(self._on_target_changed)
         self._manual_change_pending: bool = False
+        self._pending_triggers: list[str] = [TRIGGER_STARTUP]
+        self.last_pass_triggers: list[str] = []
         # Scheduling (events fire at exact times via the runner, see schedule.py).
         self._scheduling_enabled: bool = True
         self._scheduling_disabled_until: datetime | None = None
@@ -398,7 +409,7 @@ class ThermoSmartCoordinator(
             _LOGGER.warning("ThermoSmart '%s': schedule event %s ignored – %s",
                             self.zone_name, event.key, err)
             return
-        self.hass.async_create_task(self.async_request_refresh())
+        self.request_pass(TRIGGER_SCHEDULE_EVENT)
 
     # ── Setter ──────────────────────────────────────────────────────
 
@@ -425,6 +436,20 @@ class ThermoSmartCoordinator(
         return self.set_target(
             preset_temperature(self.zone_cfg, preset), SOURCE_PRESET, preset=preset
         )
+
+    def request_pass(self, trigger: str) -> None:
+        """The single entry point for refreshes outside the periodic timer.
+
+        ``trigger`` must be a name from ``triggers.TRIGGERS``. Bursts coalesce in
+        the coordinator's refresh debouncer; all triggers seen since the last
+        pass are reported in the zone data (``pass_triggers``).
+        """
+        if trigger not in TRIGGERS:
+            raise ValueError(f"unknown control-pass trigger '{trigger}'")
+        _LOGGER.debug("ThermoSmart '%s': control pass requested (%s)", self.zone_name, trigger)
+        if trigger not in self._pending_triggers:
+            self._pending_triggers.append(trigger)
+        self.hass.async_create_task(self.async_request_refresh())
 
     def _on_target_changed(self, new, previous) -> None:
         _LOGGER.info(
@@ -473,7 +498,7 @@ class ThermoSmartCoordinator(
         def _start_due(_now) -> None:
             self._preheat_timer_cancel = None
             self._preheat_timer_at = None
-            self.hass.async_create_task(self.async_request_refresh())
+            self.request_pass(TRIGGER_PREHEAT_START)
 
         self._preheat_timer_at = want
         self._preheat_timer_cancel = async_track_point_in_utc_time(
@@ -587,7 +612,7 @@ class ThermoSmartCoordinator(
                         @callback
                         def _open_delay_expired(_now, _eid=entity_id):
                             self._window_delay_cancel.pop(_eid, None)
-                            self.hass.async_create_task(self.async_request_refresh())
+                            self.request_pass(TRIGGER_WINDOW)
 
                         self._window_delay_cancel[entity_id] = async_call_later(
                             self.hass, open_delay_secs, _open_delay_expired
@@ -613,7 +638,7 @@ class ThermoSmartCoordinator(
                                 @callback
                                 def _close_delay_expired(_now, _eid=entity_id):
                                     self._window_delay_cancel.pop(_eid, None)
-                                    self.hass.async_create_task(self.async_request_refresh())
+                                    self.request_pass(TRIGGER_WINDOW)
 
                                 self._window_delay_cancel[entity_id] = async_call_later(
                                     self.hass, close_delay_secs, _close_delay_expired
@@ -624,10 +649,9 @@ class ThermoSmartCoordinator(
                         self._window_open_at.pop(entity_id, None)
 
                 _LOGGER.info(
-                    "ThermoSmart '%s': %s geändert (%s → %s) – Sofort-Update",
+                    "ThermoSmart '%s': window sensor %s changed (%s → %s)",
                     self.zone_name, entity_id, old.state, new.state,
                 )
-                self.hass.async_create_task(self.async_request_refresh())
 
             cancel = async_track_state_change_event(
                 self.hass, list(all_tracked), _handle_state_change
@@ -722,7 +746,7 @@ class ThermoSmartCoordinator(
             "ThermoSmart '%s': room temperature %.1f°C moved ≥ %.1f°C since last cycle (%.1f°C) – refresh",
             self.zone_name, raw_temp, threshold, ref,
         )
-        self.hass.async_create_task(self.async_request_refresh())
+        self.request_pass(TRIGGER_ROOM_TEMPERATURE)
 
     def _mark_trv_write(self, entity_id: str, cfg: dict) -> None:
         """Suppress device echoes for the configured settling period after a write."""
@@ -795,7 +819,7 @@ class ThermoSmartCoordinator(
                 self.zone_name, entity_id, old_setpoint, new_setpoint,
                 "summer" if self._is_summer else "vacation",
             )
-            self.hass.async_create_task(self.async_request_refresh())
+            self.request_pass(TRIGGER_PHYSICAL_SETPOINT)
             return
 
         settings = cfg.get(CONF_DEVICE_SETTINGS, {}).get(entity_id, {})
@@ -806,7 +830,7 @@ class ThermoSmartCoordinator(
                     "ThermoSmart '%s': correcting manual TRV setpoint change on %s",
                     self.zone_name, entity_id,
                 )
-                self.hass.async_create_task(self.async_request_refresh())
+                self.request_pass(TRIGGER_PHYSICAL_SETPOINT)
             return
 
         self._pending_manual_setpoint = (entity_id, new_setpoint)
@@ -843,7 +867,7 @@ class ThermoSmartCoordinator(
                     "(outside the supported target range)",
                     self.zone_name, temperature, changed_entity,
                 )
-            self.hass.async_create_task(self.async_request_refresh())
+            self.request_pass(TRIGGER_PHYSICAL_SETPOINT)
 
         self._manual_setpoint_cancel = async_call_later(
             self.hass, debounce, _apply_manual_setpoint
@@ -950,6 +974,8 @@ class ThermoSmartCoordinator(
             # Reset per-cycle live decision record — prevents cross-cycle staleness
             # when the shadow is absent or removed between cycles.
             self._last_live_decision = None
+            self.last_pass_triggers = self._pending_triggers or ["periodic"]
+            self._pending_triggers = []
             cfg = self.zone_cfg
 
             weather_data = self.outdoor.read()
@@ -2053,6 +2079,7 @@ class ThermoSmartCoordinator(
             "preheat_active": preheat_active,
             "preheat_status": preheat_status,
             "preheat_state": preheat_plan.state,
+            "pass_triggers": list(self.last_pass_triggers),
             "preheat_reason": preheat_plan.reason,
             # Onset delay and baseline for DecisionTrace (computed once above)
             "onset_delay_min": _onset_delay_min,

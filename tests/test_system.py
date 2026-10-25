@@ -32,7 +32,7 @@ def _zone_coordinator():
         return changed
 
     coord.set_system_state.side_effect = set_state
-    coord.async_request_refresh = AsyncMock()
+    coord.request_pass = MagicMock()
     return coord
 
 
@@ -152,10 +152,10 @@ class TestDistribution:
         await controller.async_set_vacation(True)
         for zone in zones:
             zone.set_system_state.assert_called_with(vacation=True, summer=False)
-            zone.async_request_refresh.assert_awaited_once()
+            zone.request_pass.assert_called_once()
         await controller.async_set_vacation(True)
         for zone in zones:
-            zone.async_request_refresh.assert_awaited_once()  # unchanged: no refresh
+            zone.request_pass.assert_called_once()  # unchanged: no refresh
 
     async def test_detected_summer_is_pushed_when_it_flips(self):
         controller, zones = _controller(options={"outdoor_temp_sensor": "sensor.out"})

@@ -37,6 +37,7 @@ from .const import (
 )
 from .coordinator import ThermoSmartCoordinator
 from .system import SYSTEM_KEY, SystemController
+from .triggers import TRIGGER_SYSTEM_STATE
 from .schedule import (
     ScheduleError,
     async_manage_schedule_yaml,
@@ -215,7 +216,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # otherwise the System entry pushes it when its switches are restored.
     if controller := hass.data[DOMAIN].get(SYSTEM_KEY):
         if controller.apply_to(coordinator):
-            await coordinator.async_request_refresh()
+            coordinator.request_pass(TRIGGER_SYSTEM_STATE)
 
     await coordinator.async_detect_device_entities()
     coordinator.setup_event_listeners()

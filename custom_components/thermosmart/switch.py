@@ -11,6 +11,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN, VERSION, DOMAIN_GLOBAL_VACATION
 from .coordinator import ThermoSmartCoordinator
+from .triggers import TRIGGER_SCHEDULING, TRIGGER_SWITCH
 from .system import SYSTEM_KEY, SystemController, iter_zone_coordinators
 
 _LOGGER = logging.getLogger(__name__)
@@ -85,13 +86,13 @@ class ThermoSmartActiveSwitch(SwitchEntity, RestoreEntity):
         self._is_on = True
         self.async_write_ha_state()
         self._coordinator.set_active_control(True)
-        await self._coordinator.async_request_refresh()
+        self._coordinator.request_pass(TRIGGER_SWITCH)
 
     async def async_turn_off(self, **kwargs) -> None:
         self._is_on = False
         self.async_write_ha_state()
         self._coordinator.set_active_control(False)
-        await self._coordinator.async_request_refresh()
+        self._coordinator.request_pass(TRIGGER_SWITCH)
 
 
 class ThermoSmartLearningSwitch(SwitchEntity, RestoreEntity):
@@ -126,7 +127,7 @@ class ThermoSmartLearningSwitch(SwitchEntity, RestoreEntity):
         engine = self._get_engine()
         if engine:
             engine.set_zone_enabled(self._entry.entry_id, True)
-        await self._coordinator.async_request_refresh()
+        self._coordinator.request_pass(TRIGGER_SWITCH)
 
     async def async_turn_off(self, **kwargs) -> None:
         self._is_on = False
@@ -134,7 +135,7 @@ class ThermoSmartLearningSwitch(SwitchEntity, RestoreEntity):
         engine = self._get_engine()
         if engine:
             engine.set_zone_enabled(self._entry.entry_id, False)
-        await self._coordinator.async_request_refresh()
+        self._coordinator.request_pass(TRIGGER_SWITCH)
 
     def _get_engine(self):
         return self.hass.data.get(DOMAIN, {}).get("learning_engine")
@@ -173,7 +174,7 @@ class ThermoSmartSchedulingSwitch(SwitchEntity, RestoreEntity):
         self._is_on = value
         self._coordinator.set_scheduling_enabled(value)
         self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
+        self._coordinator.request_pass(TRIGGER_SCHEDULING)
 
 
 # ── Globale Schalter (domain-weit, steuern alle Zonen) ───────────────────────

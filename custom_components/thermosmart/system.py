@@ -22,6 +22,7 @@ from .const import (
     WINTER_THRESHOLD,
 )
 from .suspension import SummerDetector
+from .triggers import TRIGGER_SYSTEM_STATE
 from .outdoor import OutdoorConditions
 
 _LOGGER = logging.getLogger(__name__)
@@ -174,4 +175,4 @@ class SystemController:
                 vacation=self.vacation, summer=self.summer_active
             )
             if changed:
-                await coordinator.async_request_refresh()
+                coordinator.request_pass(TRIGGER_SYSTEM_STATE)

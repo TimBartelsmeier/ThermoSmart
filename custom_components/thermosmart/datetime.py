@@ -13,6 +13,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, VERSION
 from .coordinator import ThermoSmartCoordinator
+from .triggers import TRIGGER_SCHEDULING
 
 
 async def async_setup_entry(
@@ -62,4 +63,4 @@ class ThermoSmartSchedulingDisabledUntil(DateTimeEntity, RestoreEntity):
         self._value = dt_util.as_local(value)
         self._coordinator.set_scheduling_disabled_until(self._value)
         self.async_write_ha_state()
-        await self._coordinator.async_request_refresh()
+        self._coordinator.request_pass(TRIGGER_SCHEDULING)
