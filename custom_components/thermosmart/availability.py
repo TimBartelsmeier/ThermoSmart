@@ -104,7 +104,7 @@ class EntityAvailabilityMonitor:
     @callback
     def start(self) -> None:
         self._unsubscribers.append(
-            self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, self._on_stop)
+            self.hass.bus.async_listen(EVENT_HOMEASSISTANT_STOP, self._on_stop)
         )
         self._unsubscribers.append(async_at_started(self.hass, self._on_started))
 

@@ -275,13 +275,24 @@ async def test_stopping_before_start_cancels_start_listener(hass, monitor):
     assert _issue(monitor) is None
 
 
-async def test_shutdown_stops_reporting(hass, monitor, caplog):
+@pytest.mark.parametrize("during_startup", [False, True])
+async def test_shutdown_stops_reporting(hass, monitor, caplog, during_startup):
+    if during_startup:
+        hass.state = CoreState.starting
     monitor.start()
     hass.bus.async_fire(EVENT_HOMEASSISTANT_STOP)
     await hass.async_block_till_done()
+    monitor.stop()
+    assert not [
+        record for record in caplog.records
+        if record.levelno >= logging.ERROR
+    ]
     assert _issue(monitor) is None
-    async_fire_time_changed_exact(hass, dt_util.utcnow() + timedelta(minutes=4))
+    assert not monitor._unsubscribers
+    assert not monitor._outages
+    hass.states.async_set("sensor.room", "unavailable")
     await hass.async_block_till_done()
+    assert _issue(monitor) is None
     assert not _warnings(caplog)
 
 
