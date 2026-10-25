@@ -168,7 +168,7 @@ _HISTORICAL_RESEARCH_EVENTS_MAX_PER_CATEGORY = 200
 
 _HIST_OBS_ALLOWED_FIELDS = (
     "target", "indoor_temp", "delta", "active_control", "window_open",
-    "control_reason", "preheat_active", "heating_failure", "vacation",
+    "preheat_active", "heating_failure", "vacation",
     "summer_mode", "outdoor_temp", "outdoor_humidity", "wind_speed",
     "solar_radiation", "indoor_humidity", "heat_rate", "norm_heat_rate",
     "cool_rate", "schedule_period", "forecast_high",

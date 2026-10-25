@@ -416,7 +416,7 @@
     },
     "sensor": {
       "trv_setpoint": {
-        "name": "TRV setpoint"
+        "name": "TPI boosted TRV setpoint"
       },
       "tpi_duty_cycle": {
         "name": "TPI Duty-Cycle"

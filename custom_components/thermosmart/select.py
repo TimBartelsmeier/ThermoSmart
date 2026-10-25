@@ -31,7 +31,7 @@ class ThermoSmartModeSelect(SelectEntity):
     def __init__(self, coordinator: ThermoSmartCoordinator, entry: ConfigEntry):
         self._coordinator = coordinator
         self._entry = entry
-        self._attr_unique_id = f"{entry.entry_id}_mode"
+        self._attr_unique_id = f"{entry.entry_id}_preset"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name=f"ThermoSmart – {entry.data.get('name', 'Zone')}",
