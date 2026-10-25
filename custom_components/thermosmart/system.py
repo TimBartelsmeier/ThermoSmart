@@ -16,7 +16,6 @@ from .const import (
     CONF_WEATHER_ENTITY,
     DOMAIN,
     SEASON_HOURS,
-    SEASON_MIN_SPAN_HOURS,
     SEASON_SAMPLE_MINUTES,
     SUMMER_THRESHOLD,
     WINTER_THRESHOLD,
@@ -61,7 +60,6 @@ class SystemController:
         self.detector = SummerDetector(
             on, off,
             window=timedelta(hours=SEASON_HOURS),
-            min_span=timedelta(hours=SEASON_MIN_SPAN_HOURS),
         )
         self.outdoor = OutdoorConditions(
             hass,

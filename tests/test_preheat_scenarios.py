@@ -343,6 +343,17 @@ class TestManualChanges:
         assert s.coord.preheat_plan.state == "active"
         assert s.coord.preheat_plan.event_target == 22.0
 
+    async def test_manual_change_after_planned_start_but_before_the_pass_cancels(self, timers):
+        s = Scenario(EVENT_15)
+        await s.run()  # plan is PLANNED
+        s.at(PREHEAT_AT)  # start time passed, the requested pass has not run yet
+        assert s.coord.preheat_plan.state == "planned"
+        s.coord.set_target(19.5, SOURCE_USER)
+        zone = await s.run()
+        assert zone["preheat_active"] is False
+        assert zone["effective_target"] == 19.5
+        assert s.coord.preheat_plan.reason == "cancelled_by_manual_change"
+
     async def test_manual_change_before_start_does_not_cancel(self, timers):
         s = Scenario(EVENT_15)
         await s.run()

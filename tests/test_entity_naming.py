@@ -20,3 +20,12 @@ def test_unique_ids():
     entry = MagicMock(entry_id="abc", data={"name": "Z"})
     assert ThermoSmartModeSelect(MagicMock(), entry)._attr_unique_id == "abc_preset"
     assert ThermoSmartTRVSetpointSensor(MagicMock(), entry)._attr_unique_id == "abc_trv_setpoint"
+
+
+def test_climate_range_matches_target_model():
+    from custom_components.thermosmart.climate import ThermoSmartClimate
+    from custom_components.thermosmart.target import TARGET_MAX_C, TARGET_MIN_C
+
+    climate = ThermoSmartClimate(MagicMock(), MagicMock(entry_id="abc", data={"name": "Z"}))
+    assert climate.min_temp == TARGET_MIN_C
+    assert climate.max_temp == TARGET_MAX_C

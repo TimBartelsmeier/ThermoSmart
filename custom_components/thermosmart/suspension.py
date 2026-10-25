@@ -41,7 +41,7 @@ class SummerDetector:
 
     Hysteresis: summer starts at ``on_threshold`` or above and ends at ``off_threshold``
     or below; in between the previous state is kept. No decision is taken before the
-    samples cover ``min_span``, so a restart never flips the state on a few readings.
+    samples cover ``min_span`` (default: the full window), so a restart never flips the state on a few readings.
     """
 
     def __init__(
@@ -50,7 +50,7 @@ class SummerDetector:
         off_threshold: float,
         *,
         window: timedelta = timedelta(hours=72),
-        min_span: timedelta = timedelta(hours=24),
+        min_span: timedelta | None = None,
         summer: bool = False,
     ) -> None:
         if off_threshold >= on_threshold:
@@ -58,7 +58,7 @@ class SummerDetector:
         self.on_threshold = on_threshold
         self.off_threshold = off_threshold
         self.window = window
-        self.min_span = min_span
+        self.min_span = window if min_span is None else min_span
         self.summer = summer
         self._samples: deque[tuple[datetime, float]] = deque()
 
@@ -75,7 +75,9 @@ class SummerDetector:
         return self.summer
 
     def _prune(self, now: datetime) -> None:
-        while self._samples and now - self._samples[0][0] > self.window:
+        # Keep the newest sample at or before the window start, so the covered span
+        # can actually reach the full window despite the sampling interval.
+        while len(self._samples) >= 2 and now - self._samples[1][0] >= self.window:
             self._samples.popleft()
 
     @property

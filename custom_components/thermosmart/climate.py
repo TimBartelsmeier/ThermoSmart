@@ -76,8 +76,8 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
         | ClimateEntityFeature.TURN_OFF
     )
     _attr_target_temperature_step = 0.5
-    _attr_min_temp = 4.0
-    _attr_max_temp = 35.0
+    _attr_min_temp = TARGET_MIN_C
+    _attr_max_temp = TARGET_MAX_C
 
     def __init__(self, coordinator: ThermoSmartCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
@@ -211,7 +211,7 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
         target = self.coordinator.target.value
         boost_delta = round(trv - target, 1) if trv is not None and trv > target else 0.0
         return {
-            "desired_target_source": self.coordinator.target.source,
+            "desired_target_source": self.coordinator.target.current.source,
             "preheat_time":         f"{z.get('preheat_minutes', 0)} min",
             "learning_confidence":  f"{round((z.get('learning_confidence', 0) * 100), 1)}%",
             "outdoor_temperature":  z.get("outdoor_temp"),

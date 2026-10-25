@@ -70,7 +70,7 @@ Two independent switches per zone:
 |---|---|---|
 | on | off | Deterministic control (TPI), no learned parameters |
 | on | on | Control with learned parameters (pre-heat time, TPI coefficients, boost) |
-| off | on | **Observation mode**: nothing is written to your TRVs, ThermoSmart only watches and learns. The target, schedule events and pre-heat plan are still tracked. |
+| off | on | **Observation mode**: nothing is written to your TRVs (including the room-temperature feed), ThermoSmart only watches and learns. The target, schedule events and pre-heat plan are still tracked. |
 | off | off | Zone inactive |
 
 The climate entity's HVAC mode `heat`/`off` maps to Active Control on/off. Start with observation mode if you want to verify sensors and settings first.
@@ -194,7 +194,7 @@ There is one mechanism, not one restore routine per case: when the last suspensi
 |---|---|
 | Vacation Mode | All zones hold their vacation temperature |
 | Force Summer Mode | Summer on, irrespective of the weather |
-| Auto-enable Summer Mode | Switches summer on/off from the outdoor temperature (72 h average, on/off thresholds from the System entry). Needs an outdoor temperature (sensor, else weather entity) and at least 24 h of data before it decides. |
+| Auto-enable Summer Mode | Switches summer on/off from the outdoor temperature (72 h average, on/off thresholds from the System entry). Needs an outdoor temperature (sensor, else weather entity) and a full 72 h of samples before it first decides (history is not persisted, so after a restart the previous state is kept until 72 h have been collected again; the switch's `sample_hours` attribute shows how much exists). |
 
 ---
 

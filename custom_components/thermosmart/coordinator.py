@@ -470,7 +470,14 @@ class ThermoSmartCoordinator(
     def _cancel_running_preheat(self) -> None:
         """A manual change during pre-heat cancels it for the current event."""
         plan = self._preheat_plan
-        if plan is not None and plan.state == PREHEAT_ACTIVE and not self._preheat_cancelled:
+        # A planned start that has already passed counts as running: the start timer
+        # may have fired while its requested pass has not yet turned the plan active.
+        running = plan is not None and (
+            plan.state == PREHEAT_ACTIVE
+            or (plan.state == PREHEAT_PLANNED and plan.start is not None
+                and plan.start <= self._clock.now_utc())
+        )
+        if running and not self._preheat_cancelled:
             self._preheat_cancelled = True
             _LOGGER.info(
                 "ThermoSmart '%s': pre-heating for the event at %s cancelled by manual change",
@@ -1188,9 +1195,9 @@ class ThermoSmartCoordinator(
             # no control effect. See _maybe_record_support_hold_events().
             self._maybe_record_support_hold_events(recommendation)
 
-            # External Temperature Input immer schreiben (auch im Beobachtungsmodus)
-            # – verbessert die TRV-interne Regelung unabhängig von der aktiven Steuerung
-            await self._async_write_external_temp(cfg, recommendation)
+            # Observation mode writes nothing to the TRVs, including the external temperature.
+            if self._active_control:
+                await self._async_write_external_temp(cfg, recommendation)
 
             # ── Learning Adaptive Boost Control ────────────────────────────
             # resolve_adaptive_boost_control() is the single authority for real boost.

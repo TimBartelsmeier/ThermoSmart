@@ -75,19 +75,19 @@ class TestSummerPrecedence:
 
     async def test_auto_off_ignores_detected_summer(self):
         controller, _ = _controller(options={"outdoor_temp_sensor": "sensor.out"})
-        await _sample_hours(controller, 25.0, 30)
+        await _sample_hours(controller, 25.0, 80)
         assert controller.detected_summer is True
         await controller.async_set_auto_summer(False)
         assert controller.summer_active is False
 
     async def test_auto_on_uses_detected_summer(self):
         controller, _ = _controller(options={"outdoor_temp_sensor": "sensor.out"})
-        await _sample_hours(controller, 25.0, 30)
+        await _sample_hours(controller, 25.0, 80)
         assert controller.summer_active and controller.summer_source == "detected"
 
     async def test_force_off_does_not_cancel_detected_summer(self):
         controller, _ = _controller(options={"outdoor_temp_sensor": "sensor.out"})
-        await _sample_hours(controller, 25.0, 30)
+        await _sample_hours(controller, 25.0, 80)
         await controller.async_set_force_summer(True)
         await controller.async_set_force_summer(False)
         assert controller.summer_active is True
@@ -109,11 +109,11 @@ class TestAutomaticDetection:
 
     async def test_summer_starts_and_ends_with_hysteresis(self):
         controller, _ = _controller(options={"outdoor_temp_sensor": "sensor.out"})
-        await _sample_hours(controller, 25.0, 30)
+        await _sample_hours(controller, 25.0, 80)
         assert controller.summer_active is True
-        await _sample_hours(controller, 16.5, 30, start=T0 + timedelta(hours=31))
+        await _sample_hours(controller, 16.5, 30, start=T0 + timedelta(hours=81))
         assert controller.summer_active is True  # average between thresholds
-        await _sample_hours(controller, 5.0, 100, start=T0 + timedelta(hours=62))
+        await _sample_hours(controller, 5.0, 100, start=T0 + timedelta(hours=112))
         assert controller.summer_active is False
 
     async def test_custom_thresholds_from_options(self):
@@ -121,22 +121,22 @@ class TestAutomaticDetection:
             "outdoor_temp_sensor": "sensor.out",
             "summer_on_threshold": 22.0, "summer_off_threshold": 20.0,
         })
-        await _sample_hours(controller, 21.0, 30)
+        await _sample_hours(controller, 21.0, 80)
         assert controller.summer_active is False
-        await _sample_hours(controller, 24.0, 100, start=T0 + timedelta(hours=31))
+        await _sample_hours(controller, 24.0, 100, start=T0 + timedelta(hours=81))
         assert controller.summer_active is True
 
     async def test_detected_summer_is_reset_after_72h_without_data(self):
         controller, zones = _controller(options={"outdoor_temp_sensor": "sensor.out"})
-        await _sample_hours(controller, 25.0, 30)
+        await _sample_hours(controller, 25.0, 80)
         assert controller.summer_active is True
-        await _sample_hours(controller, None, 80, start=T0 + timedelta(hours=31))
+        await _sample_hours(controller, None, 80, start=T0 + timedelta(hours=81))
         assert controller.summer_active is False
 
     async def test_detected_summer_survives_short_data_gap(self):
         controller, _ = _controller(options={"outdoor_temp_sensor": "sensor.out"})
-        await _sample_hours(controller, 25.0, 30)
-        await _sample_hours(controller, None, 24, start=T0 + timedelta(hours=31))
+        await _sample_hours(controller, 25.0, 80)
+        await _sample_hours(controller, None, 24, start=T0 + timedelta(hours=81))
         assert controller.summer_active is True
 
     async def test_restored_detected_state_is_kept_until_enough_data(self):
@@ -159,7 +159,7 @@ class TestDistribution:
 
     async def test_detected_summer_is_pushed_when_it_flips(self):
         controller, zones = _controller(options={"outdoor_temp_sensor": "sensor.out"})
-        await _sample_hours(controller, 25.0, 30)
+        await _sample_hours(controller, 25.0, 80)
         for zone in zones:
             zone.set_system_state.assert_called_with(vacation=False, summer=True)
 

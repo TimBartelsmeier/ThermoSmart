@@ -4,16 +4,17 @@ All known device profiles are defined here as frozen DeviceProfile instances.
 Adding support for a new TRV model means adding an entry here and a
 corresponding match rule in registry.py — no other files need to change.
 """
+
 from __future__ import annotations
 
 from ..const import AUTO_QUIRK_PATTERNS
 from .capabilities import (
-    DevicePreset,
-    DeviceProfile,
     SETPOINT_CLIMATE,
     SETPOINT_HVAC_FIRST,
-    VALVE_READ_ONLY,
     VALVE_MAX_LIMIT,
+    VALVE_READ_ONLY,
+    DevicePreset,
+    DeviceProfile,
 )
 
 # ── Generic fallback ─────────────────────────────────────────────────────────
@@ -181,19 +182,25 @@ NETATMO = DeviceProfile(
 # record; these presets only seed editable zone configuration.
 DEVICE_PRESETS: dict[str, DevicePreset] = {
     "generic": DevicePreset(
-        "generic", "Generic TRV", info_summary="Generic device; available inputs are auto-detected."
+        "generic",
+        "Generic TRV",
+        info_summary="Generic device; available inputs are auto-detected.",
     ),
     "sonoff_trvzb": DevicePreset(
-        "sonoff_trvzb", "SONOFF TRVZB", recommended_mode="tpi_boost",
+        "sonoff_trvzb",
+        "SONOFF TRVZB",
+        recommended_mode="tpi_boost",
         ext_temp_entity_pattern="external_temperature",
         feed_external_temp=True,
         calibration_sync=False,
         window_off=True,
         quirk_entity_patterns=[p for p in AUTO_QUIRK_PATTERNS if p != "child_lock"],
-        default_state_settings=[{
-            "entity_pattern": "temperature_sensor",
-            "value": "remote_sensor",
-        }],
+        default_state_settings=[
+            {
+                "entity_pattern": "temperature_sensor",
+                "value": "remote_temperature",
+            }
+        ],
         info_summary=(
             "Preset loaded: external room temperature enabled and the temperature source set to "
             "remote sensor (so no calibration offset is written); the TRV's own window detection, "
@@ -202,40 +209,52 @@ DEVICE_PRESETS: dict[str, DevicePreset] = {
             "is treated as a limit.\n\n"
             "Recommended control strategy: TPI setpoint modulation.\n\n"
             "Note: starting with firmware 1.4.4, TRVZB has an integrated PID mode (called "
-            "\"Smart temperature control\" in HomeAssistant). If your devices are updated, you "
+            '"Smart temperature control" in HomeAssistant). If your devices are updated, you '
             "might want to consider letting the TRV handle control itself by setting the control "
-            "strategy on this page to \"Setpoint only\" and enabling said PID mode on the TRV "
+            'strategy on this page to "Setpoint only" and enabling said PID mode on the TRV '
             "(you can do that on the next page)."
         ),
     ),
     "eurotronic_spirit": DevicePreset(
-        "eurotronic_spirit", "Eurotronic Spirit", recommended_mode="direct_valve",
-        valve_entity_pattern="valve_position", hvac_mode_before_write="heat",
+        "eurotronic_spirit",
+        "Eurotronic Spirit",
+        recommended_mode="direct_valve",
+        valve_entity_pattern="valve_position",
+        hvac_mode_before_write="heat",
         setpoint_delay_seconds=0.5,
         quirk_entity_patterns=AUTO_QUIRK_PATTERNS,
         info_summary="Preset loaded: direct valve control via valve position; heat mode is selected before setpoint writes.",
     ),
     "eurotronic_spzb0001": DevicePreset(
-        "eurotronic_spzb0001", "Eurotronic SPZB0001", recommended_mode="direct_valve",
-        valve_entity_pattern="valve_position", hvac_mode_before_write="heat",
+        "eurotronic_spzb0001",
+        "Eurotronic SPZB0001",
+        recommended_mode="direct_valve",
+        valve_entity_pattern="valve_position",
+        hvac_mode_before_write="heat",
         setpoint_delay_seconds=0.5,
         quirk_entity_patterns=AUTO_QUIRK_PATTERNS,
         info_summary="Preset loaded: direct valve control via valve position; heat mode is selected before setpoint writes.",
     ),
     "avatto_me167": DevicePreset(
-        "avatto_me167", "Avatto ME167", recommended_mode="tpi_boost",
+        "avatto_me167",
+        "Avatto ME167",
+        recommended_mode="tpi_boost",
         calibration_inverted=True,
         quirk_entity_patterns=AUTO_QUIRK_PATTERNS,
         info_summary="Preset loaded: calibration offset inversion enabled.",
     ),
     "tuya_ts0601": DevicePreset(
-        "tuya_ts0601", "Tuya TS0601", recommended_mode="tpi_boost",
+        "tuya_ts0601",
+        "Tuya TS0601",
+        recommended_mode="tpi_boost",
         valve_entity_pattern="heating_demand",
         quirk_entity_patterns=AUTO_QUIRK_PATTERNS,
         info_summary="Preset loaded: TPI setpoint modulation; detected heating-demand input can be configured for direct control.",
     ),
     "eve_thermo": DevicePreset(
-        "eve_thermo", "Eve Thermo", recommended_mode="tpi_boost",
+        "eve_thermo",
+        "Eve Thermo",
+        recommended_mode="tpi_boost",
         calibration_sync=False,
         info_summary="Preset loaded: TPI setpoint modulation; external temperature input is not assumed.",
     ),

@@ -206,3 +206,18 @@ class TestMaintenanceCancel:
 
         assert coord._maintenance_task.cancelled()
         assert coord._maintenance_running is False
+
+
+class TestObservationModeWritesNothing:
+    async def test_external_temperature_not_written_in_observation_mode(self):
+        coord = _make_testable()
+        calls = []
+
+        async def record(cfg, recommendation):
+            calls.append(1)
+
+        coord._async_write_external_temp = record
+        coord._active_control = False
+        set_hass_states(coord, {"sensor.test_temp": make_state("19.0")})
+        await coord._async_update_data()
+        assert calls == []

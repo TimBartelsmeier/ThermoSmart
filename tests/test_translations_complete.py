@@ -29,7 +29,7 @@ def test_en_matches_strings_json():
 
 DEFERRED_TRANSLATIONS = (
     "Non-English translations are deferred until the rewrite's strings are final "
-    "(see IMPLEMENTATION_PLAN.md); re-enable by removing this marker."
+    "(see PROJECT.md, Deferred features); re-enable by removing this marker."
 )
 
 

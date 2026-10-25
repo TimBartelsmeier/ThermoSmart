@@ -77,17 +77,17 @@ class TestSummerDetector:
 
     def test_no_decision_before_minimum_span(self):
         detector = self._detector()
-        assert _feed(detector, 25.0, hours=23) is False
+        assert _feed(detector, 25.0, hours=71) is False
 
     def test_summer_after_minimum_span_above_on_threshold(self):
-        assert _feed(self._detector(), 25.0, hours=24) is True
+        assert _feed(self._detector(), 25.0, hours=72) is True
 
     def test_threshold_is_inclusive(self):
-        assert _feed(self._detector(), 18.0, hours=24) is True
+        assert _feed(self._detector(), 18.0, hours=72) is True
 
     def test_winter_after_span_at_or_below_off_threshold(self):
         detector = self._detector(summer=True)
-        assert _feed(detector, 15.0, hours=24) is False
+        assert _feed(detector, 15.0, hours=72) is False
 
     def test_between_thresholds_keeps_previous_state(self):
         assert _feed(self._detector(summer=True), 16.5, hours=48) is True
@@ -95,14 +95,14 @@ class TestSummerDetector:
 
     def test_average_covers_window_only(self):
         detector = self._detector()
-        _feed(detector, 25.0, hours=30)
+        _feed(detector, 25.0, hours=80)
         assert detector.summer is True
         # cold readings replace the old ones once the 72 h window has moved on
-        later = T0 + timedelta(hours=30)
+        later = T0 + timedelta(hours=80)
         for i in range(1, 100):
             detector.add_sample(later + timedelta(hours=i), 5.0)
         assert detector.summer is False
-        assert detector.span <= timedelta(hours=72)
+        assert detector.span < timedelta(hours=73)
 
     def test_no_samples_means_no_average_and_no_summer(self):
         detector = self._detector()
@@ -113,4 +113,20 @@ class TestSummerDetector:
     def test_restored_state_survives_empty_history(self):
         detector = self._detector(summer=True)
         detector.add_sample(T0, 17.0)  # single reading: not enough to decide
+        assert detector.summer is True
+
+
+class TestFullWindowRequirement:
+    def test_no_decision_on_24_hours_of_data(self):
+        assert _feed(SummerDetector(18.0, 15.0), 25.0, hours=24) is False
+
+    def test_decides_once_the_full_72_hours_are_covered(self):
+        detector = SummerDetector(18.0, 15.0)
+        assert _feed(detector, 25.0, hours=71, step_minutes=15) is False
+        assert _feed(detector, 25.0, hours=73, step_minutes=15) is True
+
+    def test_span_reaches_window_with_coarse_sampling(self):
+        detector = SummerDetector(18.0, 15.0)
+        _feed(detector, 25.0, hours=200, step_minutes=15)
+        assert detector.span >= timedelta(hours=72)
         assert detector.summer is True
