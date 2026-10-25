@@ -292,3 +292,14 @@ Guard tests: `test_no_legacy_concepts.py` (removed concepts must not return),
   zone must be available; any other entity errors in the HA log should be reported.
 * TRV state-settings and external-temperature feed in Active Control (and no writes
   in observation mode).
+
+## E. Potential improvements / features (investigate first)
+
+### Separate prompt reactions from periodic work
+
+Investigate whether to separate actions that should run soon after a trigger
+(setpoint changes, external-temperature feeds, HVAC correction, window transitions)
+from work that may only need periodic execution every few minutes (learning,
+pre-heat recalculation). Compare light/full passes or task-specific stages before
+choosing an architecture; preserve shared target/suspension rules, serialized
+writes, observation-mode guards and exact schedule/pre-heat deadlines.
