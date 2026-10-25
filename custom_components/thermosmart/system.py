@@ -134,9 +134,6 @@ class SystemController:
         """Without any reading for the whole window, detected summer must not stick."""
         if self._no_data_since is None:
             self._no_data_since = now
-            _LOGGER.warning(
-                "ThermoSmart: no outdoor temperature available for automatic summer detection"
-            )
         elif self.detector.summer and now - self._no_data_since >= self.detector.window:
             _LOGGER.warning(
                 "ThermoSmart: no outdoor temperature for %d h – detected summer mode reset",

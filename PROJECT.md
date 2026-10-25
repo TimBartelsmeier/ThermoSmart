@@ -132,6 +132,13 @@ Priority: **summer > vacation > window**; the others are registered state only.
 * **Safety:** missing room sensors fall back to the TRV's own sensor; spike
   filtering; offline sensors averaged out; heating-failure detection (35+ min);
   valve maintenance in summer/vacation; device profiles with generic fallback.
+* **Availability:** configured sensor/weather/TRV entities and enabled device
+  inputs are monitored via state-change listeners after HA startup completes.
+  Missing/unknown/unavailable entities create non-persistent, auto-clearing
+  Repairs, one per entry/entity. A continuous 3 min outage logs once; recovery
+  logs at info level only after that warning. No polling or control changes;
+  fallbacks do not hide missing configured sources. Options reload/unload cleans
+  up issues and timers. Write failures and heating-failure alarms are unchanged.
 
 ### Control-pass triggers
 
@@ -194,6 +201,7 @@ safety bypass, global debug switch, *Adjusted target* and *Weather offset* senso
 | `schedule.py` | event validation, next/previous occurrence, timers |
 | `preheat.py` | pure pre-heat planner |
 | `outdoor.py` | `OutdoorConditions.read()` (sensor → weather → None) |
+| `availability.py` | configured-entity availability Repairs, delayed warning/recovery logging |
 | `system.py` | System entry controller (summer detection, vacation/summer state) |
 | `triggers.py` | the trigger table |
 | `coordinator.py` | thin glue: inputs → decide → dispatch → publish |

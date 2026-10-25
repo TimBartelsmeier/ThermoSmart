@@ -363,6 +363,29 @@ Look at `pass_triggers` on the status sensor (and `outdoor_sources` for where ou
 
 ## Diagnostics
 
+### Temporary entity unavailability
+
+After Home Assistant has fully started, ThermoSmart reports missing, `unknown`
+or `unavailable` configured entities under **Settings → System → Repairs**.
+Monitoring covers each zone's sensors, weather source and TRVs, the System
+entry's outdoor sources, and enabled per-TRV valve-control, external-temperature
+input, calibration and state-setting entities. Unused optional entities and
+disabled device features are not monitored.
+
+Each Repair identifies the affected zone/System entry, entity and its role. It
+clears automatically when that entity becomes available again. Short outages
+produce no warning in the log. After **three continuous minutes**, ThermoSmart
+logs one warning per affected entity and entry; after recovery it logs one
+informational message. Repeated unavailable/unknown updates do not restart that
+timer. Removing or reconfiguring an entry cleans up its Repairs.
+
+Monitoring does not delay control, send commands or change fallback behavior.
+An available fallback does not hide a Repair for a configured primary source.
+An entity becoming available does not prove its readings are valid or that writes
+succeed. Write failures and heating-failure alarms retain their existing handling.
+
+### Downloading diagnostics
+
 **Settings → Devices & services → ThermoSmart →** pick an entry **→ ⋮ → Download diagnostics.** A zone's file contains analytics, learning progress, episode history, storage health and recent critical events. The System entry's file is a short overview.
 
 The files contain numeric learning data, feature flags and timestamps. They do **not** contain credentials, entity IDs, device or person names, or locations. Nothing is sent anywhere; review the file before you share it.

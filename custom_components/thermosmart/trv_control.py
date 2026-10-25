@@ -175,22 +175,12 @@ class TRVControlMixin:
     # ── TRV-Offline-Tracking ─────────────────────────────────────────
 
     def _get_trv_state(self, entity_id: str):
-        """Gibt TRV-State zurück; loggt Offline/Online-Übergänge."""
+        """Return a usable TRV state; availability reporting is handled separately."""
         state = self.hass.states.get(entity_id)
         if state is None or state.state in ("unavailable", "unknown"):
-            if entity_id not in self._trv_offline:
-                self._trv_offline.add(entity_id)
-                _LOGGER.warning(
-                    "ThermoSmart '%s': TRV %s nicht erreichbar – Steuerung ausgesetzt",
-                    self.zone_name, entity_id,
-                )
+            self._trv_offline.add(entity_id)
             return None
-        if entity_id in self._trv_offline:
-            self._trv_offline.discard(entity_id)
-            _LOGGER.info(
-                "ThermoSmart '%s': TRV %s wieder erreichbar",
-                self.zone_name, entity_id,
-            )
+        self._trv_offline.discard(entity_id)
         return state
 
     def _supports_single_setpoint(self, entity_id: str, state) -> bool:

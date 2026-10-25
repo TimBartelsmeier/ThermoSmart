@@ -36,6 +36,7 @@ from .const import (
     VERSION,
 )
 from .coordinator import ThermoSmartCoordinator
+from .availability import EntityAvailabilityMonitor
 from .system import SYSTEM_KEY, SystemController
 from .triggers import TRIGGER_SYSTEM_STATE
 from .outdoor import OutdoorConditions
@@ -86,45 +87,6 @@ async def _async_register_card(hass: HomeAssistant) -> None:
         _LOGGER.warning("ThermoSmart: card frontend registration skipped: %s", err)
 
 
-def _validate_sensors(hass: HomeAssistant, cfg: dict) -> None:
-    """Prüft ob alle konfigurierten Sensor-Entities beim Start existieren.
-
-    Loggt eine einmalige Warning für jede fehlende Entity damit Fehlkonfigurationen
-    sofort erkennbar sind – verhindert stille None-Werte im Betrieb.
-    """
-    zone_name = cfg.get("name", "?")
-
-    # Einzelne Sensor-Entities
-    sensor_keys = [
-        (CONF_OUTDOOR_TEMP_SENSOR,     "Außentemperatur-Sensor"),
-        (CONF_OUTDOOR_HUMIDITY_SENSOR, "Außenfeuchte-Sensor"),
-        (CONF_OUTDOOR_WIND_SENSOR,     "Wind-Sensor"),
-        (CONF_OUTDOOR_SOLAR_SENSOR,    "Solar-Sensor"),
-        (CONF_OUTDOOR_RAIN_SENSOR,     "Regen-Sensor"),
-    ]
-    for key, label in sensor_keys:
-        entity_id = cfg.get(key)
-        if entity_id and hass.states.get(entity_id) is None:
-            _LOGGER.warning(
-                "ThermoSmart '%s': %s '%s' nicht gefunden – Wert wird ignoriert",
-                zone_name, label, entity_id,
-            )
-
-    # Listen-Entities (Temperatur- und Feuchte-Sensoren der Zone)
-    for key, label in (
-        ("temp_sensors",     "Raumtemperatur-Sensor"),
-        ("humidity_sensors", "Raumfeuchte-Sensor"),
-        ("window_sensors",   "Fenstersensor"),
-        ("climate_entities", "Klima-Entity (TRV)"),
-    ):
-        for entity_id in cfg.get(key, []):
-            if entity_id and hass.states.get(entity_id) is None:
-                _LOGGER.warning(
-                    "ThermoSmart '%s': %s '%s' nicht gefunden",
-                    zone_name, label, entity_id,
-                )
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     cfg = {**entry.data, **entry.options}
@@ -144,6 +106,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await controller.async_start()
         await hass.config_entries.async_forward_entry_setups(entry, SYSTEM_PLATFORMS)
         entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+        availability = EntityAvailabilityMonitor(hass, entry)
+        entry.async_on_unload(availability.stop)
+        availability.start()
 
         _LOGGER.info("ThermoSmart System geladen (Urlaubs- und Sommer-Schalter)")
         return True
@@ -195,10 +160,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     learning_enabled = cfg.get(CONF_LEARNING_ENABLED, True)
     learning_engine.set_zone_enabled(entry.entry_id, learning_enabled)
-
-    # Sensor-Existenz prüfen – einmalig beim Start, damit Fehlkonfigurationen
-    # sofort im Log sichtbar sind statt erst nach 5 Minuten stillem None
-    _validate_sensors(hass, cfg)
 
     coordinator = ThermoSmartCoordinator(
         hass, entry,
@@ -259,6 +220,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, ZONE_PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+    availability = EntityAvailabilityMonitor(hass, entry)
+    entry.async_on_unload(availability.stop)
+    availability.start()
 
     _LOGGER.info(
         "ThermoSmart Zone '%s' geladen – effektiver Adaptionsmodus wird pro Zyklus "
