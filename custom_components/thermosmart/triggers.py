@@ -18,6 +18,7 @@ TRIGGER_PREHEAT_START = "preheat_start"
 TRIGGER_WINDOW = "window"
 TRIGGER_ROOM_TEMPERATURE = "room_temperature"
 TRIGGER_PHYSICAL_SETPOINT = "physical_setpoint"
+TRIGGER_HVAC_MODE = "hvac_mode"
 TRIGGER_SWITCH = "switch"
 TRIGGER_SCHEDULING = "scheduling"
 TRIGGER_SYSTEM_STATE = "system_state"
@@ -31,6 +32,7 @@ TRIGGERS: dict[str, str] = {
     TRIGGER_WINDOW: "a window open/close delay expired",
     TRIGGER_ROOM_TEMPERATURE: "the room temperature moved by at least the refresh threshold",
     TRIGGER_PHYSICAL_SETPOINT: "a physical TRV setpoint change was adopted or must be corrected",
+    TRIGGER_HVAC_MODE: "a controlled TRV entered an unwanted HVAC mode",
     TRIGGER_SWITCH: "Active Control or Learning was switched",
     TRIGGER_SCHEDULING: "scheduling was switched or paused/resumed",
     TRIGGER_SYSTEM_STATE: "the System entry changed summer or vacation",

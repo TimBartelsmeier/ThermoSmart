@@ -166,6 +166,11 @@ There is one mechanism, not one restore routine per case: when the last suspensi
 
 **Windows.** Open/close are detected from window/door sensors with separate open and close delays; without sensors, a falling-temperature (slope) detection is used. Per TRV, *Turn off when window is open* switches HVAC to `off` instead of using the window-open temperature (only enable for TRVs with frost protection while off).
 
+While Active Control is on, a TRV entering an unwanted HVAC mode (such as `auto`)
+requests a control pass without waiting for the regular interval. The watchdog
+restores `heat` where supported and permitted by the device profile, except during
+summer or window suspension. Requests use the normal refresh debouncer.
+
 The open delay must elapse before window suspension starts. Closing a window
 before that point starts neither a suspension nor a close delay. After a
 confirmed opening, the close delay holds the window state before normal control

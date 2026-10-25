@@ -7,6 +7,7 @@ import math
 
 from homeassistant.components.climate import ClimateEntityFeature
 from homeassistant.const import UnitOfTemperature
+from homeassistant.core import State
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.util.unit_conversion import TemperatureConverter
 
@@ -225,6 +226,15 @@ class TRVControlMixin:
     # - "off"       → Watchdog setzt zurück auf heat
     _UNWANTED_MODES = {"auto", "heat_cool", "cool", "dry", "fan_only", "off"}
 
+    def _needs_hvac_heat(self, entity_id: str, state: State) -> bool:
+        """Whether the device supports and permits watchdog correction."""
+        profile = self._device_profiles.get(entity_id)
+        return (
+            state.state in self._UNWANTED_MODES
+            and "heat" in (state.attributes.get("hvac_modes") or [])
+            and (profile is None or profile.hvac_watchdog)
+        )
+
     async def _watchdog_hvac(self, cfg: dict, recommendation: dict) -> None:
         """TRVs in unerwünschten Modi auf 'heat' zurücksetzen.
 
@@ -257,8 +267,7 @@ class TRVControlMixin:
             if state.state not in self._UNWANTED_MODES:
                 continue  # TRV ist in 'heat' – alles gut
 
-            hvac_modes = state.attributes.get("hvac_modes", [])
-            if "heat" not in hvac_modes:
+            if not self._needs_hvac_heat(entity_id, state):
                 _LOGGER.debug(
                     "ThermoSmart '%s': %s hat keinen 'heat'-Mode – Watchdog übersprungen",
                     self.zone_name, entity_id,

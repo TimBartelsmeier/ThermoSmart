@@ -76,6 +76,7 @@ from .learning_engine import LearningEngine
 from .window import WindowMixin
 from .suspension import held_at, resolve
 from .triggers import (
+    TRIGGER_HVAC_MODE,
     TRIGGER_PHYSICAL_SETPOINT,
     TRIGGER_PREHEAT_START,
     TRIGGER_ROOM_TEMPERATURE,
@@ -682,8 +683,16 @@ class ThermoSmartCoordinator(
                         self._live_temp = trv_t
                         self.async_update_listeners()
                 entity_id = event.data["entity_id"]
+                old = event.data.get("old_state")
+                if (
+                    self._active_control
+                    and not self._is_summer
+                    and (old is None or old.state != new.state)
+                    and self._needs_hvac_heat(entity_id, new)
+                ):
+                    self.request_pass(TRIGGER_HVAC_MODE)
                 self._handle_trv_setpoint_change(
-                    entity_id, event.data.get("old_state"), new, cfg
+                    entity_id, old, new, cfg
                 )
 
             cancel_trv = async_track_state_change_event(

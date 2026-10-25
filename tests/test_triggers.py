@@ -316,3 +316,83 @@ class TestSystemState:
         await controller.async_set_vacation(True)
         for zone in zones:
             zone.request_pass.assert_called_once_with(trig.TRIGGER_SYSTEM_STATE)
+
+
+class TestHvacMode:
+    @staticmethod
+    def _wire(coord):
+        callbacks = {}
+
+        def track(hass, entity_ids, cb):
+            for entity_id in entity_ids:
+                callbacks[entity_id] = cb
+            return lambda: None
+
+        with patch(
+            "custom_components.thermosmart.coordinator.async_track_state_change_event",
+            side_effect=track,
+        ):
+            coord.setup_event_listeners()
+        return callbacks["climate.trv"]
+
+    @staticmethod
+    def _state(mode, *, heat_supported=True):
+        return SimpleNamespace(state=mode, attributes={
+            "temperature": 21.0,
+            "hvac_modes": ["auto", "heat", "off"] if heat_supported else ["auto", "off"],
+        })
+
+    @pytest.mark.parametrize("mode", ["auto", "heat_cool", "cool", "dry", "fan_only", "off"])
+    async def test_mode_only_change_requests_pass_and_watchdog_corrects(self, mode):
+        coord = _zone(climate_entities=["climate.trv"])
+        listener = self._wire(coord)
+        state = self._state(mode)
+        coord.hass.states.get = MagicMock(return_value=state)
+        coord.hass.services.async_call = AsyncMock()
+        original_target = coord.target.current
+        listener(SimpleNamespace(data={
+            "entity_id": "climate.trv",
+            "old_state": self._state("heat"), "new_state": state,
+        }))
+        assert coord._pending_triggers == [trig.TRIGGER_HVAC_MODE]
+        assert coord.target.current == original_target
+        assert coord._pending_manual_setpoint is None
+        await coord._watchdog_hvac(coord.zone_cfg, {"window_open": False})
+        coord.hass.services.async_call.assert_awaited_once_with(
+            "climate", "set_hvac_mode",
+            {"entity_id": "climate.trv", "hvac_mode": "heat"}, blocking=False,
+        )
+        # The resulting heat echo must not request another pass.
+        listener(SimpleNamespace(data={
+            "entity_id": "climate.trv",
+            "old_state": state, "new_state": self._state("heat"),
+        }))
+        assert coord._pending_triggers == [trig.TRIGGER_HVAC_MODE]
+
+    @pytest.mark.parametrize(
+        "case", ["observing", "summer", "profile", "unsupported", "noise", "unavailable"]
+    )
+    def test_ineligible_changes_do_not_request_a_pass(self, case):
+        coord = _zone(climate_entities=["climate.trv"])
+        listener = self._wire(coord)
+        coord._active_control = case != "observing"
+        coord._is_summer = case == "summer"
+        if case == "profile":
+            coord._device_profiles["climate.trv"] = SimpleNamespace(hvac_watchdog=False)
+        new = self._state(
+            "unavailable" if case == "unavailable" else "auto",
+            heat_supported=case != "unsupported",
+        )
+        listener(SimpleNamespace(data={
+            "entity_id": "climate.trv",
+            "old_state": self._state("auto" if case == "noise" else "heat"),
+            "new_state": new,
+        }))
+        assert coord._pending_triggers == []
+
+    async def test_window_suspension_still_prevents_watchdog_write(self):
+        coord = _zone(climate_entities=["climate.trv"])
+        coord.hass.states.get = MagicMock(return_value=self._state("off"))
+        coord.hass.services.async_call = AsyncMock()
+        await coord._watchdog_hvac(coord.zone_cfg, {"window_open": True})
+        coord.hass.services.async_call.assert_not_called()

@@ -150,7 +150,9 @@ coordinator's refresh debouncer.
 `periodic` · `target_change` · `schedule_event` · `preheat_start` · `window`
 (open/close delay expired – a raw sensor change does not trigger) ·
 `room_temperature` (moved ≥ threshold) · `physical_setpoint` · `switch` (Active
-Control/Learning) · `scheduling` · `system_state` · `startup` (incl. options reload).
+Control/Learning) · `hvac_mode` (a controlled TRV enters an unwanted HVAC mode;
+the existing watchdog's profile and suspension checks still apply) · `scheduling` ·
+`system_state` · `startup` (incl. options reload).
 Nothing else (attribute noise, humidity, small drift) causes a pass.
 
 ## 7. Outdoor data and learning
