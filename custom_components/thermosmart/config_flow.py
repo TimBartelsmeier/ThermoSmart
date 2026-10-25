@@ -8,6 +8,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr, entity_registry as er, selector
 
 from .device_profiles import get_preset
+from .schedule import async_schedule_zone_warnings, zone_key
 from .const import (
     DOMAIN,
     CONF_ZONE_CONTROL_MODE,
@@ -670,9 +671,196 @@ class _DeviceSettingsMixin:
         return await self.async_step_device_settings()
 
 
+# ── Shared zone steps (setup and options) ────────────────────────────────────
+
+ZONE_STEPS = ("devices", "control_options", "device_settings", "temperatures", "outdoor")
+
+
+def _validate_outdoor(hass, data: dict) -> dict[str, str]:
+    weather = data.get(CONF_WEATHER_ENTITY, "")
+    if weather and hass.states.get(weather) is None:
+        return {CONF_WEATHER_ENTITY: "entity_not_found"}
+    return {}
+
+
+def _schedule_warning_text(code: str) -> str:
+    kind, _, rest = code.partition(":")
+    if kind == "duplicate":
+        key, _, names = rest.partition(":")
+        return (
+            f"Another zone ({names}) already uses the schedule key `{key}`; both zones "
+            "will follow the same schedule events."
+        )
+    if kind == "existing":
+        return (
+            f"The schedule file already contains events for `{rest}`; this zone will use them."
+        )
+    if kind == "renamed":
+        old, _, new = rest.partition(":")
+        return (
+            f"Renaming changes the schedule key from `{old}` to `{new}`. Events under "
+            f"`{old}` stay in the schedule file but no longer apply to this zone."
+        )
+    return code
+
+
+class _ZoneStepsMixin(_DeviceSettingsMixin):
+    """The zone configuration steps, identical in the setup and the options flow.
+
+    Hosts provide the zone data and decide what happens after a step was saved
+    (setup: continue with the next step; options: store the section and finish).
+    """
+
+    _name_warned: str | None = None
+
+    def _zone_data(self) -> dict:
+        raise NotImplementedError
+
+    def _zone_entry_id(self) -> str | None:
+        return None
+
+    def _zone_previous_name(self) -> str | None:
+        return None
+
+    async def _zone_saved(self, step: str, update: dict):
+        raise NotImplementedError
+
+    def _outdoor_defaults(self) -> dict:
+        return {}
+
+    # ── Devices & sensors ────────────────────────────────────────────
+
+    async def _name_warnings(self, name: str) -> list[str]:
+        entries = self.hass.config_entries.async_entries(DOMAIN)
+        codes = list(await async_schedule_zone_warnings(
+            self.hass, entries, name, current_entry_id=self._zone_entry_id(),
+        ))
+        previous = self._zone_previous_name()
+        if previous is not None and zone_key(previous) != zone_key(name):
+            codes.append(f"renamed:{zone_key(previous)}:{zone_key(name)}")
+        return [_schedule_warning_text(code) for code in codes]
+
+    def _show_devices(self, data: dict, errors: dict, warnings: list[str]):
+        name = str(data.get("name", ""))
+        warning_text = "".join(f"\n\n⚠️ **Warning:** {text}" for text in warnings)
+        return self.async_show_form(
+            step_id="devices",
+            data_schema=_schema_devices(data),
+            errors=errors,
+            description_placeholders={
+                "schedule_key": zone_key(name) if name.strip() else "(derived from the name)",
+                "name_warnings": warning_text,
+            },
+        )
+
+    async def async_step_devices(self, user_input: dict | None = None):
+        errors: dict[str, str] = {}
+        current = self._zone_data()
+        if user_input is None:
+            return self._show_devices(current, errors, [])
+        name = user_input.get("name", "").strip()
+        if not name:
+            errors["name"] = "name_required"
+        elif not user_input.get("climate_entities"):
+            errors["climate_entities"] = "required"
+        else:
+            warnings = await self._name_warnings(name)
+            if warnings and self._name_warned != name:
+                # Warnings are shown once; submitting the same name again confirms it.
+                self._name_warned = name
+                return self._show_devices({**current, **user_input}, errors, warnings)
+            settings = dict(current.get(CONF_DEVICE_SETTINGS, {}))
+            for climate_id in user_input["climate_entities"]:
+                if climate_id not in settings:
+                    settings[climate_id] = _detect_device_settings(self.hass, climate_id)["settings"]
+            return await self._zone_saved(
+                "devices", {**user_input, "name": name, CONF_DEVICE_SETTINGS: settings},
+            )
+        return self._show_devices({**current, **user_input}, errors, [])
+
+    # ── Control strategy ─────────────────────────────────────────────
+
+    async def async_step_control_options(self, user_input: dict | None = None):
+        if user_input is not None:
+            return await self._zone_saved("control_options", user_input)
+        current = self._zone_data()
+        climate_entities = current.get("climate_entities", [])
+        detections = [_detect_device_settings(self.hass, eid) for eid in climate_entities]
+        recommended = [d["recommended_mode"] for d in detections]
+        default_mode = (
+            CONTROL_MODE_DIRECT_VALVE
+            if recommended and all(m == CONTROL_MODE_DIRECT_VALVE for m in recommended)
+            else CONTROL_MODE_TPI_BOOST
+        )
+        lines = []
+        for eid, detected in zip(climate_entities, detections):
+            lines.append(
+                f"- **{_friendly_name(self.hass, eid)}**: {detected['preset'].display_name} — "
+                f"recommended: {detected['recommended_mode'].replace('_', ' ')}"
+            )
+        defaults = {CONF_ZONE_CONTROL_MODE: default_mode, **current}
+        return self.async_show_form(
+            step_id="control_options",
+            data_schema=_schema_control_options(defaults),
+            description_placeholders={
+                "zone": str(current.get("name", "")),
+                "detected_devices": "\n".join(lines) or "- No devices selected.",
+            },
+        )
+
+    # ── Per-TRV settings ─────────────────────────────────────────────
+
+    def _ds_zone_name(self) -> str:
+        return str(self._zone_data().get("name", ""))
+
+    def _ds_entities(self) -> list[str]:
+        return self._zone_data().get("climate_entities", [])
+
+    def _ds_zone_mode(self) -> str:
+        return self._zone_data().get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
+
+    async def _ds_finished(self):
+        return await self._zone_saved(
+            "device_settings", {CONF_DEVICE_SETTINGS: self._ds_all_settings()},
+        )
+
+    # ── Temperatures ─────────────────────────────────────────────────
+
+    async def async_step_temperatures(self, user_input: dict | None = None):
+        errors: dict[str, str] = {}
+        current = self._zone_data()
+        if user_input is not None:
+            errors = _validate_temps(user_input)
+            if not errors:
+                return await self._zone_saved("temperatures", user_input)
+        return self.async_show_form(
+            step_id="temperatures",
+            data_schema=_schema_schedule({**current, **(user_input or {})}),
+            errors=errors,
+            description_placeholders={"zone": str(current.get("name", ""))},
+        )
+
+    # ── Outdoor data ─────────────────────────────────────────────────
+
+    async def async_step_outdoor(self, user_input: dict | None = None):
+        errors: dict[str, str] = {}
+        current = self._zone_data()
+        if user_input is not None:
+            errors = _validate_outdoor(self.hass, user_input)
+            if not errors:
+                return await self._zone_saved("outdoor", user_input)
+        defaults = {**self._outdoor_defaults(), **current, **(user_input or {})}
+        return self.async_show_form(
+            step_id="outdoor",
+            data_schema=_schema_weather(defaults),
+            errors=errors,
+            description_placeholders={"zone": str(current.get("name", ""))},
+        )
+
+
 # ── Config Flow (Ersteinrichtung) ────────────────────────────────────────────
 
-class ThermoSmartConfigFlow(_DeviceSettingsMixin, config_entries.ConfigFlow, domain=DOMAIN):
+class ThermoSmartConfigFlow(_ZoneStepsMixin, config_entries.ConfigFlow, domain=DOMAIN):
     """Einrichtung: Entweder ThermoSmart System (globale Schalter) oder eine Heizzone."""
 
     VERSION = 1
@@ -713,105 +901,23 @@ class ThermoSmartConfigFlow(_DeviceSettingsMixin, config_entries.ConfigFlow, dom
 
     # Option B: Heizzone hinzufügen.
     async def async_step_add_zone(self, user_input: dict | None = None):
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            if not user_input.get("name", "").strip():
-                errors["name"] = "name_required"
-            elif not user_input.get("climate_entities"):
-                errors["climate_entities"] = "required"
-            else:
-                self._data.update(user_input)
-                return await self.async_step_control_options()
+        return await self.async_step_devices()
 
-        return self.async_show_form(
-            step_id="add_zone",
-            data_schema=_schema_devices(self._data),
-            errors=errors,
-        )
+    def _zone_data(self) -> dict:
+        return self._data
 
-    async def async_step_control_options(self, user_input: dict | None = None):
-        climate_entities = self._data.get("climate_entities", [])
-        detections = [_detect_device_settings(self.hass, eid) for eid in climate_entities]
-        if user_input is not None:
-            self._data.update(user_input)
-            existing = self._data.get(CONF_DEVICE_SETTINGS, {})
-            for eid, detected in zip(climate_entities, detections):
-                existing.setdefault(eid, detected["settings"])
-            self._data[CONF_DEVICE_SETTINGS] = existing
-            return await self.async_step_device_settings()
-
-        recommended_modes = [d["recommended_mode"] for d in detections]
-        mode = (
-            CONTROL_MODE_DIRECT_VALVE
-            if recommended_modes and all(m == CONTROL_MODE_DIRECT_VALVE for m in recommended_modes)
-            else CONTROL_MODE_TPI_BOOST
-        )
-        summary_lines = []
-        for eid, detected in zip(climate_entities, detections):
-            state = self.hass.states.get(eid)
-            name = state.attributes.get("friendly_name", eid) if state else eid
-            summary_lines.append(
-                f"- **{name}**: {detected['preset'].display_name} — recommended: "
-                f"{detected['recommended_mode'].replace('_', ' ')}"
-            )
-        summary = "\n".join(summary_lines) or "- No devices selected."
-        defaults = {**self._data, CONF_ZONE_CONTROL_MODE: mode}
-        return self.async_show_form(
-            step_id="control_options",
-            data_schema=_schema_control_options(defaults),
-            description_placeholders={"detected_devices": summary},
-        )
-
-    def _ds_zone_name(self) -> str:
-        return self._data.get("name", "")
-
-    def _ds_entities(self) -> list[str]:
-        return self._data.get("climate_entities", [])
+    async def _zone_saved(self, step: str, update: dict):
+        self._data.update(update)
+        if step == "outdoor":
+            return self.async_create_entry(title=self._data["name"], data=self._data)
+        following = ZONE_STEPS[ZONE_STEPS.index(step) + 1]
+        return await getattr(self, f"async_step_{following}")()
 
     def _ds_all_settings(self) -> dict:
         return self._data.setdefault(CONF_DEVICE_SETTINGS, {})
 
-    def _ds_zone_mode(self) -> str:
-        return self._data.get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
-
-    async def _ds_finished(self):
-        return await self.async_step_schedule()
-
-    async def async_step_schedule(self, user_input: dict | None = None):
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            errors = _validate_temps(user_input)
-            if not errors:
-                self._data.update(user_input)
-                return await self.async_step_weather()
-
-        return self.async_show_form(
-            step_id="schedule",
-            data_schema=_schema_schedule(self._data),
-            errors=errors,
-        )
-
-    async def async_step_weather(self, user_input: dict | None = None):
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            weather = user_input.get(CONF_WEATHER_ENTITY, "")
-            if weather and self.hass.states.get(weather) is None:
-                errors[CONF_WEATHER_ENTITY] = "entity_not_found"
-            else:
-                self._data.update(user_input)
-                return self.async_create_entry(
-                    title=self._data["name"],
-                    data=self._data,
-                )
-
-        defaults = self._defaults_from_existing()
-        return self.async_show_form(
-            step_id="weather",
-            data_schema=_schema_weather({**defaults, **self._data}),
-            errors=errors,
-        )
-
-    def _defaults_from_existing(self) -> dict:
+    def _outdoor_defaults(self) -> dict:
+        """Pre-fill from an existing zone; options flows show only the zone's own values."""
         for entry in self.hass.config_entries.async_entries(DOMAIN):
             data = {**entry.data, **entry.options}
             if data.get(CONF_WEATHER_ENTITY):
@@ -855,12 +961,12 @@ class ThermoSmartSystemOptionsFlow(config_entries.OptionsFlow):
 
 # ── Options Flow (Zone bearbeiten) ───────────────────────────────────────────
 
-class ThermoSmartOptionsFlow(_DeviceSettingsMixin, config_entries.OptionsFlow):
-    """Options Hub: users pick a section and edit only that section.
+class ThermoSmartOptionsFlow(_ZoneStepsMixin, config_entries.OptionsFlow):
+    """Edit an existing zone: the same steps as the setup, one section at a time.
 
-    Each section handler saves a partial update merged with all current fields,
-    so unrelated options are always preserved. The hub entry point (async_step_init)
-    shows a menu — users are never forced through all four steps for a single change.
+    The hub menu lets the user pick a section; each section is saved on its own
+    and merged with all current fields, so unrelated options are preserved.
+    Per-zone setup steps are not repeated in sequence (the only flow difference).
     """
 
     def _current(self) -> dict:
@@ -870,90 +976,23 @@ class ThermoSmartOptionsFlow(_DeviceSettingsMixin, config_entries.OptionsFlow):
         return self.async_show_menu(
             step_id="init",
             description_placeholders={"zone": self._ds_zone_name()},
-            menu_options=[
-                "devices", "control_options", "device_settings",
-                "schedule", "weather",
-            ],
+            menu_options=list(ZONE_STEPS),
         )
 
-    async def async_step_devices(self, user_input: dict | None = None):
-        errors: dict[str, str] = {}
-        current = self._current()
-        if user_input is not None:
-            if not user_input.get("name", "").strip():
-                errors["name"] = "name_required"
-            elif not user_input.get("climate_entities"):
-                errors["climate_entities"] = "required"
-            else:
-                updated = {**current, **user_input}
-                device_settings = dict(current.get(CONF_DEVICE_SETTINGS, {}))
-                for climate_id in user_input.get("climate_entities", []):
-                    if climate_id not in device_settings:
-                        device_settings[climate_id] = _detect_device_settings(
-                            self.hass, climate_id
-                        )["settings"]
-                updated[CONF_DEVICE_SETTINGS] = device_settings
-                return self.async_create_entry(title="", data=updated)
-        return self.async_show_form(
-            step_id="devices",
-            data_schema=_schema_devices(current),
-            errors=errors,
-        )
+    def _zone_data(self) -> dict:
+        return self._current()
 
-    async def async_step_control_options(self, user_input: dict | None = None):
-        current = self._current()
-        if user_input is not None:
-            return self.async_create_entry(title="", data={**current, **user_input})
-        return self.async_show_form(
-            step_id="control_options",
-            data_schema=_schema_control_options(current),
-            description_placeholders={"zone": self._ds_zone_name()},
-        )
+    def _zone_entry_id(self) -> str | None:
+        return self.config_entry.entry_id
 
-    def _ds_zone_name(self) -> str:
-        return self._current().get("name", "")
+    def _zone_previous_name(self) -> str | None:
+        return str(self._current().get("name", ""))
 
-    def _ds_entities(self) -> list[str]:
-        return self._current().get("climate_entities", [])
+    async def _zone_saved(self, step: str, update: dict):
+        return self.async_create_entry(title="", data={**self._current(), **update})
 
     def _ds_all_settings(self) -> dict:
         if getattr(self, "_settings_cache", None) is None:
             self._settings_cache = dict(self._current().get(CONF_DEVICE_SETTINGS, {}))
         return self._settings_cache
 
-    def _ds_zone_mode(self) -> str:
-        return self._current().get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
-
-    async def _ds_finished(self):
-        return self.async_create_entry(
-            title="",
-            data={**self._current(), CONF_DEVICE_SETTINGS: self._ds_all_settings()},
-        )
-
-    async def async_step_schedule(self, user_input: dict | None = None):
-        errors: dict[str, str] = {}
-        current = self._current()
-        if user_input is not None:
-            errors = _validate_temps(user_input)
-            if not errors:
-                return self.async_create_entry(title="", data={**current, **user_input})
-        return self.async_show_form(
-            step_id="schedule",
-            data_schema=_schema_schedule(current),
-            errors=errors,
-        )
-
-    async def async_step_weather(self, user_input: dict | None = None):
-        errors: dict[str, str] = {}
-        current = self._current()
-        if user_input is not None:
-            weather = user_input.get(CONF_WEATHER_ENTITY, "")
-            if weather and self.hass.states.get(weather) is None:
-                errors[CONF_WEATHER_ENTITY] = "entity_not_found"
-            else:
-                return self.async_create_entry(title="", data={**current, **user_input})
-        return self.async_show_form(
-            step_id="weather",
-            data_schema=_schema_weather(current),
-            errors=errors,
-        )

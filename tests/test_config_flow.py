@@ -225,7 +225,7 @@ class TestGlobalSetupOnlyInitial:
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "add_zone"
+        assert result["step_id"] == "devices"
 
     async def test_existing_zone_entry_skips_menu_goes_to_add_zone(
         self, hass, enable_custom_integrations
@@ -238,7 +238,7 @@ class TestGlobalSetupOnlyInitial:
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "add_zone"
+        assert result["step_id"] == "devices"
 
     async def test_add_zone_still_works_with_existing_entry(
         self, hass, enable_custom_integrations
@@ -300,7 +300,7 @@ class TestNoGlobalLearningStep:
         )
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
 
-        assert result["step_id"] == "weather"
+        assert result["step_id"] == "outdoor"
         schema_keys = {str(k) for k in result["data_schema"].schema}
         assert CONF_LEARNING_ENABLED not in schema_keys
 
@@ -331,7 +331,7 @@ class TestZoneFlowNavigation:
             result["flow_id"], {"next_step_id": "add_zone"}
         )
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "add_zone"
+        assert result["step_id"] == "devices"
 
     async def test_zone_flow_completes_and_creates_entry(self, hass, enable_custom_integrations):
         """Full 4-step happy path creates an entry with correct title and data."""
@@ -400,7 +400,7 @@ class TestZoneFlowDeviceValidation:
             result["flow_id"], {**_DEVICES, "name": ""}
         )
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "add_zone"
+        assert result["step_id"] == "devices"
         assert result["errors"].get("name") == "name_required"
 
     async def test_whitespace_name_shows_name_required(self, hass, enable_custom_integrations):
@@ -452,7 +452,7 @@ class TestZoneFlowScheduleValidation:
             result["flow_id"], {**_SCHEDULE, "comfort_temp": 21.0, "night_temp": 22.0}
         )
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "schedule"
+        assert result["step_id"] == "temperatures"
         assert result["errors"].get("night_temp") == "night_temp_too_high"
 
     async def test_away_above_night_shows_error(self, hass, enable_custom_integrations):
@@ -477,7 +477,7 @@ class TestZoneFlowScheduleValidation:
         result = await self._to_schedule(hass)
         result = await hass.config_entries.flow.async_configure(result["flow_id"], _SCHEDULE)
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "weather"
+        assert result["step_id"] == "outdoor"
 
 
 # ── Zone Flow – weather step validation ───────────────────────────────────────
@@ -490,7 +490,7 @@ class TestZoneFlowWeatherValidation:
             {**_WEATHER_NONE, CONF_WEATHER_ENTITY: "weather.nonexistent"},
         )
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "weather"
+        assert result["step_id"] == "outdoor"
         assert result["errors"].get(CONF_WEATHER_ENTITY) == "entity_not_found"
 
     async def test_no_weather_entity_succeeds(self, hass, enable_custom_integrations):

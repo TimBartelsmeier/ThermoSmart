@@ -126,7 +126,7 @@ class TestOptionsHub:
         result = await _open_hub(hass, entry)
         for section in (
             "devices", "control_options", "device_settings",
-            "schedule", "weather",
+            "temperatures", "outdoor",
         ):
             assert section in result["menu_options"], f"section '{section}' missing"
         assert "presence" not in result["menu_options"]
@@ -145,18 +145,18 @@ class TestOptionsHub:
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        result = await _select_section(hass, hub, "schedule")
+        result = await _select_section(hass, hub, "temperatures")
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "schedule"
+        assert result["step_id"] == "temperatures"
 
     async def test_hub_weather_section_shows_form(self, hass, enable_custom_integrations):
         entry = _zone_entry()
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        result = await _select_section(hass, hub, "weather")
+        result = await _select_section(hass, hub, "outdoor")
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "weather"
+        assert result["step_id"] == "outdoor"
 
     async def test_devices_section_saves_immediately(self, hass, enable_custom_integrations):
         """Devices section returns CREATE_ENTRY after one submit — no 4-step gauntlet."""
@@ -173,7 +173,7 @@ class TestOptionsHub:
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "schedule")
+        form = await _select_section(hass, hub, "temperatures")
         result = await _save_section(hass, form, _STEP_SCHEDULE)
         assert result["type"] == FlowResultType.CREATE_ENTRY
 
@@ -182,7 +182,7 @@ class TestOptionsHub:
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "weather")
+        form = await _select_section(hass, hub, "outdoor")
         result = await _save_section(hass, form, _STEP_WEATHER)
         assert result["type"] == FlowResultType.CREATE_ENTRY
 
@@ -210,7 +210,7 @@ class TestOptionsHubPartialSave:
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "schedule")
+        form = await _select_section(hass, hub, "temperatures")
         result = await _save_section(hass, form, _STEP_SCHEDULE)
 
         assert result["type"] == FlowResultType.CREATE_ENTRY
@@ -222,7 +222,7 @@ class TestOptionsHubPartialSave:
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "weather")
+        form = await _select_section(hass, hub, "outdoor")
         result = await _save_section(hass, form, _STEP_WEATHER)
 
         assert result["data"]["comfort_temp"] == 21.0
@@ -262,7 +262,7 @@ class TestOptionsHubPartialSave:
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "schedule")
+        form = await _select_section(hass, hub, "temperatures")
         result = await _save_section(hass, form, {**_STEP_SCHEDULE, "comfort_temp": 23.0})
 
         assert result["type"] == FlowResultType.CREATE_ENTRY
@@ -278,7 +278,7 @@ class TestOptionsHubPartialSave:
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "schedule")
+        form = await _select_section(hass, hub, "temperatures")
         # Re-submit with the options-overridden value
         result = await _save_section(hass, form, {**_STEP_SCHEDULE, "comfort_temp": 22.0})
         assert result["type"] == FlowResultType.CREATE_ENTRY
@@ -316,7 +316,7 @@ class TestOptionsHubValidation:
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "schedule")
+        form = await _select_section(hass, hub, "temperatures")
         result = await _save_section(
             hass, form, {**_STEP_SCHEDULE, "comfort_temp": 21.0, "night_temp": 22.0}
         )
@@ -328,7 +328,7 @@ class TestOptionsHubValidation:
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "schedule")
+        form = await _select_section(hass, hub, "temperatures")
         result = await _save_section(
             hass, form, {**_STEP_SCHEDULE, "night_temp": 18.0, "away_temp": 19.0}
         )
@@ -339,12 +339,12 @@ class TestOptionsHubValidation:
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "weather")
+        form = await _select_section(hass, hub, "outdoor")
         result = await _save_section(
             hass, form, {**_STEP_WEATHER, CONF_WEATHER_ENTITY: "weather.nonexistent"}
         )
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "weather"
+        assert result["step_id"] == "outdoor"
         assert result["errors"].get(CONF_WEATHER_ENTITY) == "entity_not_found"
 
     async def test_weather_valid_entity_succeeds(self, hass, enable_custom_integrations):
@@ -353,7 +353,7 @@ class TestOptionsHubValidation:
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "weather")
+        form = await _select_section(hass, hub, "outdoor")
         result = await _save_section(
             hass, form, {**_STEP_WEATHER, CONF_WEATHER_ENTITY: "weather.home"}
         )
@@ -365,7 +365,7 @@ class TestOptionsHubValidation:
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "weather")
+        form = await _select_section(hass, hub, "outdoor")
         result = await _save_section(hass, form, _STEP_WEATHER)
         assert result["type"] == FlowResultType.CREATE_ENTRY
 
@@ -413,7 +413,11 @@ class TestOptionsHubOldConfigCompatibility:
 
         hub = await _open_hub(hass, entry)
         form = await _select_section(hass, hub, "devices")
-        result = await _save_section(hass, form, {**_STEP_DEVICES, "name": "Neuer Name"})
+        data = {**_STEP_DEVICES, "name": "Neuer Name"}
+        warned = await _save_section(hass, form, data)
+        assert warned["type"] == FlowResultType.FORM
+        assert "schedule key" in warned["description_placeholders"]["name_warnings"]
+        result = await _save_section(hass, warned, data)
         assert result["type"] == FlowResultType.CREATE_ENTRY
         assert result["data"]["name"] == "Neuer Name"
 
@@ -433,7 +437,7 @@ class TestOptionsHubOldConfigCompatibility:
         hub = await hass.config_entries.options.async_init(entry.entry_id)
         assert hub["type"] == FlowResultType.MENU
 
-        form = await _select_section(hass, hub, "weather")
+        form = await _select_section(hass, hub, "outdoor")
         result = await _save_section(hass, form, _STEP_WEATHER)
         assert result["type"] == FlowResultType.CREATE_ENTRY
         assert result["data"][CONF_LEARNING_ENABLED] is False
@@ -445,6 +449,6 @@ class TestOptionsHubOldConfigCompatibility:
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "weather")
+        form = await _select_section(hass, hub, "outdoor")
         schema_keys = {str(k) for k in form["data_schema"].schema}
         assert CONF_LEARNING_ENABLED not in schema_keys
