@@ -182,7 +182,8 @@ Scheduling enabled switch · Scheduling disabled until · Status sensor
 (`observation_mode`, `controlling_no_learning`, `heating`, `idle`, `preheating`,
 `window_open`, `vacation`, `summer`, `heating_failure`, `disabled`, `active`;
 attributes incl. `suspension`, `held_at`, `pass_triggers`, `outdoor_sources`) ·
-Learning progress · Next scheduled event · Pre-heat start · diagnostic sensors
+Learning progress · Next scheduled event · Pre-heat start · Actual temperature ·
+Desired target temperature (numeric history sensors, enabled by default) · diagnostic sensors
 (disabled by default): Pre-heat minutes, *TPI boosted TRV setpoint*, TPI duty cycle,
 temperature slope, heat loss, heating power, outcome score, solar heat gain, TRV
 observations, window cooling rate, EMA temperature.
@@ -228,10 +229,24 @@ Guard tests: `test_no_legacy_concepts.py` (removed concepts must not return),
    (marker in `tests/test_translations_complete.py` – remove it when translating).
    Note the renamed/removed steps (`devices`, `temperatures`, `outdoor`) and new
    entities when updating.
-2. **Lovelace card** (`www/thermosmart-card.js`, bundled). Not updated: still has the
-   *Auto* mode button/labels (`mode_auto`) that no longer do anything, and does not
-   know about suspensions, scheduling or the pre-heat sensors. It keeps working as
-   far as possible.
+2. **Lovelace cards** (`www/thermosmart-card.js`, bundled). The old all-in-one card
+   has been replaced with two configurable cards: Zone card (full/minimal/hidden
+   controls above optional temperature history) and Schedule card (optional
+   schedule controls above an optional plan). Both show the zone name by default.
+   Schedule controls can also be collapsible, initially collapsed or expanded.
+   Suspension editing uses a custom atomic Save/Cancel datetime dialog.
+   Zone control reuses HA's native climate dial with live target preview.
+   Registration remains automatic.
+   Upcoming events and pause shortcuts use Python scheduling/DST rules; companion
+   entities are registry-resolved. Actual/desired temperature sensors provide
+   numeric history for optional native graphs; the bundled graph reads climate
+   attribute history. Validate real HA rendering and interactions on a live instance.
+   The dialog's "Remove suspension (set to past)" button ends suspension by setting
+   the datetime entity to one minute in the past; clearing the entity remains deferred.
+   **Deferred debug card:** a separate card collecting entities relevant to
+   debugging and understanding ThermoSmart's decisions (targets, device outputs,
+   suspensions, pre-heat, learning and control-pass diagnostics). Keep it separate
+   from the compact everyday controls; select its exact contents and layout later.
 3. **Early cutoff / coasting.** When the zone heats towards a target that was
    *raised* (from any source), heating may stop slightly before the target and let
    after-heat finish; released on window open and when the target changes again.

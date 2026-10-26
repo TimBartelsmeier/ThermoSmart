@@ -223,6 +223,7 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
             "observation_mode":     not self.coordinator._active_control,
             "window_open":          bool(z.get("window_open", False)),
             "summer_mode":          self.coordinator._is_summer,
+            "vacation_mode":        self.coordinator._vacation_mode,
             "heating_failure":      self.coordinator._heating_failure_notified,
             "preheat_active":       bool(z.get("preheat_active", False)),
             "device_batteries":     self._get_device_batteries(),
@@ -265,4 +266,3 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
         self.coordinator.set_preset(preset)
         self.async_write_ha_state()
         self.coordinator.request_pass(TRIGGER_TARGET_CHANGE)
-

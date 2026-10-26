@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>ThermoSmart card regression tests</title>
+<body>
+<pre id="results">Running...</pre>
+<script>
+  // Test doubles cover DOM, configuration and service wiring, not native HA rendering.
+  for (const tag of ["ha-card", "ha-icon", "ha-icon-button", "ha-button", "ha-switch",
+    "ha-date-input", "ha-time-input", "ha-control-circular-slider", "ha-form"]) {
+    customElements.define(tag, class extends HTMLElement {});
+  }
+  class NativeCard extends HTMLElement {
+    static async getConfigElement() {
+      if (!customElements.get("ha-expansion-panel")) {
+        customElements.define("ha-expansion-panel", class extends HTMLElement {});
+      }
+      return document.createElement("div");
+    }
+  }
+  customElements.define("test-native-card", NativeCard);
+  window.loadCardHelpers = async () => ({
+    createCardElement(config) {
+      const card = document.createElement("test-native-card");
+      card.config = config;
+      return card;
+    },
+    createRowElement() { return document.createElement("div"); },
+  });
+</script>
+<script src="../custom_components/thermosmart/www/thermosmart-card.js"></script>
+<script>
+(async () => {
+  const results = [];
+  const assert = (condition, message) => { if (!condition) throw new Error(message); };
+  const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+  const ids = {
+    scheduling_enabled: "switch.renamed_schedule",
+    scheduling_disabled_until: "datetime.renamed_pause",
+    next_scheduled_event: "sensor.next",
+    preheat_start: "sensor.preheat",
+    actual_temperature: "sensor.actual",
+    desired_temperature: "sensor.desired",
+  };
+  const zone = {
+    entity_id: "climate.zone", state: "heat", attributes: {
+      friendly_name: "Living room", current_temperature: 20.4, temperature: 21, min_temp: 5, max_temp: 30,
+      target_temp_step: 0.5, preset_modes: ["comfort", "eco", "sleep", "away", "vacation"],
+      preset_mode: "comfort", hvac_action: "heating", observation_mode: false,
+      summer_mode: false, vacation_mode: false, window_open: false,
+    },
+  };
+  let data = {
+    entities: ids, time_zone: "Europe/Berlin", scheduling_enabled: true,
+    disabled_until: null, schedule_error: null, preheat: { state: "planned", start: "2027-01-02T06:30:00+01:00" },
+    events: [
+      { at: "2027-01-02T08:00:00+01:00", preset: "comfort", temperature: 21 },
+      { at: "2027-01-02T22:00:00+01:00", preset: null, temperature: 18 },
+    ],
+  };
+  const calls = [], requests = [];
+  const historyRequests = [];
+  let historyError = null;
+  const historyStates = () => [
+    { state: "heat", last_updated: new Date(Date.now() - 7200000).toISOString(),
+      attributes: { current_temperature: 19, temperature: 20, outdoor_temperature: 5 } },
+    { state: "heat", last_updated: new Date(Date.now() - 3600000).toISOString(),
+      attributes: { current_temperature: 20, temperature: 21, outdoor_temperature: 6 } },
+  ];
+  let actionError = null;
+  const hass = {
+    states: { "climate.zone": zone, [ids.scheduling_enabled]: { state: "on" },
+      [ids.scheduling_disabled_until]: { state: "unknown" },
+      [ids.actual_temperature]: { state: "20.4" }, [ids.desired_temperature]: { state: "21" } },
+    config: { time_zone: "Europe/Berlin", unit_system: { temperature: "°C" } },
+    locale: { language: "en" },
+    async callApi(method, url) {
+      historyRequests.push({ method, url });
+      if (historyError) throw new Error(historyError);
+      return [historyStates()];
+    },
+    async callService(domain, service, payload) {
+      calls.push({ domain, service, payload });
+      if (actionError) throw new Error(actionError);
+    },
+    async callWS(request) {
+      requests.push(request);
+      if (request.type === "thermosmart/suspend_schedule") {
+        if (actionError) throw new Error(actionError);
+        return { disabled_until: "2027-01-02T00:00:00+01:00" };
+      }
+      return structuredClone(data);
+    },
+  };
+  async function card(type, config = {}) {
+    const node = document.createElement(`thermosmart-${type}-section`);
+    node.setConfig({ entity: "climate.zone", ...config });
+    node.hass = hass;
+    document.body.append(node);
+    await tick();
+    return node;
+  }
+  async function test(name, fn) {
+    try { await fn(); results.push({ name, passed: true }); }
+    catch (error) { results.push({ name, passed: false, error: error.message }); }
+  }
+  async function customDialog(control) {
+    let request;
+    control.addEventListener("show-dialog", ev => { request = ev.detail; }, { once: true });
+    control.shadowRoot.querySelector(".actions ha-button").click();
+    await tick();
+    assert(request?.dialogTag === "thermosmart-suspension-dialog", "custom dialog requested through HA");
+    const dialog = document.createElement(request.dialogTag);
+    dialog.hass = hass;
+    dialog.showDialog(request.dialogParams);
+    document.body.append(dialog);
+    return dialog;
+  }
+  await test("collapsible controls load the native panel through HA helpers", async () => {
+    assert(!customElements.get("ha-expansion-panel"), "panel not preloaded");
+    const c = await combined("zone-schedule-card", { show_control: "collapsed", show_plan: false });
+    await tick();
+    assert(customElements.get("ha-expansion-panel"), "thermostat editor imports the native panel");
+    const panel = c.shadowRoot.querySelector("ha-expansion-panel");
+    assert(!panel.hidden && panel.expanded === false, "loaded panel has configured state");
+    assert(!c.shadowRoot.textContent.includes("Loading schedule controls"), "loading message removed");
+    c.remove();
+  });
+  await test("compact +/- and presets wire correct services", async () => {
+    const c = await card("zone-control");
+    const buttons = c.shadowRoot.querySelectorAll("ha-icon-button");
+    buttons[0].click(); await tick();
+    assert(calls.at(-1).payload.temperature === 20.5, "minus temperature");
+    c.shadowRoot.querySelectorAll("ha-icon-button")[1].click(); await tick();
+    assert(calls.at(-1).payload.temperature === 21.5, "plus temperature");
+    const presets = c.shadowRoot.querySelectorAll(".presets ha-button");
+    assert(presets[0].getAttribute("appearance") === "plain", "no active background pill");
+    assert(presets[0].getAttribute("aria-pressed") === "true", "active preset");
+    assert(presets[1].getAttribute("variant") === "neutral", "neutral inactive preset");
+    presets[2].click(); await tick();
+    assert(calls.at(-1).payload.preset_mode === "sleep", "HA night preset");
+    assert(c.shadowRoot.querySelector(".status").textContent === "Heating", "status");
+    assert(getComputedStyle(c.shadowRoot.querySelector("ha-icon-button")).borderRadius === "50%", "round button background");
+    c.remove();
+  });
+  await test("window priority and all three locked modes", async () => {
+    for (const mode of ["summer_mode", "vacation_mode", "observation_mode"]) {
+      zone.attributes[mode] = true;
+      zone.attributes.window_open = true;
+      const c = await card("zone-control");
+      assert(c.shadowRoot.querySelector(".status").textContent.includes("window open"), "window priority");
+      assert([...c.shadowRoot.querySelectorAll("ha-button,ha-icon-button")].every(b => b.disabled), mode);
+      c.remove();
+      zone.attributes[mode] = false;
+    }
+    zone.attributes.window_open = false;
+  });
+  await test("native climate dial receives temperatures and previews without service calls", async () => {
+    zone.attributes.preset_mode = null;
+    const c = await card("zone-control", { layout: "full" });
+    assert(!c.shadowRoot.querySelector('[aria-pressed="true"]'), "manual has no active preset");
+    const dial = c.shadowRoot.querySelector("ha-control-circular-slider");
+    assert(dial.value === 21 && dial.current === 20.4, "native target/current inputs");
+    assert(dial.min === 5 && dial.max === 30 && dial.step === 0.5, "native bounds and step");
+    assert(dial.mode === "start" && !dial.readonly, "fill starts at minimum with an interactive target");
+    assert(dial.formatValue(21.5) === "21.5 °C", "native accessible temperature formatting");
+    assert(c.shadowRoot.querySelector(".dial-center .status"), "status inside dial");
+    assert(getComputedStyle(c.shadowRoot.querySelector(".dial .status")).flexDirection === "column", "icon above status");
+    assert(getComputedStyle(dial).marginBottom === "-32px", "native dial unused lower space collapsed");
+    assert(c.shadowRoot.querySelector(".dial-center .label").textContent === "Current:", "current label");
+    const before = calls.length;
+    dial.dispatchEvent(new CustomEvent("value-changing", { detail: { value: 22.5 } }));
+    assert(c.shadowRoot.querySelector(".target-value").textContent === "22.5 °C", "live drag target");
+    assert(calls.length === before, "drag preview does not call service");
+    c.hass = hass;
+    assert(c.shadowRoot.querySelector("ha-control-circular-slider") === dial, "HA updates preserve active drag");
+    dial.dispatchEvent(new CustomEvent("value-changing", { detail: { value: undefined } }));
+    assert(c.shadowRoot.querySelector(".target-value").textContent === "21 °C", "drag cancellation");
+    dial.dispatchEvent(new CustomEvent("value-changed", { detail: { value: 21.5 } }));
+    await tick();
+    assert(calls.at(-1).payload.temperature === 21.5, "native committed value sets target");
+    zone.attributes.temperature = 22;
+    zone.attributes.current_temperature = 20.8;
+    c.hass = hass;
+    await tick();
+    const updated = c.shadowRoot.querySelector("ha-control-circular-slider");
+    assert(updated.value === 22 && updated.current === 20.8, "HA state updates reach native target fill and current marker");
+    c.remove();
+    zone.attributes.temperature = 21;
+    zone.attributes.current_temperature = 20.4;
+    zone.attributes.preset_mode = "comfort";
+  });
+  await test("errors remain visible after refresh", async () => {
+    actionError = "Permission denied";
+    const c = await card("zone-control");
+    c.shadowRoot.querySelector("ha-icon-button").click();
+    await tick();
+    assert(c.shadowRoot.querySelector(".feedback").textContent === actionError, "visible action error");
+    c.remove();
+    actionError = null;
+  });
+  await test("temperature buttons enforce advertised bounds", async () => {
+    zone.attributes.temperature = 30;
+    let c = await card("zone-control");
+    assert(c.shadowRoot.querySelectorAll("ha-icon-button")[1].disabled, "upper bound");
+    c.remove();
+    zone.attributes.temperature = 5;
+    c = await card("zone-control");
+    assert(c.shadowRoot.querySelector("ha-icon-button").disabled, "lower bound");
+    c.remove();
+    zone.attributes.temperature = 21;
+  });
+  await test("plan limits and uniform event columns", async () => {
+    const c = await card("schedule-plan", { "max-events": 5, "max-days": 2 });
+    assert(requests.at(-1).max_events === 5 && requests.at(-1).max_days === 2, "query limits");
+    assert(c.shadowRoot.querySelectorAll(".event-columns").length === 2, "event list");
+    assert(c.shadowRoot.querySelectorAll(".event-detail").length === 1, "only preset has detail");
+    const target = c.shadowRoot.querySelector(".event-target");
+    assert(target.textContent === "Comfort (21 °C)", "single-line preset and temperature");
+    assert(!target.querySelector("strong"), "preset is not bold");
+    assert(getComputedStyle(target).fontWeight === "400", "regular preset target");
+    assert(getComputedStyle(c.shadowRoot.querySelectorAll(".event-target")[1]).fontWeight === "400", "regular numeric target");
+    assert(getComputedStyle(c.shadowRoot.querySelector(".event-time")).textAlign === "right", "time toward center");
+    assert(getComputedStyle(target).textAlign === "left", "target toward center");
+    assert(getComputedStyle(c.shadowRoot.querySelector(".day")).fontWeight === "700", "bold date heading");
+    assert(getComputedStyle(c.shadowRoot.querySelector(".day")).textAlign === "center", "centered date heading");
+    c.style.setProperty("--secondary-text-color", "rgb(150, 150, 150)");
+    c.style.setProperty("--accent-color", "rgb(255, 100, 0)");
+    c.style.setProperty("--primary-color", "rgb(0, 120, 230)");
+    c.style.setProperty("--secondary-background-color", "rgb(30, 30, 30)");
+    assert(getComputedStyle(c.shadowRoot.querySelector(".event-detail")).color === "rgb(150, 150, 150)", "preset temperature uses secondary, not accent");
+    assert(getComputedStyle(c.shadowRoot.querySelector(".event-detail")).marginInlineStart === "8px", "extra preset-temperature spacing");
+    const row = c.shadowRoot.querySelector(".event");
+    assert(getComputedStyle(row).borderBottomStyle === "none", "no event separator lines");
+    assert(getComputedStyle(row).paddingTop === "4px" && getComputedStyle(row).paddingBottom === "4px", "compact event rows");
+    assert([...row.children].map(n => n.className).join(",") === "event-columns,next-label,preheat", "next label between event and preheat");
+    assert(getComputedStyle(c.shadowRoot.querySelector(".next-label")).color === "rgb(0, 120, 230)", "primary next-event label");
+    assert(getComputedStyle(c.shadowRoot.querySelector(".preheat")).color === "rgb(150, 150, 150)", "secondary preheat");
+    const highlight = getComputedStyle(row).backgroundColor;
+    assert(highlight.startsWith("color(srgb") && highlight !== "rgb(30, 30, 30)", "primary-tinted background");
+    c.style.setProperty("--accent-color", "rgb(0, 100, 255)");
+    assert(getComputedStyle(row).backgroundColor === highlight, "accent does not affect next-event tint");
+    c.style.setProperty("--primary-color", "rgb(0, 200, 150)");
+    assert(getComputedStyle(row).backgroundColor !== highlight, "next-event tint follows theme primary");
+    assert(c.shadowRoot.querySelector(".preheat").textContent.startsWith("Pre-heating starts at"), "preheat");
+    assert(c.shadowRoot.querySelector(".next-label").textContent === "Next event", "next marker");
+    c.remove();
+  });
+  await test("day labels use HA calendar dates across timezone, year and DST boundaries", async () => {
+    const c = await card("schedule-plan", { "max-events": 5 });
+    c._data.time_zone = "America/Los_Angeles";
+    const now = Date.parse("2026-01-01T07:30:00Z");
+    assert(c._dayLabel("2026-01-01T07:45:00Z", now) === "Today", "today is still December 31 in HA");
+    assert(c._dayLabel("2026-01-01T08:30:00Z", now) === "Tomorrow", "tomorrow crosses year boundary");
+    assert(!["Today", "Tomorrow"].includes(c._dayLabel("2026-01-02T08:30:00Z", now)), "later days keep dates");
+    c._data.time_zone = "Europe/Berlin";
+    assert(c._dayLabel("2026-03-30T00:30:00+02:00", Date.parse("2026-03-29T00:30:00+01:00")) === "Tomorrow", "23-hour DST day");
+    assert(c._dayLabel("2026-10-26T00:30:00+01:00", Date.parse("2026-10-25T00:30:00+02:00")) === "Tomorrow", "25-hour DST day");
+    c.remove();
+  });
+  await test("no limits explicitly warns; disabled data has no entries", async () => {
+    data.events = [];
+    let c = await card("schedule-plan");
+    assert(c.shadowRoot.textContent.includes("Set max-days or max-events"), "unbounded warning");
+    c.remove();
+    data.scheduling_enabled = false;
+    c = await card("schedule-plan", { "max-events": 5 });
+    assert(c.shadowRoot.textContent.includes("Scheduling disabled"), "disabled");
+    assert(!c.shadowRoot.querySelector(".event"), "disabled no events");
+    c.remove();
+    data.scheduling_enabled = true;
+  });
+  await test("controls use discovered IDs and filled actions; dialog accepts initially unknown datetime", async () => {
+    const c = await card("schedule-controls");
+    assert(!c.shadowRoot.querySelector("ha-date-input"), "no inline pickers");
+    assert(c.shadowRoot.querySelectorAll(".actions ha-button").length === 2, "custom dialog and direct removal actions");
+    assert(!c.shadowRoot.textContent.includes("HA editor"), "no native action");
+    const before = calls.length;
+    const dialog = await customDialog(c);
+    const input = dialog.shadowRoot.querySelector("input");
+    assert(input.type === "datetime-local" && !input.value, "unified input supports unknown deadline");
+    const remove = [...dialog.shadowRoot.querySelectorAll("ha-button")].find(b => b.textContent === "Remove suspension (set to past)");
+    assert(remove && !remove.disabled, "remove action enabled even with unset input");
+    assert([...c.shadowRoot.querySelectorAll(".actions ha-button,.shortcuts ha-button")].every(b => b.getAttribute("appearance") === "filled" && b.getAttribute("variant") === "neutral"), "schedule buttons have neutral filled backgrounds");
+    input.value = "2027-01-02T08:00:00";
+    input.dispatchEvent(new Event("input"));
+    assert(calls.length === before, "editing does not submit");
+    dialog.shadowRoot.querySelectorAll("ha-button")[1].click(); await tick();
+    assert(calls.at(-1).payload.entity_id === ids.scheduling_disabled_until, "registry date ID");
+    assert(calls.at(-1).payload.datetime === "2027-01-02T08:00", "HA-local wall time without browser conversion");
+    assert(!dialog.shadowRoot.querySelector("dialog").open, "successful save closes dialog");
+    dialog.remove();
+    c.shadowRoot.querySelector(".shortcuts ha-button").click(); await tick();
+    assert(requests.at(-2).action === "skip_next", "shortcut endpoint");
+    c.remove();
+  });
+  await test("history uses original sparkline design and climate history, and whole card navigates", async () => {
+    const c = await card("temperature-history", { hours_to_show: 12 });
+    const graph = c.shadowRoot.querySelector(".sparkline");
+    assert(graph, "SVG sparkline");
+    assert(graph.querySelector(".history-actual").getAttribute("stroke") === "#2196F3", "blue actual");
+    assert(graph.querySelector(".history-target").getAttribute("stroke") === "#ff9800", "orange target");
+    assert(graph.querySelector(".history-outdoor").getAttribute("stroke") === "#ef5350", "red outdoor");
+    assert(graph.querySelector(".history-target").getAttribute("d").includes(" V"), "target step graph");
+    assert(historyRequests.at(-1).url.includes("filter_entity_id=climate.zone"), "climate attribute history");
+    assert(!c.shadowRoot.querySelector("ha-button"), "no history button");
+    const originalUrl = location.href;
+    let navigated = false;
+    const onNavigate = () => { navigated = true; };
+    window.addEventListener("location-changed", onNavigate);
+    c.shadowRoot.querySelector(".history-card").click(); await tick();
+    assert(location.pathname === "/history", "history route");
+    assert(new URLSearchParams(location.search).get("entity_id") === "climate.zone", "climate history filter");
+    assert(navigated, "HA router notified");
+    history.replaceState(null, "", originalUrl);
+    navigated = false;
+    c.shadowRoot.querySelector(".history-card").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    assert(navigated && location.pathname === "/history", "keyboard history navigation");
+    window.removeEventListener("location-changed", onNavigate);
+    history.replaceState(null, "", originalUrl);
+    c.remove();
+  });
+  await test("history reports fetch errors instead of hiding them", async () => {
+    historyError = "Recorder is unavailable";
+    const c = await card("temperature-history");
+    assert(c.shadowRoot.textContent.includes(historyError), "visible history error");
+    c.remove();
+    historyError = null;
+  });
+  await test("history reconnects during an in-flight request without stale data winning", async () => {
+    const c = document.createElement("thermosmart-temperature-history-section");
+    c.setConfig({ entity: "climate.zone" });
+    const pending = [];
+    c.hass = { ...hass, callApi: () => new Promise(resolve => pending.push(resolve)) };
+    document.body.append(c);
+    await tick();
+    c.remove();
+    document.body.append(c);
+    await tick();
+    assert(pending.length === 2, "reconnect starts a fresh request");
+    pending[1]([historyStates()]);
+    await tick();
+    assert(c.shadowRoot.querySelector(".sparkline"), "fresh request renders");
+    pending[0]([]);
+    await tick();
+    assert(c.shadowRoot.querySelector(".sparkline"), "stale result ignored");
+    c.remove();
+  });
+  await test("unrelated temperature changes do not rebuild suspension actions", async () => {
+    const c = await card("schedule-controls");
+    c.hass = hass; await tick();
+    const original = c.shadowRoot.querySelector(".actions");
+    zone.attributes.current_temperature = 20.5;
+    hass.states[ids.actual_temperature] = { state: "20.5" };
+    c.hass = hass; await tick();
+    assert(c.shadowRoot.querySelector(".actions") === original, "action identity preserved");
+    c.remove();
+    zone.attributes.current_temperature = 20.4;
+  });
+  await test("plan converts Celsius data to Fahrenheit and distinguishes System vacation", async () => {
+    hass.config.unit_system.temperature = "°F";
+    zone.attributes.vacation_mode = true;
+    data.events = [{ at: "2027-01-02T08:00:00+01:00", preset: "comfort", temperature: 21 }];
+    const c = await card("schedule-plan", { "max-events": 1 });
+    assert(c.shadowRoot.querySelector(".event-detail").textContent === "(69.8 °F)", "unit conversion");
+    assert(c.shadowRoot.querySelector(".note").textContent.includes("Vacation mode is active"), "System mode");
+    c.remove();
+    hass.config.unit_system.temperature = "°C";
+    zone.attributes.vacation_mode = false;
+  });
+  await test("configuration validation and picker defaults", async () => {
+    const c = document.createElement("thermosmart-zone-schedule-card");
+    let rejected = false;
+    try { c.setConfig({ entity: "climate.zone", "max-events": 0 }); } catch (_) { rejected = true; }
+    assert(rejected, "invalid limits rejected");
+    assert(c.constructor.getStubConfig(hass)["max-events"] === 5, "picker default 5");
+    assert(window.customCards.length === 2 && !customElements.get("thermosmart-card"), "two public cards");
+    for (const kind of ["zone-control", "schedule-plan", "schedule-controls", "temperature-history"]) {
+      assert(!customElements.get(`thermosmart-${kind}`), "former standalone cards removed");
+    }
+  });
+  await test("dial and selected presets share heating, holding and override colors", async () => {
+    for (const [action, override, color] of [
+      ["heating", false, "--orange-color"],
+      ["idle", false, "--blue-color"],
+      ["heating", true, "--disabled-text-color"],
+    ]) {
+      zone.attributes.hvac_action = action;
+      zone.attributes.window_open = override;
+      const c = await card("zone-control", { layout: "full" });
+      assert(c.shadowRoot.querySelector(".body").style.getPropertyValue("--zone-color").includes(color), color);
+      assert(!c.shadowRoot.querySelector("ha-control-circular-slider").readonly, "window permits desired target updates");
+      assert(c.shadowRoot.querySelector('[aria-pressed="true"]').getAttribute("appearance") === "plain", "no background");
+      c.remove();
+    }
+    zone.attributes.hvac_action = "heating";
+    zone.attributes.window_open = false;
+  });
+  await test("both control layouts use uniform preset widths and increased target spacing", async () => {
+    for (const layout of ["compact", "full"]) {
+      const c = await card("zone-control", { layout });
+      c.style.width = "360px";
+      const widths = [...c.shadowRoot.querySelectorAll(".presets ha-button")].map(b => b.getBoundingClientRect().width);
+      assert(widths.every(width => Math.abs(width - widths[0]) < 1), `${layout}: equal preset widths`);
+      for (const width of [360, 460, 520]) {
+        c.style.width = `${width}px`;
+        const presets = c.shadowRoot.querySelector(".presets");
+        const bounds = presets.getBoundingClientRect();
+        const rows = new Map();
+        for (const button of presets.children) {
+          const rect = button.getBoundingClientRect();
+          const row = rows.get(rect.top) ?? [];
+          row.push(rect);
+          rows.set(rect.top, row);
+        }
+        assert(rows.size === (width === 520 ? 1 : 2), `${layout}: expected wrapping at ${width}px`);
+        for (const row of rows.values()) {
+          assert(Math.abs((row[0].left + row.at(-1).right) / 2 - (bounds.left + bounds.right) / 2) < 1,
+            `${layout}: each preset row centered at ${width}px`);
+          assert(row.every(rect => Math.abs(rect.width - widths[0]) < 1), `${layout}: equal widths after wrapping`);
+        }
+      }
+      assert(getComputedStyle(c.shadowRoot.querySelector(".target")).gap === "12px", `${layout}: target button spacing`);
+      assert(getComputedStyle(c.shadowRoot.querySelector(".presets")).marginTop === (layout === "compact" ? "24px" : "12px"), `${layout}: preset vertical spacing`);
+      if (layout === "compact") {
+        assert([...c.shadowRoot.querySelectorAll(".temperatures .label")].map(n => n.textContent).join(",") === "Current,Target", "short labels");
+      }
+      c.remove();
+    }
+  });
+  await test("native dial remains visible but readonly in all locked modes", async () => {
+    for (const mode of ["summer_mode", "vacation_mode", "observation_mode"]) {
+      zone.attributes[mode] = true;
+      const c = await card("zone-control", { layout: "full" });
+      const dial = c.shadowRoot.querySelector("ha-control-circular-slider");
+      assert(dial.readonly && !dial.disabled, "preserve grey dial visualization without interaction");
+      const before = calls.length;
+      dial.dispatchEvent(new CustomEvent("value-changed", { detail: { value: 22 } }));
+      assert(calls.length === before, "disabled dial does not call service");
+      c.remove();
+      zone.attributes[mode] = false;
+    }
+  });
+  async function combined(kind, config = {}) {
+    const node = document.createElement(`thermosmart-${kind}`);
+    node.setConfig({ entity: "climate.zone", ...config });
+    node.hass = hass;
+    document.body.append(node);
+    await tick();
+    return node;
+  }
+  await test("zone card defaults and every visibility combination", async () => {
+    const defaults = await combined("zone-card");
+    assert(defaults.shadowRoot.querySelector("ha-card").header === "Living room", "default zone title");
+    assert(getComputedStyle(defaults.shadowRoot.querySelector("ha-card")).getPropertyValue("--ha-card-header-font-size").trim() === "20px", "smaller zone title");
+    assert(defaults._sections.map(s => s.constructor.kind).join(",") === "zone-control,temperature-history", "control before graph");
+    assert(defaults._sections[0].shadowRoot.querySelector("ha-control-circular-slider"), "full by default");
+    assert(defaults._sections.every(s => !s.shadowRoot.querySelector("ha-card")), "one card, no nested cards");
+    defaults.remove();
+    for (const show_control of [true, "full", "minimal", false]) {
+      for (const show_graph of [true, false]) {
+        const before = historyRequests.length;
+        const c = await combined("zone-card", { show_control, show_graph, show_zone_name: false, hours_to_show: 12 });
+        assert(!c.shadowRoot.querySelector("ha-card").header, "title can be hidden");
+        assert(c._sections.length === Number(show_control !== false) + Number(show_graph), "visible sections only");
+        const controls = c._sections.find(s => s.constructor.kind === "zone-control");
+        if (controls) {
+          assert(Boolean(controls.shadowRoot.querySelector("ha-control-circular-slider")) === (show_control !== "minimal"), "true means full; minimal has no dial");
+        }
+        assert((historyRequests.length > before) === show_graph, "hidden graph does not fetch history");
+        if (show_graph) {
+          assert(c._sections.at(-1)._config.hours_to_show === 12, "history options forwarded");
+        }
+        if (!c._sections.length) assert(c.shadowRoot.textContent.includes("No sections enabled"), "explicit empty configuration");
+        c.remove();
+        assert(c._sections.every(s => !s._timer), "removal stops section timers");
+      }
+    }
+  });
+  await test("schedule card defaults, section order, visibility and limits", async () => {
+    const defaults = await combined("zone-schedule-card");
+    assert(defaults._sections.map(s => s.constructor.kind).join(",") === "schedule-controls,schedule-plan", "control before plan");
+    assert(defaults.shadowRoot.querySelector("ha-card").header === "Living room", "default schedule title");
+    assert(getComputedStyle(defaults.shadowRoot.querySelector("ha-card")).getPropertyValue("--ha-card-header-font-size").trim() === "20px", "smaller schedule title");
+    assert(defaults._sections[1].shadowRoot.textContent.includes("Set max-days or max-events"), "no silent YAML limits");
+    defaults.remove();
+    for (const show_control of [true, false]) {
+      for (const show_plan of [true, false]) {
+        const before = requests.length;
+        const c = await combined("zone-schedule-card", { show_control, show_plan, "max-days": 2, "max-events": 3 });
+        assert(c._sections.length === Number(show_control) + Number(show_plan), "schedule visibility");
+        assert(c._sections.every(s => !s.shadowRoot.querySelector("ha-card")), "no nested cards");
+        assert((requests.length > before) === (show_control || show_plan), "hidden sections do not fetch");
+        if (show_plan) {
+          const plan = c._sections.find(s => s.constructor.kind === "schedule-plan");
+          assert(plan._config["max-days"] === 2 && plan._config["max-events"] === 3, "limits forwarded");
+        }
+        c.remove();
+        assert(c._sections.every(s => !s._timer), "schedule removal stops timers");
+      }
+    }
+  });
+  await test("combined cards preserve section identity and drafts while updating titles", async () => {
+    const c = await combined("zone-schedule-card", { "max-events": 5 });
+    c.hass = hass; await tick();
+    const control = c._sections[0];
+    const dialog = await customDialog(control);
+    const input = dialog.shadowRoot.querySelector("input");
+    input.value = "2027-02-02T08:30";
+    zone.attributes.friendly_name = "Renamed room";
+    c.hass = hass; await tick();
+    assert(c.shadowRoot.querySelector("ha-card").header === "Renamed room", "title updates");
+    assert(c._sections[0] === control && dialog.shadowRoot.querySelector("input") === input, "dialog not rebuilt on HA update");
+    assert(input.value === "2027-02-02T08:30", "draft remains intact");
+    dialog.closeDialog();
+    dialog.remove();
+    c.setConfig({ entity: "climate.zone", show_control: false, show_plan: false });
+    assert(!control.isConnected && !control._timer, "reconfiguration disconnects old section");
+    c.remove();
+    zone.attributes.friendly_name = "Living room";
+  });
+  await test("graph-only history navigation does not capture control clicks", async () => {
+    const c = await combined("zone-card");
+    const original = location.href;
+    c._sections[0].shadowRoot.querySelector("ha-icon-button").click(); await tick();
+    assert(location.href === original, "control stays on dashboard");
+    c._sections[1].shadowRoot.querySelector(".history-card").click();
+    assert(location.pathname === "/history", "graph opens history");
+    history.replaceState(null, "", original);
+    c.remove();
+  });
+  await test("combined card validation and editors expose the new property types", async () => {
+    for (const [kind, invalid] of [
+      ["zone-card", { show_control: "compact" }], ["zone-card", { show_control: "false" }],
+      ["zone-card", { show_graph: "yes" }], ["zone-card", { hours_to_show: 0 }],
+      ["zone-schedule-card", { show_control: "full" }], ["zone-schedule-card", { show_control: "true" }],
+      ["zone-card", { show_control: "collapsed" }], ["zone-schedule-card", { show_plan: null }],
+      ["zone-schedule-card", { "max-days": 0 }], ["zone-card", { show_zone_name: 1 }],
+    ]) {
+      let rejected = false;
+      try { document.createElement(`thermosmart-${kind}`).setConfig({ entity: "climate.zone", ...invalid }); }
+      catch (_) { rejected = true; }
+      assert(rejected, `${kind} rejects ${JSON.stringify(invalid)}`);
+    }
+    for (const kind of ["zone-card", "zone-schedule-card"]) {
+      const editor = await customElements.get(`thermosmart-${kind}`).getConfigElement();
+      editor.hass = hass;
+      editor.setConfig({ type: `custom:thermosmart-${kind}`, entity: "climate.zone", show_control: false });
+      const form = editor.querySelector("ha-form");
+      const names = form.schema.map(s => s.name);
+      assert(names.includes("show_zone_name") && names.includes("show_control"), "common editor fields");
+      assert(names.includes(kind === "zone-card" ? "show_graph" : "show_plan"), "section editor field");
+      assert(form.data.show_zone_name === true, "editor displays default title");
+      let output;
+      editor.addEventListener("config-changed", ev => { output = ev.detail.config; });
+      form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, show_control: kind === "zone-card" ? "false" : false } } }));
+      assert(output.show_control === false, "editor emits boolean false, not string");
+      assert(!("layout" in output), "old layout field removed");
+    }
+  });
+  await test("schedule expansion panel uses configured initial state and preserves controls on live updates", async () => {
+    for (const initial of ["collapsed", "expanded"]) {
+      const c = await combined("zone-schedule-card", { show_control: initial, "max-events": 5 });
+      c.hass = hass;
+      await tick();
+      const panel = c.shadowRoot.querySelector("ha-expansion-panel");
+      assert(panel && !panel.hidden && panel.header === "Schedule controls", "native panel loaded and labelled");
+      c.style.setProperty("--secondary-background-color", "rgb(35, 35, 35)");
+      assert(getComputedStyle(panel).marginLeft === "16px" && getComputedStyle(panel).marginRight === "16px", "inset controls panel");
+      assert(getComputedStyle(panel).backgroundColor === "rgb(35, 35, 35)", "controls panel follows secondary theme background");
+      assert(panel.expanded === (initial === "expanded"), "configured initial expansion");
+      const control = c._sections[0];
+      assert(control.parentElement === panel && c._sections[1].parentElement.localName === "ha-card", "only controls collapse");
+      const dialog = await customDialog(control);
+      const date = dialog.shadowRoot.querySelector("input");
+      date.value = "2027-03-04T08:30";
+      const previousSize = c.getCardSize();
+      panel.expanded = !panel.expanded;
+      panel.dispatchEvent(new CustomEvent("expanded-changed", { detail: { expanded: panel.expanded } }));
+      assert(c.getCardSize() !== previousSize, "size estimate follows expansion");
+      c.hass = hass; await tick();
+      assert(c.shadowRoot.querySelector("ha-expansion-panel") === panel, "panel identity preserved");
+      assert(panel.expanded === (initial === "collapsed"), "HA updates preserve user selection");
+      assert(dialog.shadowRoot.querySelector("input") === date && date.value === "2027-03-04T08:30", "draft preserved");
+      dialog.closeDialog();
+      dialog.remove();
+      c.setConfig({ entity: "climate.zone", show_control: initial, show_plan: false });
+      await tick();
+      assert(c.shadowRoot.querySelector("ha-expansion-panel").expanded === (initial === "expanded"), "reconfiguration restores default");
+      c.remove();
+    }
+    for (const visible of [true, false]) {
+      const c = await combined("zone-schedule-card", { show_control: visible });
+      assert(!c.shadowRoot.querySelector("ha-expansion-panel"), "boolean options do not create an expansion panel");
+      c.remove();
+    }
+  });
+  await test("schedule editor round-trips all four control options", async () => {
+    for (const value of [true, false, "collapsed", "expanded"]) {
+      const editor = await customElements.get("thermosmart-zone-schedule-card").getConfigElement();
+      editor.setConfig({ entity: "climate.zone", show_control: value });
+      const form = editor.querySelector("ha-form");
+      assert(form.data.show_control === String(value), "editor selection normalized to string");
+      const options = form.schema.find(s => s.name === "show_control").selector.select.options;
+      assert(options.map(o => o.value).join(",") === "true,false,collapsed,expanded", "all options exposed");
+      let output;
+      editor.addEventListener("config-changed", ev => { output = ev.detail.config; });
+      form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: form.data } }));
+      assert(output.show_control === value, "editor emits correct boolean or string");
+    }
+  });
+  await test("custom suspension dialog cancels, retains failed edits, and pre-fills HA time", async () => {
+    const previous = data.disabled_until;
+    data.disabled_until = "2027-01-02T07:15:00Z";
+    const c = await card("schedule-controls");
+    let dialog = await customDialog(c);
+    let input = dialog.shadowRoot.querySelector("input");
+    assert(input.value === "2027-01-02T08:15", "prefill uses HA timezone");
+    const before = calls.length;
+    dialog.shadowRoot.querySelector("ha-button").click();
+    assert(!dialog.shadowRoot.querySelector("dialog").open && calls.length === before, "cancel has no side effects");
+    dialog.remove();
+    dialog = await customDialog(c);
+    input = dialog.shadowRoot.querySelector("input");
+    input.value = "2027-01-03T11:30";
+    input.dispatchEvent(new Event("input"));
+    actionError = "Permission denied";
+    dialog.shadowRoot.querySelectorAll("ha-button")[1].click(); await tick();
+    assert(dialog.shadowRoot.querySelector("dialog").open, "failed save stays open");
+    assert(dialog.shadowRoot.querySelector(".feedback").textContent === actionError, "visible service error");
+    assert(input.value === "2027-01-03T11:30" && !input.disabled, "failed save keeps editable draft");
+    actionError = null;
+    dialog.shadowRoot.querySelector("dialog").dispatchEvent(new Event("cancel", { cancelable: true }));
+    assert(!dialog.shadowRoot.querySelector("dialog").open, "escape cancels");
+    dialog.remove();
+    c.remove();
+    data.disabled_until = previous;
+  });
+  await test("remove suspension submits a past UTC instant independently of input, and reports errors", async () => {
+    const c = await card("schedule-controls");
+    const dialog = await customDialog(c);
+    const input = dialog.shadowRoot.querySelector("input");
+    input.value = "";
+    const remove = dialog.shadowRoot.querySelector(".remove");
+    const before = Date.now();
+    actionError = "Permission denied";
+    remove.click(); await tick();
+    const call = calls.at(-1);
+    assert(call.domain === "datetime" && call.service === "set_value" && call.payload.entity_id === ids.scheduling_disabled_until, "uses existing datetime service");
+    const deadline = Date.parse(call.payload.datetime);
+    assert(call.payload.datetime.endsWith("Z") && deadline >= before - 60000 && deadline <= Date.now() - 60000, "sets one minute in past independent of browser timezone");
+    assert(dialog.shadowRoot.querySelector("dialog").open && !remove.disabled, "failed removal remains open and retryable");
+    assert(dialog.shadowRoot.querySelector(".feedback").textContent === actionError, "removal error visible");
+    actionError = null;
+    remove.click(); await tick();
+    assert(!dialog.shadowRoot.querySelector("dialog").open, "successful removal closes dialog");
+    dialog.remove();
+    c.remove();
+  });
+  await test("card removal uses past deadline and shows service failures", async () => {
+    const c = await card("schedule-controls");
+    const before = Date.now();
+    c.shadowRoot.querySelectorAll(".actions ha-button")[1].click(); await tick();
+    const call = calls.at(-1);
+    assert(call.domain === "datetime" && call.service === "set_value" && call.payload.entity_id === ids.scheduling_disabled_until, "card removal targets discovered entity");
+    assert(Date.parse(call.payload.datetime) >= before - 60000 && Date.parse(call.payload.datetime) <= Date.now() - 60000, "card removal sets past timestamp");
+    actionError = "Permission denied";
+    c.shadowRoot.querySelectorAll(".actions ha-button")[1].click(); await tick();
+    assert(c.shadowRoot.querySelector(".feedback").textContent === actionError, "card removal error visible");
+    actionError = null;
+    c.remove();
+  });
+  await test("plan status appears only for disabled or suspended scheduling", async () => {
+    const previous = { enabled: data.scheduling_enabled, until: data.disabled_until };
+    for (const [enabled, until, text] of [
+      [true, null, null],
+      [true, "2000-01-01T00:00:00Z", null],
+      [true, "2099-01-01T00:00:00Z", "Scheduling disabled until"],
+      [false, "2099-01-01T00:00:00Z", "Scheduling disabled"],
+    ]) {
+      data.scheduling_enabled = enabled;
+      data.disabled_until = until;
+      const c = await card("schedule-plan", { "max-events": 5 });
+      const summary = c.shadowRoot.querySelector(".summary");
+      assert(text ? summary?.textContent.startsWith(text) : !summary, "status visibility and priority");
+      assert(!c.shadowRoot.textContent.includes("Scheduling enabled"), "no normal enabled message");
+      c.remove();
+    }
+    data.scheduling_enabled = previous.enabled;
+    data.disabled_until = previous.until;
+  });
+  window.testResults = results;
+  document.querySelector("#results").textContent = JSON.stringify(results, null, 2);
+})();
+</script>
+</body>
+</html>

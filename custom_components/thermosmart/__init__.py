@@ -15,7 +15,6 @@ Modulstruktur:
 from __future__ import annotations
 
 import logging
-import os
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
@@ -32,10 +31,8 @@ from .const import (
     CONF_OUTDOOR_SOLAR_SENSOR,
     CONF_OUTDOOR_RAIN_SENSOR,
     CONF_LEARNING_ENABLED,
-    CARD_FILENAME,
-    CARD_URL_PATH,
-    CARD_ASSET_VERSION,
 )
+from .card_registration import REGISTRATION_KEY, async_register_card as _async_register_card
 from .coordinator import ThermoSmartCoordinator
 from .availability import EntityAvailabilityMonitor
 from .system import SYSTEM_KEY, SystemController
@@ -51,61 +48,11 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 # data. async_unload_entry() must not count them as still-loaded entries.
 _NON_ENTRY_DATA_KEYS = (
     "learning_engine", SYSTEM_KEY,
-    "card_registered", "card_static_registered", "card_frontend_registered",
+    REGISTRATION_KEY,
 )
 
 ZONE_PLATFORMS = PLATFORMS               # ["climate", "sensor", "switch", "select"]
 SYSTEM_PLATFORMS = ["switch"]            # System-Entry: Urlaubs- und Sommer-Schalter
-
-
-async def _async_register_card(hass: HomeAssistant) -> None:
-    """Serve the bundled Lovelace card and register it as a frontend module URL.
-
-    Registration is idempotent and retryable. Two independent, non-fatal steps:
-
-    1. Static path: custom_components/thermosmart/www/thermosmart-card.js is
-       exposed at CARD_URL_PATH via the async, non-blocking HA 2024.x static
-       path API (StaticPathConfig) — no synchronous file I/O on the event loop.
-    2. Frontend module URL: add_extra_js_url() registers the same URL so every
-       dashboard loads it automatically, in both storage-mode and YAML-mode —
-       no .storage/lovelace_resources entry is written or managed. The helper
-       stores URLs in a set, so calling it again (e.g. a second HA session)
-       never creates a duplicate <script> tag.
-
-    A `?v=<CARD_ASSET_VERSION>` query string on the frontend URL only busts the browser
-    cache after a ThermoSmart update; it does not affect static-path routing
-    (aiohttp matches on path, not query string), so it is safe to combine
-    with cache_headers=True on the static route itself.
-    """
-    hass.data.setdefault(DOMAIN, {})
-    card_state = hass.data[DOMAIN]
-    if card_state.get("card_registered"):
-        return
-
-    www_dir = os.path.join(os.path.dirname(__file__), "www")
-    card_path = os.path.join(www_dir, CARD_FILENAME)
-
-    if not card_state.get("card_static_registered"):
-        try:
-            from homeassistant.components.http import StaticPathConfig
-            await hass.http.async_register_static_paths([
-                StaticPathConfig(CARD_URL_PATH, card_path, True)
-            ])
-            card_state["card_static_registered"] = True
-        except Exception as err:  # http component missing/unavailable is non-fatal
-            _LOGGER.warning("ThermoSmart: card static path registration skipped: %s", err)
-            return
-
-    if not card_state.get("card_frontend_registered"):
-        try:
-            from homeassistant.components.frontend import add_extra_js_url
-            add_extra_js_url(hass, f"{CARD_URL_PATH}?v={CARD_ASSET_VERSION}")
-            card_state["card_frontend_registered"] = True
-        except Exception as err:  # frontend component missing/unavailable is non-fatal
-            _LOGGER.warning("ThermoSmart: card frontend registration skipped: %s", err)
-            return
-
-    card_state["card_registered"] = True
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -119,7 +66,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     cfg = {**entry.data, **entry.options}
 
-    # Retry if early integration setup could not register the card yet.
+    # Idempotent; a deliberate entry reload can recover a reported UI failure.
     await _async_register_card(hass)
 
     # ── System-Entry: globale Schalter, kein Coordinator ────────────

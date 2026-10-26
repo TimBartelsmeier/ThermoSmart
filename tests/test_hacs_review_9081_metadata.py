@@ -69,7 +69,7 @@ class TestManifest:
         assert manifest["domain"] == "thermosmart"
 
     def test_http_declared_as_a_dependency(self):
-        """__init__.py's _async_register_card() imports
+        """card_registration.py imports
         homeassistant.components.http.StaticPathConfig to serve the bundled
         Lovelace card, so hassfest's dependency validator requires 'http' to
         be declared. This is unrelated to the export system (removed in the
@@ -77,8 +77,8 @@ class TestManifest:
         for the card's static path registration. frontend is *not* declared
         here on purpose — hassfest's ALLOWED_USED_COMPONENTS allow-list
         exempts it (frontend is treated as always available), and the
-        frontend-specific registration code in __init__.py already treats it
-        as best-effort/non-fatal (try/except) rather than a hard requirement.
+        frontend-specific registration waits for the component-loaded event
+        and reports failures without making frontend a heating dependency.
         """
         assert "http" in self._manifest()["dependencies"]
 

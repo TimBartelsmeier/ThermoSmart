@@ -212,6 +212,42 @@ def previous_occurrence_time(
     return best
 
 
+def upcoming_occurrences(
+    events: list[ScheduleEvent],
+    now: datetime,
+    *,
+    enabled: bool,
+    disabled_until: datetime | None = None,
+    max_days: int | None = None,
+    max_events: int | None = None,
+) -> list[ScheduleOccurrence]:
+    """List events that will run, bounded by calendar days and/or event count."""
+    if now.tzinfo is None:
+        raise ValueError("now must be timezone-aware")
+    if disabled_until is not None and disabled_until.tzinfo is None:
+        raise ValueError("disabled_until must be timezone-aware")
+    for limit in (max_days, max_events):
+        if limit is not None and (isinstance(limit, bool) or not isinstance(limit, int) or limit < 1):
+            raise ValueError("schedule limits must be positive integers or None")
+    if not enabled or not events or (max_days is None and max_events is None):
+        return []
+    now_utc = now.astimezone(timezone.utc)
+    after = now
+    if disabled_until is not None and disabled_until.astimezone(timezone.utc) > now_utc:
+        # An event exactly at the suspension deadline runs.
+        after = (disabled_until.astimezone(timezone.utc) - timedelta(microseconds=1)).astimezone(now.tzinfo)
+    end = _local_instant(now.date() + timedelta(days=max_days), 0, now.tzinfo) if max_days else None
+    result: list[ScheduleOccurrence] = []
+    while max_events is None or len(result) < max_events:
+        occurrence = next_occurrence(events, after)
+        if occurrence is None or (end is not None and occurrence.at.astimezone(timezone.utc) >= end.astimezone(timezone.utc)):
+            break
+        seconds = (occurrence.at.astimezone(timezone.utc) - now_utc).total_seconds()
+        result.append(ScheduleOccurrence(occurrence.event, occurrence.at, max(1, int((seconds + 59) // 60))))
+        after = occurrence.at
+    return result
+
+
 def resolve_target(target: float | str, cfg: dict) -> float:
     """Temperature of an event target (preset names resolve via the zone config)."""
     if isinstance(target, float):

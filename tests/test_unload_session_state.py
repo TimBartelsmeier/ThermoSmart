@@ -14,6 +14,7 @@ import pytest
 
 from custom_components import thermosmart as ts_init
 from custom_components.thermosmart.const import DOMAIN
+from custom_components.thermosmart.card_registration import CardRegistration, REGISTRATION_KEY
 from custom_components.thermosmart.system import SYSTEM_KEY
 from tests.helpers import make_mock_hass
 
@@ -33,9 +34,7 @@ def _hass(*, loaded_entry_ids, extra=None):
     hass.data = {
         DOMAIN: {
             "learning_engine": le,
-            "card_registered": True,
-            "card_static_registered": True,
-            "card_frontend_registered": True,
+            REGISTRATION_KEY: CardRegistration(hass),
             **{eid: {"type": "zone"} for eid in loaded_entry_ids},
             **(extra or {}),
         }
@@ -58,10 +57,7 @@ class TestUnloadSessionState:
 
         await ts_init.async_unload_entry(hass, _zone_entry("zone_1"))
 
-        # static route and frontend URL stay registered for the HA session
-        assert hass.data[DOMAIN]["card_registered"] is True
-        assert hass.data[DOMAIN]["card_static_registered"] is True
-        assert hass.data[DOMAIN]["card_frontend_registered"] is True
+        assert isinstance(hass.data[DOMAIN][REGISTRATION_KEY], CardRegistration)
 
     async def test_learning_engine_is_kept_while_another_zone_is_loaded(self):
         hass, le = _hass(loaded_entry_ids=["zone_1", "zone_2"])

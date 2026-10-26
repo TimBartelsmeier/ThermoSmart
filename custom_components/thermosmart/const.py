@@ -2,11 +2,10 @@
 
 DOMAIN = "thermosmart"
 VERSION = "1.3.2"
-CARD_ASSET_VERSION = "1.1.0" # Keep CARD_VERSION in the card's .js synchronized with this value
+CARD_ASSET_VERSION = "2.0" # Keep CARD_VERSION in the card's .js synchronized with this value
 
 # Bundled Lovelace card (custom_components/thermosmart/www/thermosmart-card.js).
-# Registered once per HA session as a static path + frontend module URL —
-# see async_setup_entry(). No separate HACS plugin install needed anymore.
+# Registered once per HA session through card_registration.py.
 CARD_FILENAME = "thermosmart-card.js"
 CARD_URL_PATH = f"/{DOMAIN}/{CARD_FILENAME}"
 

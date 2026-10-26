@@ -18,7 +18,7 @@ ThermoSmart controls the thermostatic radiator valves (TRVs) of a **heating zone
 This is a fork that reworks control and scheduling. If you know the original project, read [What is different from the original](#what-is-different-from-the-original) first.
 
 Upstream fixes through v1.3.2 are integrated while retaining this fork's target,
-scheduling and suspension model. Bundled-card registration is retryable, and its
+scheduling and suspension model. Bundled-card registration waits for frontend readiness, and its
 browser cache version follows the card version independently of the integration
 version. Unloading the last zone releases the shared learning engine without
 removing the session-wide card registration.
@@ -88,6 +88,143 @@ The climate entity's HVAC mode `heat`/`off` maps to Active Control on/off. Start
 1. HACS → Integrations → **⋮** → **Custom repositories** → add this repository as category *Integration*, then download **ThermoSmart**.
 2. Restart Home Assistant, then **Settings → Devices & services → Add Integration → ThermoSmart**.
 3. Add the **ThermoSmart System** entry first (needed for vacation and summer mode), then one entry per heating zone.
+
+### Bundled dashboard cards
+
+Two configurable cards are available without a separate download or manual
+resource setup. Both select the zone by its climate entity and discover related
+entities through HA's entity registry (including renamed entities). By default,
+the climate entity's friendly name appears as the title; set `show_zone_name: false`
+to hide it.
+
+```yaml
+type: custom:thermosmart-zone-card
+entity: climate.thermosmart_living_room
+show_control: full
+show_graph: true
+show_zone_name: true
+hours_to_show: 24
+```
+
+**Zone card:** shows zone controls above the temperature graph. All sections
+are optional:
+
+| Property | Values | Default |
+|---|---|---|
+| `show_control` | `full`, `minimal`, `true` (same as `full`), `false` | `full` |
+| `show_graph` | `true`, `false` | `true` |
+| `show_zone_name` | `true`, `false` | `true` |
+| `hours_to_show` | Positive number | `24` |
+
+**Zone controls:** `show_control: minimal` shows the status, current and target
+temperatures, +/- buttons and equal-width preset buttons centered on each wrapped
+row. `show_control: full` adds HA's
+native climate dial with a live target preview while dragging. Its fill follows
+the desired target, with a separate current-temperature marker. HA handles dial
+interaction and keyboard controls. The dial
+and selected preset text/icons are orange while heating, blue while holding,
+and grey during overrides. Manual temperature
+changes clear that highlight. Summer, vacation and observation modes disable
+temperature/preset controls. An open window takes display priority over other
+statuses, without changing their control restrictions.
+
+```yaml
+type: custom:thermosmart-zone-schedule-card
+entity: climate.thermosmart_living_room
+show_control: true
+show_plan: true
+show_zone_name: true
+max-events: 5
+max-days: 3
+```
+
+**Schedule card:** shows schedule controls above the upcoming-event plan.
+
+| Property | Values | Default |
+|---|---|---|
+| `show_control` | `true`, `false`, `collapsed`, `expanded` | `true` |
+| `show_plan` | `true`, `false` | `true` |
+| `show_zone_name` | `true`, `false` | `true` |
+| `max-events` | Positive integer or `null` | Unset (picker starts with `5`) |
+| `max-days` | Positive integer or `null` | Unset |
+
+Hidden sections do not make requests or run refresh timers. If both sections of
+either card are hidden, the card displays **No sections enabled.**
+
+For the Schedule card, `show_control: true` keeps controls always visible, while
+`false` hides them entirely. `collapsed` and `expanded` show a native **Schedule
+controls** expansion panel with the specified initial state. Toggling the panel
+preserves entered values and survives live HA updates; a fresh card load or
+configuration change restores the configured initial state. Collapsed controls
+remain loaded, unlike hidden controls. The Zone card's `show_control` options
+remain unchanged.
+
+**Schedule plan:** lists events that will actually run, excluding skipped events
+during a schedule suspension. `max-days` includes today; `max-events` includes the
+next event. Both limits apply when supplied. Either can be omitted or `null`; if
+both are omitted/null, no events are shown and the card explains that a limit is
+required. The card picker starts with `max-events: 5`, but YAML without either
+limit does not silently assume one. Scheduling disabled entirely hides all events.
+The plan shows a status message only when scheduling is disabled or suspended.
+Only the next event shows pre-heating information. If it is beyond a suspension
+and no plan has been calculated for it yet, the card says so rather than inventing
+an estimate. Its height grows with the event list.
+Day headings use **Today** and **Tomorrow** in HA's timezone; later days show dates.
+
+**Schedule controls:** enables scheduling and provides a **Suspend until:**
+button showing the current deadline (or **Not set**). It opens a custom dialog
+with a combined browser-native date/time input and **Save/Cancel**. The dialog
+uses the HA server's timezone, displays it explicitly, and submits the complete
+deadline only when saved. Initially unset dates are supported; failed saves retain
+the draft and show the error. Picker appearance depends on the browser/device.
+The registered datetime entity is used, including after renaming.
+Shortcuts skip the next
+runnable event, pause until the next local midnight, or pause for 12/24 elapsed
+hours (including across DST transitions). They never enable a disabled schedule
+and reject attempts to shorten a longer suspension; use a date editor
+to intentionally shorten it. **Remove suspension (set to past)** on the card and in the dialog
+saves a timestamp one minute in the past, ending the suspension without clearing
+the datetime entity or changing the scheduling switch. Schedule actions use
+HA's filled neutral buttons.
+
+Collapsible controls are inset and use the theme's `secondary-background-color`.
+The next event uses an 18% `primary-color` tint over that background, with a
+primary-colored **Next event** label. Both follow theme changes without fixed colors.
+
+**Temperature history:** uses the original ThermoSmart compact graph style:
+blue actual temperature, orange desired target, and red outdoor temperature when
+available, with temperature grid lines, time labels and a legend.
+`hours_to_show` defaults to 24. It reads recorded attributes of the zone's climate
+entity (not the boosted/TRV setpoint); Recorder/history must be enabled and the
+climate entity must not be excluded from recording. The graph refreshes every five
+minutes. Click the graph section, or focus it and press Enter/Space, to open HA's
+History page filtered to that climate entity. The numeric actual/desired sensors
+remain available for users' own HA graphs but are not required by this card.
+
+The former `custom:thermosmart-card` and the four standalone control/plan/history
+card types have been removed. Replace existing dashboard entries with the two
+new card types; the single bundled resource path remains unchanged. To reproduce
+an individual former card, hide the other section (and optionally the title).
+
+ThermoSmart serves its bundled JavaScript and waits for Home Assistant's frontend
+to finish initializing. With storage-managed resources, it automatically creates
+or updates one **JavaScript module** under **Settings → Dashboards → Resources**.
+With YAML-managed resources, it uses HA's supported extra-frontend-module helper
+instead, without editing your YAML; this automatic module is not listed in Resources.
+Writing a dashboard in YAML does not by itself mean resources are YAML-managed.
+
+The URL is `/thermosmart/thermosmart-card.js?v=<card asset version>`. Only entries
+for that exact local path are managed; old versions are updated and duplicate
+entries for that path are removed. Other resources are untouched. If you explicitly
+list this bundle in YAML-managed resources, use a single module entry with the
+current versioned URL, or remove it to let ThermoSmart load the card automatically.
+Restart HA after changing such an explicit YAML entry.
+
+Restart HA after installing/updating the integration, then reload an already-open
+dashboard in your browser. Zone reloads do not remove or duplicate resources.
+Registration failures appear in **Settings → System → Repairs** and the HA logs;
+heating remains operational. After correcting the problem, reload a ThermoSmart
+entry or restart HA to attempt registration again. There is no periodic retry loop.
 
 ### System entry
 
@@ -258,6 +395,7 @@ Outdoor data is used by **learning** and by **control** (the outdoor part of the
 | `sensor.*_learning_progress` | 0–100 % |
 | `sensor.*_next_scheduled_event` | Time of the next event (attributes: target, minutes until) |
 | `sensor.*_pre_heat_start` | Planned pre-heat start (attributes: state, reason, duration) |
+| Actual temperature / Desired target temperature sensors | Numeric room/desired-target histories; enabled by default |
 
 Diagnostic sensors (disabled by default): Pre-heat minutes · TPI boosted TRV setpoint · TPI duty cycle · Temperature slope · Heat loss · Heating power · Outcome score · Solar heat gain · TRV observations · Window cooling rate · Temperature EMA 1h.
 
@@ -435,7 +573,7 @@ For debug logs use Home Assistant's built-in logger configuration for `custom_co
 **Deferred (wanted, not implemented):**
 
 * Translations other than English: new strings exist in English only; other languages fall back to English and are not checked by the completeness test.
-* The bundled Lovelace card has not been updated; it still shows an *Auto* button that no longer has an effect.
+* A separate debugging dashboard card and a backend operation to remove the schedule suspension date remain deferred.
 * Early cutoff / coasting (stop heating slightly early and let after-heat finish).
 * Weather-based correction (see above).
 

@@ -26,6 +26,8 @@ async def async_setup_entry(
 ) -> None:
     coordinator: ThermoSmartCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     async_add_entities([
+        ThermoSmartActualTemperatureSensor(coordinator, entry),
+        ThermoSmartDesiredTemperatureSensor(coordinator, entry),
         ThermoSmartTRVSetpointSensor(coordinator, entry),
         ThermoSmartTpiSensor(coordinator, entry),
         ThermoSmartPreheatSensor(coordinator, entry),
@@ -73,6 +75,47 @@ class _Base(CoordinatorEntity, SensorEntity):
     @property
     def available(self) -> bool:
         return self.coordinator.last_update_success
+
+
+class ThermoSmartActualTemperatureSensor(_Base):
+    """Numeric room temperature for native HA history graphs."""
+    _attr_entity_registry_enabled_default = True
+    _attr_translation_key = "actual_temperature"
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry, "actual_temperature")
+        self._attr_unique_id = f"{entry.entry_id}_actual_temperature"
+
+    @property
+    def native_value(self):
+        live = self.coordinator._live_temp
+        return live if live is not None else self._zone.get("current_temp")
+
+
+class ThermoSmartDesiredTemperatureSensor(_Base):
+    """Desired target, not the boosted or suspension-held TRV setpoint."""
+    _attr_entity_registry_enabled_default = True
+    _attr_translation_key = "desired_temperature"
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry, "desired_temperature")
+        self._attr_unique_id = f"{entry.entry_id}_desired_temperature"
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(self.coordinator.target.add_listener(
+            lambda new, previous: self.async_write_ha_state()
+        ))
+
+    @property
+    def native_value(self):
+        return self.coordinator.target.value
 
 
 class ThermoSmartTRVSetpointSensor(_Base):

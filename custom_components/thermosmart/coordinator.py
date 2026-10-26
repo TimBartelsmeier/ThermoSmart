@@ -370,7 +370,9 @@ class ThermoSmartCoordinator(
 
     def _scheduling_active_at(self, now: datetime) -> bool:
         until = self._scheduling_disabled_until
-        return self._scheduling_enabled and (until is None or now >= until)
+        return self._scheduling_enabled and (
+            until is None or dt_util.as_utc(now) >= dt_util.as_utc(until)
+        )
 
     @property
     def scheduling_active(self) -> bool:
