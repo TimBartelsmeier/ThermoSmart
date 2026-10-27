@@ -1,12 +1,91 @@
 /* Bundled ThermoSmart dashboard cards. No external runtime dependencies. */
-const CARD_VERSION = '2.0';
+const CARD_VERSION = '2.0.1';
 const PRESETS = [
-  ["comfort", "Comfort", "mdi:white-balance-sunny"],
-  ["eco", "Eco", "mdi:leaf"],
-  ["sleep", "Night", "mdi:weather-night"],
-  ["away", "Away", "mdi:home-export-outline"],
-  ["vacation", "Vacation", "mdi:airplane"],
+  ["comfort", "mdi:white-balance-sunny"],
+  ["eco", "mdi:leaf"],
+  ["sleep", "mdi:weather-night"],
+  ["away", "mdi:home-export-outline"],
+  ["vacation", "mdi:airplane"],
 ];
+const TRANSLATION_PREFIX = "component.thermosmart.card.";
+const translationRequests = new WeakMap();
+
+function cardLanguage(hass) {
+  return hass?.language || hass?.locale?.language || "en";
+}
+
+function loadTranslations(hass, language) {
+  const connection = hass.connection || hass;
+  if (!translationRequests.has(connection)) translationRequests.set(connection, new Map());
+  const cache = translationRequests.get(connection);
+  if (!cache.has(language)) {
+    const fetch = async lang => {
+      const { resources } = await hass.callWS({
+        type: "frontend/get_translations", language: lang, category: "card", integration: ["thermosmart"],
+      });
+      if (!resources?.[`${TRANSLATION_PREFIX}loading`]) {
+        throw new Error("Home Assistant returned no ThermoSmart card translations");
+      }
+      return resources;
+    };
+    cache.set(language, fetch(language).catch(error => {
+      if (language === "en") throw error;
+      console.error(`ThermoSmart translations for ${language} failed; loading English`, error);
+      return loadTranslations(hass, "en");
+    }));
+  }
+  return cache.get(language);
+}
+
+class ThermoSmartLocalized extends HTMLElement {
+  _setHass(hass) {
+    this._hass = hass;
+    const language = cardLanguage(hass);
+    if (language === this._translationLanguage) return;
+    this._translationLanguage = language;
+    loadTranslations(hass, language).then(resources => {
+      if (this._translationLanguage !== language) return;
+      this._translations = resources;
+      this._translationError = "";
+      for (const [type, name, description] of [
+        ["thermosmart-zone-card", "zone_card", "zone_description"],
+        ["thermosmart-zone-schedule-card", "schedule_card", "schedule_description"],
+      ]) {
+        const card = window.customCards?.find(item => item.type === type);
+        if (card) Object.assign(card, { name: this._t(name), description: this._t(description) });
+      }
+      this._translationsChanged();
+    }, error => {
+      if (this._translationLanguage !== language) return;
+      this._translationError = `ThermoSmart translations could not load: ${errorText(error)}`;
+      console.error(this._translationError, error);
+      this._translationsChanged();
+    });
+  }
+
+  _t(key, values = {}) {
+    if (!this._translations) return "";
+    const text = this._translations[`${TRANSLATION_PREFIX}${key}`];
+    if (typeof text !== "string") {
+      console.error(`Missing ThermoSmart card translation: ${key}`);
+      return `Missing translation: ${key}`;
+    }
+    return text.replace(/\{(\w+)\}/g, (match, name) => values[name] ?? match);
+  }
+
+  _text(tag, key, className, values = {}) {
+    const node = element(tag, this._t(key, values), className);
+    node.dataset.translation = key;
+    node.translationValues = values;
+    return node;
+  }
+
+  _translateNodes(root) {
+    for (const node of root.querySelectorAll("[data-translation]")) {
+      node.textContent = this._t(node.dataset.translation, node.translationValues);
+    }
+  }
+}
 const CSS = `
   :host { display:block; }
   ha-card { --ha-card-header-font-size:var(--ha-font-size-xl,20px); }
@@ -112,29 +191,31 @@ function errorText(error) {
 }
 function statusFor(state) {
   const a = state.attributes;
-  if (a.window_open) return ["Heating suspended: window open", "mdi:window-open-variant"];
-  if (a.summer_mode) return ["Summer mode", "mdi:white-balance-sunny"];
-  if (a.vacation_mode) return ["Vacation mode", "mdi:airplane"];
-  if (a.observation_mode) return ["Observation mode", "mdi:eye"];
-  if (a.preheat_active) return ["Pre-heating", "mdi:radiator"];
-  if (a.hvac_action === "heating") return ["Heating", "mdi:fire"];
-  return ["Holding temperature", "mdi:thermometer-check"];
+  if (a.window_open) return ["window", "mdi:window-open-variant"];
+  if (a.summer_mode) return ["summer", "mdi:white-balance-sunny"];
+  if (a.vacation_mode) return ["vacation", "mdi:airplane"];
+  if (a.observation_mode) return ["observation", "mdi:eye"];
+  if (a.preheat_active) return ["preheat", "mdi:radiator"];
+  if (a.hvac_action === "heating") return ["heating", "mdi:fire"];
+  return ["holding", "mdi:thermometer-check"];
 }
 function locked(state) {
   return !available(state) || state.attributes.summer_mode
     || state.attributes.vacation_mode || state.attributes.observation_mode;
 }
-function waitForElements(names) {
+function waitForElements(names, localize) {
   let timer;
   return Promise.race([
     Promise.all(names.map(name => customElements.whenDefined(name))),
     new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`HA UI components did not load: ${names.join(", ")}`)), 15000);
+      timer = setTimeout(() => reject(new Error(localize("components_unavailable", {
+        components: names.join(", "),
+      }))), 15000);
     }),
   ]).finally(() => clearTimeout(timer));
 }
 
-class ThermoSmartBase extends HTMLElement {
+class ThermoSmartBase extends ThermoSmartLocalized {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -157,7 +238,12 @@ class ThermoSmartBase extends HTMLElement {
   }
 
   set hass(hass) {
-    this._hass = hass;
+    this._setHass(hass);
+    if (this._config) this._update();
+  }
+
+  _translationsChanged() {
+    this._signature = null;
     if (this._config) this._update();
   }
 
@@ -182,13 +268,13 @@ class ThermoSmartBase extends HTMLElement {
   _temperature(value) {
     const n = number(value);
     if (n === null) return "—";
-    const language = this._hass?.locale?.language || "en";
+    const language = cardLanguage(this._hass);
     const unit = this._hass?.config?.unit_system?.temperature || "°C";
     return `${new Intl.NumberFormat(language, { maximumFractionDigits: 1 }).format(n)} ${unit}`;
   }
 
   _date(value, options) {
-    return new Intl.DateTimeFormat(this._hass?.locale?.language || "en", {
+    return new Intl.DateTimeFormat(cardLanguage(this._hass), {
       timeZone: this._data?.time_zone || this._hass.config.time_zone, ...options,
     }).format(new Date(value));
   }
@@ -235,7 +321,7 @@ class ThermoSmartBase extends HTMLElement {
   }
 
   _feedback(body) {
-    const feedback = element("div", this._error || this._actionError, "feedback");
+    const feedback = element("div", this._translationError || this._error || this._actionError, "feedback");
     feedback.setAttribute("role", "status");
     feedback.setAttribute("aria-live", "polite");
     body.append(feedback);
@@ -243,11 +329,11 @@ class ThermoSmartBase extends HTMLElement {
 
   _render() {
     const body = this._frame();
-    body.append(element("div", this._error || "Loading…"));
+    body.append(element("div", this._translationError || this._error || this._t("loading")));
   }
 
   async _helpers() {
-    if (!window.loadCardHelpers) throw new Error("Home Assistant card helpers are unavailable");
+    if (!window.loadCardHelpers) throw new Error(this._t("helpers_unavailable"));
     return window.loadCardHelpers();
   }
 
@@ -263,7 +349,7 @@ class ThermoSmartBase extends HTMLElement {
       required.push("ha-control-circular-slider");
     }
     if (this.constructor.kind === "schedule-controls") required.push("ha-switch", "ha-date-input", "ha-time-input");
-    await waitForElements(required);
+    await waitForElements(required, this._t.bind(this));
     this._componentsReady = true;
   }
 
@@ -280,7 +366,7 @@ class ThermoSmartBase extends HTMLElement {
     const signature = JSON.stringify([
       state,
       keys.map(key => this._hass.states[this._data?.entities[key]]),
-      this._hass.locale, this._hass.config.unit_system,
+      this._hass.locale, cardLanguage(this._hass), this._hass.config.unit_system,
     ]);
     if (signature === this._signature) return;
     this._signature = signature;
@@ -291,6 +377,7 @@ class ThermoSmartBase extends HTMLElement {
   async _refresh() {
     const generation = ++this._generation;
     try {
+      await loadTranslations(this._hass, cardLanguage(this._hass));
       await this._loadComponents();
       if (this.constructor.kind !== "zone-control") {
         const data = await this._hass.callWS({
@@ -363,7 +450,7 @@ class ThermoSmartZoneControl extends ThermoSmartBase {
     const ring = element("ha-control-circular-slider");
     Object.assign(ring, {
       value, current: current ?? undefined, min, max, step, readonly: disabled,
-      mode: "start", label: "Target", formatValue: temperature => this._temperature(temperature),
+      mode: "start", label: this._t("target"), formatValue: temperature => this._temperature(temperature),
     });
     ring.addEventListener("value-changing", ev => {
       if (disabled) return;
@@ -384,13 +471,13 @@ class ThermoSmartZoneControl extends ThermoSmartBase {
     const body = this._frame();
     const state = this._state;
     if (!available(state)) {
-      body.append(element("div", state ? "Zone unavailable" : "Zone entity not found", "status"));
+      body.append(element("div", this._t(state ? "zone_unavailable" : "zone_not_found"), "status"));
       this._feedback(body);
       return;
     }
     const a = state.attributes;
     if (!("observation_mode" in a)) {
-      body.append(element("div", "Select a ThermoSmart zone climate entity", "status"));
+      body.append(element("div", this._t("select_zone"), "status"));
       return;
     }
     const disabled = locked(state);
@@ -399,7 +486,7 @@ class ThermoSmartZoneControl extends ThermoSmartBase {
       : a.hvac_action === "heating" ? "var(--orange-color,#ff9800)" : "var(--blue-color,#2196f3)");
     const [text, symbol] = statusFor(state);
     const status = element("div", undefined, "status");
-    status.append(icon(symbol), element("span", text));
+    status.append(icon(symbol), element("span", this._t(`status.${text}`)));
     const target = element("div", undefined, "target");
     const step = number(a.target_temp_step) ?? 0.5;
     const min = number(a.min_temp);
@@ -409,7 +496,7 @@ class ThermoSmartZoneControl extends ThermoSmartBase {
       if (delta > 0) target.append(element("span", this._temperature(value), "target-value"));
       const button = element("ha-icon-button");
       button.append(icon(delta < 0 ? "mdi:minus" : "mdi:plus"));
-      button.label = delta < 0 ? "Decrease target" : "Increase target";
+      button.label = this._t(delta < 0 ? "decrease_target" : "increase_target");
       const next = value === null ? null : Math.round((value + delta) * 1000) / 1000;
       button.disabled = disabled || this._busy || next === null || min === null || max === null || next < min || next > max;
       button.addEventListener("click", () => this._action(() => this._setTemperature(next)));
@@ -423,25 +510,25 @@ class ThermoSmartZoneControl extends ThermoSmartBase {
         disabled: disabled || this._busy || value === null || min === null || max === null,
       });
       const center = element("div", undefined, "dial-center");
-      center.append(status, element("div", "Current:", "label"),
+      center.append(status, element("div", `${this._t("current")}:`, "label"),
         element("div", this._temperature(a.current_temperature), "actual"));
       dial.append(slider, center);
-      body.append(dial, element("div", "Target:", "label center"), target);
+      body.append(dial, element("div", `${this._t("target")}:`, "label center"), target);
     } else {
       const temperatures = element("div", undefined, "temperatures");
       const actual = element("div");
-      actual.append(element("div", "Current", "label"),
+      actual.append(element("div", this._t("current"), "label"),
         element("div", this._temperature(a.current_temperature), "actual"));
       const desired = element("div");
-      desired.append(element("div", "Target", "label"), target);
+      desired.append(element("div", this._t("target"), "label"), target);
       temperatures.append(actual, desired);
       body.append(status, temperatures);
     }
     const presets = element("div", undefined, "presets");
-    for (const [preset, label, symbolName] of PRESETS) {
+    for (const [preset, symbolName] of PRESETS) {
       if (!a.preset_modes?.includes(preset)) continue;
-      presets.append(this._button(label, () => {
-        if (locked(this._state)) throw new Error("Temperature controls are disabled in this mode");
+      presets.append(this._button(this._t(`preset.${preset}`), () => {
+        if (locked(this._state)) throw new Error(this._t("controls_disabled"));
         return this._hass.callService("climate", "set_preset_mode", {
           entity_id: this._config.entity, preset_mode: preset,
         });
@@ -452,7 +539,7 @@ class ThermoSmartZoneControl extends ThermoSmartBase {
   }
 
   _setTemperature(value) {
-    if (locked(this._state)) throw new Error("Temperature controls are disabled in this mode");
+    if (locked(this._state)) throw new Error(this._t("controls_disabled"));
     return this._hass.callService("climate", "set_temperature", {
       entity_id: this._config.entity, temperature: value,
     });
@@ -470,15 +557,15 @@ class ThermoSmartSchedulePlan extends ThermoSmartBase {
 
   _preheatText() {
     const plan = this._data.preheat;
-    if (plan.state === "active") return "Pre-heating active";
+    if (plan.state === "active") return this._t("preheat.active");
     if (plan.state === "planned" && plan.start) {
-      return `Pre-heating starts at ${this._date(plan.start, { dateStyle: "medium", timeStyle: "short" })}`;
+      return this._t("preheat.planned", { time: this._date(plan.start, { dateStyle: "medium", timeStyle: "short" }) });
     }
-    if (plan.state === "suspended") return "Pre-heating suspended";
-    if (plan.reason === "cancelled_by_manual_change") return "Pre-heating cancelled";
-    if (plan.state === "not_calculated") return "Pre-heating not calculated";
-    if (plan.reason === "no_room_temperature") return "Pre-heating unavailable";
-    return "No pre-heating";
+    if (plan.state === "suspended") return this._t("preheat.suspended");
+    if (plan.reason === "cancelled_by_manual_change") return this._t("preheat.cancelled");
+    if (plan.state === "not_calculated") return this._t("preheat.not_calculated");
+    if (plan.reason === "no_room_temperature") return this._t("preheat.unavailable");
+    return this._t("preheat.none");
   }
 
   _dayLabel(value, now = Date.now()) {
@@ -490,8 +577,8 @@ class ThermoSmartSchedulePlan extends ThermoSmartBase {
       return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day));
     };
     const difference = calendarDay(value) - calendarDay(now);
-    if (difference === 0) return "Today";
-    if (difference === 86400000) return "Tomorrow";
+    if (difference === 0) return this._t("schedule.today");
+    if (difference === 86400000) return this._t("schedule.tomorrow");
     return this._date(value, { weekday: "long", month: "short", day: "numeric" });
   }
 
@@ -501,25 +588,25 @@ class ThermoSmartSchedulePlan extends ThermoSmartBase {
     const data = this._data;
     const paused = Date.parse(data.disabled_until) > Date.now();
     if (!data.scheduling_enabled || paused) {
-      const text = !data.scheduling_enabled ? "Scheduling disabled"
-        : `Scheduling disabled until ${this._date(data.disabled_until, { dateStyle: "medium", timeStyle: "short" })}`;
+      const text = !data.scheduling_enabled ? this._t("schedule.disabled")
+        : this._t("schedule.disabled_until", { time: this._date(data.disabled_until, { dateStyle: "medium", timeStyle: "short" }) });
       const summary = element("div", undefined, "summary");
       summary.append(icon(data.scheduling_enabled ? "mdi:calendar-clock" : "mdi:calendar-remove"), element("span", text));
       body.append(summary);
     }
     const attrs = this._state?.attributes || {};
-    const mode = attrs.summer_mode ? "Summer" : attrs.vacation_mode ? "Vacation" : null;
+    const mode = attrs.summer_mode ? "summer" : attrs.vacation_mode ? "vacation" : null;
     if (mode) {
       const note = element("div", undefined, "note");
-      note.append(icon(mode === "Summer" ? "mdi:white-balance-sunny" : "mdi:airplane"),
-        element("span", `${mode} mode is active. ${data.scheduling_enabled ? "Scheduled events will run" : "When scheduling is enabled, scheduled events will run"}, but the set target temperature is only applied when ${mode.toLowerCase()} mode ends.`));
+      note.append(icon(mode === "summer" ? "mdi:white-balance-sunny" : "mdi:airplane"),
+        element("span", this._t(`schedule.${mode}_${data.scheduling_enabled ? "enabled" : "disabled"}`)));
       body.append(note);
     }
     if (data.schedule_error) body.append(element("div", data.schedule_error, "feedback"));
     if (this._config["max-days"] == null && this._config["max-events"] == null) {
-      body.append(element("div", "Set max-days or max-events to show scheduled events.", "note"));
+      body.append(element("div", this._t("schedule.set_limits"), "note"));
     } else if (data.scheduling_enabled && !data.events.length && !data.schedule_error) {
-      body.append(element("div", "No scheduled events within these limits.", "note"));
+      body.append(element("div", this._t("schedule.no_events"), "note"));
     }
     let previousDay;
     data.events.forEach((event, index) => {
@@ -534,18 +621,18 @@ class ThermoSmartSchedulePlan extends ThermoSmartBase {
       const target = element("div", undefined, "event-target");
       const preset = PRESETS.find(([key]) => key === (event.preset === "night" ? "sleep" : event.preset));
       if (preset) {
-        target.append(element("span", preset[1]), document.createTextNode(" "),
+        target.append(element("span", this._t(`preset.${preset[0]}`)), document.createTextNode(" "),
           element("span", `(${this._scheduleTemperature(event.temperature)})`, "event-detail"));
       } else target.textContent = this._scheduleTemperature(event.temperature);
       columns.append(target);
       row.append(columns);
       if (index === 0) {
-        row.append(element("div", "Next event", "next-label"),
+        row.append(element("div", this._t("schedule.next_event"), "next-label"),
           element("div", this._preheatText(), "preheat"));
       }
       body.append(row);
     });
-    if (this._error) this._feedback(body);
+    if (this._error || this._translationError) this._feedback(body);
   }
 
   _scheduleTemperature(celsius) {
@@ -584,18 +671,18 @@ class ThermoSmartScheduleControls extends ThermoSmartBase {
     const toggle = element("ha-switch");
     toggle.checked = enabledState?.state === "on";
     toggle.disabled = !available(enabledState) || this._busy;
-    toggle.setAttribute("aria-label", "Enable schedule");
+    toggle.setAttribute("aria-label", this._t("schedule.enable"));
     toggle.addEventListener("change", () => this._action(() => this._hass.callService(
       "switch", toggle.checked ? "turn_on" : "turn_off", { entity_id: entities.scheduling_enabled }
     )));
-    row.append(element("span", "Enable schedule"), toggle);
+    row.append(element("span", this._t("schedule.enable")), toggle);
     body.append(row);
     // An unset DateTimeEntity is unknown, not an unavailable input.
     const disabled = !untilState || untilState.state === "unavailable" || this._busy;
     const deadline = this._data.disabled_until
-      ? this._date(this._data.disabled_until, { dateStyle: "medium", timeStyle: "short" }) : "Not set";
+      ? this._date(this._data.disabled_until, { dateStyle: "medium", timeStyle: "short" }) : this._t("schedule.not_set");
     const actions = element("div", undefined, "actions");
-    const custom = this._button(`Suspend until: ${deadline}`, () => {
+    const custom = this._button(this._t("schedule.suspend_until", { time: deadline }), () => {
       this.dispatchEvent(new CustomEvent("show-dialog", {
         detail: {
           dialogTag: "thermosmart-suspension-dialog",
@@ -607,7 +694,7 @@ class ThermoSmartScheduleControls extends ThermoSmartBase {
         }, bubbles: true, composed: true,
       }));
     }, { disabled });
-    const remove = this._button("Remove suspension (set to past)", () => this._hass.callService(
+    const remove = this._button(this._t("schedule.remove_suspension"), () => this._hass.callService(
       "datetime", "set_value", {
         entity_id: entities.scheduling_disabled_until, datetime: pastSuspensionDeadline(),
       }
@@ -615,27 +702,30 @@ class ThermoSmartScheduleControls extends ThermoSmartBase {
     actions.append(custom, remove);
     body.append(actions);
     const shortcuts = element("div", undefined, "shortcuts");
-    for (const [action, label] of [
-      ["skip_next", "Skip next event"], ["midnight", "Pause until midnight"],
-      ["12h", "Pause for 12h"], ["24h", "Pause for 24h"],
-    ]) {
-      shortcuts.append(this._button(label, () => this._hass.callWS({
+    for (const action of ["skip_next", "midnight", "12h", "24h"]) {
+      shortcuts.append(this._button(this._t(`schedule.${action}`), () => this._hass.callWS({
         type: "thermosmart/suspend_schedule", entity_id: this._config.entity, action,
       }), { disabled: disabled || !toggle.checked }));
     }
     body.append(shortcuts);
-    if (!enabledState || !untilState) this._error = "Schedule entities are missing or disabled";
+    if (!enabledState || !untilState) this._error = this._t("schedule.entities_missing");
     this._feedback(body);
   }
 }
 
-class ThermoSmartSuspensionDialog extends HTMLElement {
+class ThermoSmartSuspensionDialog extends ThermoSmartLocalized {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
   }
 
-  set hass(hass) { this._hass = hass; }
+  set hass(hass) { this._setHass(hass); }
+
+  _translationsChanged() {
+    this._translateNodes(this.shadowRoot);
+    const feedback = this.shadowRoot.querySelector(".feedback");
+    if (feedback && this._translationError) feedback.textContent = this._translationError;
+  }
 
   showDialog(params) {
     this._params = params;
@@ -674,24 +764,25 @@ class ThermoSmartSuspensionDialog extends HTMLElement {
     `);
     const dialog = element("dialog");
     this._dialog = dialog;
-    const heading = element("h2", "Suspend until");
+    const heading = this._text("h2", "dialog.title");
     heading.id = "heading";
     dialog.setAttribute("aria-labelledby", "heading");
-    const label = element("label", "Date and time");
+    const label = element("label");
+    label.append(this._text("span", "dialog.date_time"));
     const input = element("input");
     input.type = "datetime-local";
     input.step = "1";
     input.required = true;
     input.value = this._params.value;
     label.append(input);
-    const feedback = element("div", "", "feedback");
+    const feedback = element("div", this._translationError || "", "feedback");
     feedback.setAttribute("role", "alert");
     const actions = element("div", undefined, "actions");
-    const cancel = element("ha-button", "Cancel");
+    const cancel = this._text("ha-button", "dialog.cancel");
     cancel.setAttribute("appearance", "plain");
     cancel.addEventListener("click", () => this.closeDialog());
-    const save = element("ha-button", "Save");
-    const remove = element("ha-button", "Remove suspension (set to past)", "remove");
+    const save = this._text("ha-button", "dialog.save");
+    const remove = this._text("ha-button", "schedule.remove_suspension", "remove");
     remove.setAttribute("variant", "neutral");
     remove.setAttribute("appearance", "filled");
     save.disabled = !input.value;
@@ -722,7 +813,9 @@ class ThermoSmartSuspensionDialog extends HTMLElement {
     remove.addEventListener("click", () => submit(pastSuspensionDeadline()));
     dialog.addEventListener("cancel", ev => { ev.preventDefault(); this.closeDialog(); });
     actions.append(cancel, save);
-    dialog.append(heading, label, element("div", `Time zone: ${this._params.timeZone}`, "secondary"), feedback, actions, remove);
+    dialog.append(heading, label, this._text("div", "dialog.time_zone", "secondary", {
+      zone: this._params.timeZone,
+    }), feedback, actions, remove);
     this.shadowRoot.replaceChildren(style, dialog);
   }
 }
@@ -760,13 +853,14 @@ class ThermoSmartTemperatureHistory extends ThermoSmartBase {
     const end = Date.now();
     const start = end - (this._config.hours_to_show ?? 24) * 3600000;
     try {
+      await loadTranslations(this._hass, cardLanguage(this._hass));
       await this._loadComponents();
       const response = await this._hass.callApi("GET",
         `history/period/${new Date(start).toISOString()}?filter_entity_id=${encodeURIComponent(this._config.entity)}&end_time=${encodeURIComponent(new Date(end).toISOString())}&significant_changes_only=false`
       );
       if (generation !== this._generation) return;
       if (!Array.isArray(response) || response.some(series => !Array.isArray(series))) {
-        throw new Error("Home Assistant returned invalid temperature history");
+        throw new Error(this._t("history.invalid"));
       }
       this._history = response.flat().map(state => {
         const attrs = state.attributes || state.a || {};
@@ -806,7 +900,7 @@ class ThermoSmartTemperatureHistory extends ThermoSmartBase {
     card.classList.add("history-card");
     card.tabIndex = 0;
     card.setAttribute("role", "link");
-    card.setAttribute("aria-label", "Show full temperature history");
+    card.setAttribute("aria-label", this._t("history.show"));
     card.addEventListener("click", () => openHistory(this._config.entity));
     card.addEventListener("keydown", ev => {
       if (["Enter", " "].includes(ev.key)) {
@@ -815,19 +909,19 @@ class ThermoSmartTemperatureHistory extends ThermoSmartBase {
       }
     });
     if (!this._history) {
-      body.append(element("div", this._error || "Loading temperature history…", "message"));
+      body.append(element("div", this._translationError || this._error || this._t("history.loading"), "message"));
       return;
     }
     const points = this._history;
     const fahrenheit = this._hass?.config.unit_system.temperature === "°F";
     const series = [
-      { key: "actual", label: "Actual Temperature", color: "#2196F3" },
-      { key: "target", label: "Target Temperature", color: "#ff9800" },
-      { key: "outdoor", label: "Outdoor Temperature", color: "#ef5350" },
+      { key: "actual", label: this._t("history.actual"), color: "#2196F3" },
+      { key: "target", label: this._t("history.target"), color: "#ff9800" },
+      { key: "outdoor", label: this._t("history.outdoor"), color: "#ef5350" },
     ].filter(item => points.some(point => point[item.key] !== null));
     if (!series.length) {
-      body.append(element("div", "No temperature history in this period.", "message"));
-      if (this._error) this._feedback(body);
+      body.append(element("div", this._t("history.empty"), "message"));
+      if (this._error || this._translationError) this._feedback(body);
       return;
     }
     const temperature = (point, key) => {
@@ -882,14 +976,30 @@ class ThermoSmartTemperatureHistory extends ThermoSmartBase {
       legend.append(entry);
     }
     body.append(legend);
-    if (this._error) this._feedback(body);
+    if (this._error || this._translationError) this._feedback(body);
   }
 }
 
-class ThermoSmartCardEditor extends HTMLElement {
+class ThermoSmartCardEditor extends ThermoSmartLocalized {
   set hass(hass) {
-    this._hass = hass;
+    this._setHass(hass);
     if (this._form) this._form.hass = hass;
+  }
+
+  _translationsChanged() {
+    if (!this._form) return;
+    const labels = {
+      true: "always_visible", false: "hidden", full: "full", minimal: "minimal",
+      collapsed: "collapsed", expanded: "expanded",
+    };
+    this._form.schema = this._form.schema.map(schema => {
+      if (schema.name !== "show_control") return schema;
+      return { ...schema, selector: { select: { options: schema.selector.select.options.map(option => ({
+        ...option, label: this._t(`editor.${labels[option.value]}`),
+      })) } } };
+    });
+    this._form.computeLabel = schema => this._t(`editor.${schema.name}`);
+    this._translationFeedback.textContent = this._translationError || "";
   }
 
   setConfig(config) {
@@ -914,8 +1024,7 @@ class ThermoSmartCardEditor extends HTMLElement {
     if (zone) {
       this._form.schema.push(
         { name: "show_control", selector: { select: { options: [
-          { value: "full", label: "Full" }, { value: "minimal", label: "Minimal" },
-          { value: "false", label: "Hidden" },
+          { value: "full" }, { value: "minimal" }, { value: "false" },
         ] } } },
         { name: "show_graph", selector: { boolean: {} } },
         { name: "hours_to_show", selector: { number: { min: 1, mode: "box" } } },
@@ -923,9 +1032,8 @@ class ThermoSmartCardEditor extends HTMLElement {
     } else {
       this._form.schema.push(
         { name: "show_control", selector: { select: { options: [
-          { value: "true", label: "Always visible" }, { value: "false", label: "Hidden" },
-          { value: "collapsed", label: "Collapsible (initially collapsed)" },
-          { value: "expanded", label: "Collapsible (initially expanded)" },
+          { value: "true" }, { value: "false" },
+          { value: "collapsed" }, { value: "expanded" },
         ] } } },
         { name: "show_plan", selector: { boolean: {} } },
       );
@@ -933,12 +1041,9 @@ class ThermoSmartCardEditor extends HTMLElement {
         this._form.schema.push({ name, selector: { number: { min: 1, mode: "box" } } });
       }
     }
-    this._form.computeLabel = schema => ({
-      entity: "Zone", show_zone_name: "Show zone name", show_control: "Show controls",
-      show_graph: "Show temperature graph", show_plan: "Show schedule plan",
-      "max-days": "Maximum days (including today)",
-      "max-events": "Maximum events", hours_to_show: "History hours",
-    })[schema.name];
+    this._translationFeedback = element("div");
+    this._translationFeedback.setAttribute("role", "alert");
+    this._translationsChanged();
     this._form.addEventListener("value-changed", ev => {
       ev.stopPropagation();
       const config = { ...this._config, ...ev.detail.value };
@@ -949,7 +1054,7 @@ class ThermoSmartCardEditor extends HTMLElement {
         detail: { config }, bubbles: true, composed: true,
       }));
     });
-    this.replaceChildren(this._form);
+    this.replaceChildren(this._form, this._translationFeedback);
   }
 }
 
@@ -992,10 +1097,10 @@ class ThermoSmartCombinedCard extends ThermoSmartBase {
       let parent = card;
       if (!zone && ["collapsed", "expanded"].includes(this._config.show_control)) {
         const panel = element("ha-expansion-panel");
-        panel.header = "Schedule controls";
+        panel.header = this._t("schedule.controls");
         panel.expanded = this._config.show_control === "expanded";
         panel.hidden = true;
-        const loading = element("div", "Loading schedule controls…", "message");
+        const loading = this._text("div", "schedule.loading_controls", "message");
         card.append(loading, panel);
         this._prepareExpansionPanel(panel, loading);
         parent = panel;
@@ -1007,7 +1112,11 @@ class ThermoSmartCombinedCard extends ThermoSmartBase {
     if (zone ? this._config.show_graph !== false : this._config.show_plan !== false) {
       addSection(zone ? "temperature-history" : "schedule-plan", this._config);
     }
-    if (!this._sections.length) card.append(element("div", "No sections enabled.", "message"));
+    if (!this._sections.length) card.append(this._text("div", "no_sections", "message"));
+    const feedback = element("div", this._translationError || "", "translation-feedback message");
+    feedback.hidden = !this._translationError;
+    feedback.setAttribute("role", "alert");
+    card.append(feedback);
     this.shadowRoot.replaceChildren(element("style", CSS), card);
   }
 
@@ -1017,12 +1126,14 @@ class ThermoSmartCombinedCard extends ThermoSmartBase {
         const helpers = await this._helpers();
         const native = helpers.createCardElement({ type: "thermostat", entity: this._config.entity });
         await native.constructor.getConfigElement();
-        await waitForElements(["ha-expansion-panel"]);
+        await waitForElements(["ha-expansion-panel"], this._t.bind(this));
       }
       panel.hidden = false;
       loading.remove();
     } catch (error) {
-      loading.textContent = `Schedule controls could not load: ${errorText(error)}`;
+      loading.dataset.translation = "schedule.controls_error";
+      loading.translationValues = { error: errorText(error) };
+      loading.textContent = this._t("schedule.controls_error", loading.translationValues);
       loading.setAttribute("role", "alert");
       console.error("ThermoSmart expansion panel loading failed", error);
     }
@@ -1032,6 +1143,12 @@ class ThermoSmartCombinedCard extends ThermoSmartBase {
     const card = this.shadowRoot.querySelector("ha-card");
     card.header = this._config.show_zone_name === false ? undefined
       : this._state?.attributes.friendly_name || this._config.entity;
+    this._translateNodes(this.shadowRoot);
+    const panel = this.shadowRoot.querySelector("ha-expansion-panel");
+    if (panel) panel.header = this._t("schedule.controls");
+    const feedback = this.shadowRoot.querySelector(".translation-feedback");
+    feedback.textContent = this._translationError || "";
+    feedback.hidden = !this._translationError;
     for (const section of this._sections) section.hass = this._hass;
   }
 

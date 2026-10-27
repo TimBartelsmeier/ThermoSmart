@@ -31,6 +31,18 @@
 <script src="../custom_components/thermosmart/www/thermosmart-card.js"></script>
 <script>
 (async () => {
+  const translationFiles = {};
+  for (const language of ["en", "de"]) {
+    const response = await fetch(`../custom_components/thermosmart/translations/${language}.json`);
+    if (!response.ok) throw new Error(`Translation fixture failed: ${response.status}`);
+    translationFiles[language] = (await response.json()).card;
+  }
+  const flattenTranslations = (value, prefix = "component.thermosmart.card.") =>
+    Object.fromEntries(Object.entries(value).flatMap(([key, text]) => typeof text === "string"
+      ? [[`${prefix}${key}`, text]] : Object.entries(flattenTranslations(text, `${prefix}${key}.`))));
+  const englishTranslations = flattenTranslations(translationFiles.en);
+  const germanTranslations = flattenTranslations(translationFiles.de);
+  const translationRequests = [];
   const results = [];
   const assert = (condition, message) => { if (!condition) throw new Error(message); };
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -84,6 +96,11 @@
       if (actionError) throw new Error(actionError);
     },
     async callWS(request) {
+      if (request.type === "frontend/get_translations") {
+        translationRequests.push(request);
+        assert(request.category === "card" && request.integration.join() === "thermosmart", "uses HA translation API");
+        return { resources: { ...englishTranslations, ...(request.language === "de" ? germanTranslations : {}) } };
+      }
       requests.push(request);
       if (request.type === "thermosmart/suspend_schedule") {
         if (actionError) throw new Error(actionError);
@@ -688,6 +705,106 @@
     }
     data.scheduling_enabled = previous.enabled;
     data.disabled_until = previous.until;
+  });
+  await test("German text covers controls, statuses, plan, history, dialog and editor", async () => {
+    const german = { ...hass, connection: hass, language: "de", locale: { language: "de" } };
+    const control = await card("zone-control");
+    control.hass = german; await tick();
+    assert(control.shadowRoot.querySelector(".status").textContent === "Heizen", "German heating");
+    assert(control.shadowRoot.querySelector(".label").textContent === "Ist", "German temperature label");
+    assert(control.shadowRoot.querySelector(".presets").textContent.includes("Komfort"), "German presets");
+    assert(control.shadowRoot.querySelector("ha-icon-button").label === "Zieltemperatur senken", "German accessibility label");
+    const plan = await card("schedule-plan", { "max-events": 5 });
+    plan.hass = german; await tick();
+    assert(plan._dayLabel(Date.now()) === "Heute", "German today");
+    assert(plan.shadowRoot.querySelector(".next-label").textContent === "Nächstes Ereignis", "German next event");
+    assert(plan.shadowRoot.querySelector(".preheat").textContent.startsWith("Vorheizen beginnt um"), "German preheat");
+    const graph = await card("temperature-history");
+    graph.hass = german; await tick();
+    assert(graph.shadowRoot.querySelector(".spark-legend").textContent.includes("Außentemperatur"), "German graph");
+    assert(graph.shadowRoot.querySelector("[role=link]").getAttribute("aria-label") === "Vollständigen Temperaturverlauf anzeigen", "German history link");
+    const controls = await card("schedule-controls");
+    controls.hass = german; await tick();
+    assert(controls.shadowRoot.querySelector(".row").textContent === "Zeitplanung aktivieren", "German schedule switch");
+    assert(controls.shadowRoot.querySelector(".actions").textContent.includes("Aussetzen bis:"), "German suspension");
+    assert(controls.shadowRoot.querySelector(".shortcuts").textContent.includes("Nächstes Ereignis überspringen"), "German shortcuts");
+    const dialog = await customDialog(controls);
+    dialog.hass = german; await tick();
+    assert(dialog.shadowRoot.querySelector("h2").textContent === "Aussetzen bis", "German dialog");
+    assert(dialog.shadowRoot.querySelector(".secondary").textContent === "Zeitzone: Europe/Berlin", "placeholder");
+    assert(dialog.shadowRoot.querySelector(".actions").textContent === "AbbrechenSpeichern", "German dialog buttons");
+    const editor = await customElements.get("thermosmart-zone-schedule-card").getConfigElement();
+    editor.hass = german;
+    editor.setConfig({ entity: "climate.zone" });
+    await tick();
+    const form = editor.querySelector("ha-form");
+    assert(form.computeLabel({ name: "show_control" }) === "Steuerung anzeigen", "German editor label");
+    assert(form.schema.find(s => s.name === "show_control").selector.select.options[0].label === "Immer sichtbar", "German editor options");
+    assert(window.customCards.find(c => c.type === "thermosmart-zone-card").name === "ThermoSmart-Zonenkarte", "German picker metadata");
+    dialog.closeDialog(); dialog.remove();
+    for (const node of [control, plan, graph, controls]) node.remove();
+    assert(translationRequests.filter(r => r.language === "de").length === 1, "one request per connection and language");
+  });
+  await test("language changes preserve expansion, dialog drafts and editor data", async () => {
+    const c = await combined("zone-schedule-card", { show_control: "collapsed", "max-events": 5 });
+    const panel = c.shadowRoot.querySelector("ha-expansion-panel");
+    panel.expanded = true;
+    const controls = c._sections[0];
+    const dialog = await customDialog(controls);
+    const input = dialog.shadowRoot.querySelector("input");
+    input.value = "2027-03-04T08:30";
+    const editor = await customElements.get("thermosmart-zone-schedule-card").getConfigElement();
+    editor.hass = hass;
+    editor.setConfig({ entity: "climate.zone", "max-events": 7 });
+    const form = editor.querySelector("ha-form");
+    const german = { ...hass, connection: hass, language: "de", locale: { language: "de" } };
+    c.hass = german; dialog.hass = german; editor.hass = german; await tick();
+    assert(c.shadowRoot.querySelector("ha-expansion-panel") === panel && panel.expanded, "panel kept");
+    assert(panel.header === "Zeitplansteuerung", "panel header translated");
+    assert(dialog.shadowRoot.querySelector("input") === input && input.value === "2027-03-04T08:30", "dialog draft kept");
+    assert(editor.querySelector("ha-form") === form && form.data["max-events"] === 7, "editor data kept");
+    c.hass = hass; dialog.hass = hass; await tick();
+    assert(panel.header === "Schedule controls" && dialog.shadowRoot.querySelector("h2").textContent === "Suspend until", "switch back to English");
+    dialog.closeDialog(); dialog.remove(); c.remove();
+  });
+  await test("HA English fallback is used for untranslated languages", async () => {
+    const c = await card("zone-control");
+    c.hass = { ...hass, connection: hass, language: "fr", locale: { language: "fr" } };
+    await tick();
+    assert(c.shadowRoot.querySelector(".status").textContent === "Heating", "English resources from HA");
+    assert(c.shadowRoot.querySelector(".presets").textContent.includes("Night"), "English presets");
+    c.remove();
+  });
+  await test("a slow translation response cannot overwrite a newer language selection", async () => {
+    const c = await card("zone-control");
+    let resolveGerman;
+    const connection = {};
+    const callWS = request => request.language === "de"
+      ? new Promise(resolve => { resolveGerman = resolve; })
+      : Promise.resolve({ resources: englishTranslations });
+    c.hass = { ...hass, connection, language: "de", callWS };
+    c.hass = { ...hass, connection, language: "en", callWS };
+    await tick();
+    resolveGerman({ resources: germanTranslations });
+    await tick();
+    assert(c.shadowRoot.querySelector(".status").textContent === "Heating", "newest language wins");
+    c.remove();
+  });
+  await test("translation failures fall back to English and total failure is explicit", async () => {
+    const c = await card("zone-control");
+    const attempts = [];
+    c.hass = { ...hass, language: "de", async callWS(request) {
+      attempts.push(request.language);
+      if (request.language === "de") throw new Error("Translation request failed");
+      return { resources: englishTranslations };
+    } };
+    await tick();
+    assert(c.shadowRoot.querySelector(".status").textContent === "Heating", "English after language request failure");
+    assert(attempts.join() === "de,en", "explicit English fallback request");
+    c.hass = { ...hass, async callWS() { throw new Error("Offline"); } };
+    await tick();
+    assert(c.shadowRoot.querySelector(".feedback").textContent.includes("translations could not load: Offline"), "failed translations visible");
+    c.remove();
   });
   window.testResults = results;
   document.querySelector("#results").textContent = JSON.stringify(results, null, 2);

@@ -2,7 +2,7 @@
 
 DOMAIN = "thermosmart"
 VERSION = "1.3.2"
-CARD_ASSET_VERSION = "2.0" # Keep CARD_VERSION in the card's .js synchronized with this value
+CARD_ASSET_VERSION = "2.0.1" # Keep CARD_VERSION in the card's .js synchronized with this value
 
 # Bundled Lovelace card (custom_components/thermosmart/www/thermosmart-card.js).
 # Registered once per HA session through card_registration.py.
