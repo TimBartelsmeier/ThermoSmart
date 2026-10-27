@@ -249,7 +249,6 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
         """Aktive Steuerung ein- oder ausschalten."""
         active = hvac_mode == HVACMode.HEAT
         self.coordinator.set_active_control(active)
-        self.async_write_ha_state()
         self.coordinator.request_pass(TRIGGER_SWITCH)
 
     async def async_turn_on(self) -> None:

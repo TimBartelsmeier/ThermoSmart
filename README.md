@@ -79,7 +79,10 @@ Two independent switches per zone:
 | off | on | **Observation mode**: nothing is written to your TRVs (including the room-temperature feed), ThermoSmart only watches and learns. The target, schedule events and pre-heat plan are still tracked. |
 | off | off | Zone inactive |
 
-The climate entity's HVAC mode `heat`/`off` maps to Active Control on/off. Start with observation mode if you want to verify sensors and settings first.
+The climate entity's HVAC mode `heat`/`off` maps to Active Control on/off.
+Both controls share one state and update each other immediately. New zones default
+to Active Control off; existing zones restore the saved Active Control switch state.
+Start with observation mode if you want to verify sensors and settings first.
 
 ---
 

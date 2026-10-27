@@ -422,6 +422,7 @@ class ThermoSmartCoordinator(
             self.zone_name,
             "AN – Thermostat wird gesteuert" if active else "AUS – Beobachtungsmodus",
         )
+        self.async_update_listeners()
 
     def set_target(
         self, value: float, source: str, *, preset: str | None = None

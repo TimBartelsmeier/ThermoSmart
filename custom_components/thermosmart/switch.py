@@ -58,39 +58,37 @@ class ThermoSmartActiveSwitch(SwitchEntity, RestoreEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "active_control"
     _attr_icon = "mdi:thermostat-auto"
+    _attr_should_poll = False
 
     def __init__(self, coordinator: ThermoSmartCoordinator, entry: ConfigEntry):
         self._coordinator = coordinator
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_active_control"
         self._attr_device_info = _device_info(entry)
-        self._is_on = False
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self.async_write_ha_state)
+        )
         last = await self.async_get_last_state()
-        self._is_on = last is not None and last.state == "on"
-        self._coordinator.set_active_control(self._is_on)
+        self._coordinator.set_active_control(last is not None and last.state == "on")
 
     @property
     def is_on(self) -> bool:
-        return self._is_on
+        return self._coordinator._active_control
 
     @property
     def extra_state_attributes(self) -> dict:
         return {
-            "mode": "active_control" if self._is_on else "observation",
+            "mode": "active_control" if self.is_on else "observation",
         }
 
     async def async_turn_on(self, **kwargs) -> None:
-        self._is_on = True
-        self.async_write_ha_state()
         self._coordinator.set_active_control(True)
         self._coordinator.request_pass(TRIGGER_SWITCH)
 
     async def async_turn_off(self, **kwargs) -> None:
-        self._is_on = False
-        self.async_write_ha_state()
         self._coordinator.set_active_control(False)
         self._coordinator.request_pass(TRIGGER_SWITCH)
 
