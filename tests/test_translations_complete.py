@@ -35,7 +35,7 @@ DEFERRED_TRANSLATIONS = (
 
 def _translation_params():
     for p in TRANSLATIONS:
-        marks = [] if p.stem == "en" else [pytest.mark.skip(reason=DEFERRED_TRANSLATIONS)]
+        marks = [] if p.stem in ("en", "de") else [pytest.mark.skip(reason=DEFERRED_TRANSLATIONS)]
         yield pytest.param(p, id=p.stem, marks=marks)
 
 
