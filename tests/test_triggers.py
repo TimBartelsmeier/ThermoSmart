@@ -212,7 +212,7 @@ class TestWindow:
                   "new_state": MagicMock(state=new)}
         return e
 
-    def test_only_the_delay_timers_trigger_a_pass(self):
+    def test_state_changes_and_delay_timers_trigger_passes(self):
         clock = FakeClock(_T0)
         coord = _zone(clock, window_sensors=[_WINDOW], window_open_delay=5,
                       window_close_delay=2, temp_sensors=["sensor.test_temp"])
@@ -222,7 +222,8 @@ class TestWindow:
                    side_effect=lambda hass, d, cb: timers.append((d, cb)) or (lambda: None)):
             cb = self._wire(coord)
             cb(self._event("off", "on"))
-            assert coord._pending_triggers == []  # state change itself: no pass
+            assert coord._pending_triggers == [trig.TRIGGER_WINDOW]
+            coord._pending_triggers = []
             assert timers[0][0] == 300
             timers[0][1](None)
             assert coord._pending_triggers == [trig.TRIGGER_WINDOW]
@@ -230,7 +231,8 @@ class TestWindow:
             coord._pending_triggers = []
             clock.set_utc(_T0 + timedelta(minutes=6))
             cb(self._event("on", "off"))
-            assert coord._pending_triggers == []
+            assert coord._pending_triggers == [trig.TRIGGER_WINDOW]
+            coord._pending_triggers = []
             assert timers[1][0] == 120
             timers[1][1](None)
             assert coord._pending_triggers == [trig.TRIGGER_WINDOW]

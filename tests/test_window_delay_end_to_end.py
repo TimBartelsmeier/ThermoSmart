@@ -121,6 +121,21 @@ class _Rig:
 
 
 class TestContactDelayEndToEnd:
+    @pytest.mark.parametrize("bad_state", ["unknown", "unavailable"])
+    async def test_availability_recovery_reconciles_real_actuator_immediately(self, bad_state):
+        rig = _Rig(open_delay=5)
+        await rig.refresh()
+        rig.set_window(bad_state)
+        assert (await rig.refresh())["zone"]["window_open"] is False
+        rig.set_window("on")
+        assert (await rig.refresh())["zone"]["window_open"] is True
+        assert rig.calls[-1] == 5.0
+        rig.set_window(bad_state)
+        assert (await rig.refresh())["zone"]["window_open"] is False
+        rig.set_window("off")
+        assert (await rig.refresh())["zone"]["window_open"] is False
+        assert rig.calls[-1] == 21.0
+
     async def test_target_stays_until_open_delay_elapsed_then_drops_to_window_temp(self):
         rig = _Rig(open_delay=5)
         await rig.refresh()

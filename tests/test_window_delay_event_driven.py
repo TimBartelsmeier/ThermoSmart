@@ -8,14 +8,10 @@ _handle_state_change() callback — the actual code path a live Home Assistant
 instance uses when a window sensor fires a state-change event. This file
 closes that gap.
 
-Root cause: _window_open_at/_window_close_at are pure in-memory dicts with no
-persistence. Any coordinator restart/reload occurring while a window
-transition is inside its configured delay window silently discards that
-grace period, so the window was reported as closed immediately if a reload
-happened to land inside the close_delay. The fix reconstructs the missing
-dict entry from the window sensor's own last_changed timestamp (which HA
-preserves independently of the integration) so the delay resumes exactly
-where it left off instead of resetting to zero.
+Delays apply only to confirmed live transitions. Startup and availability
+recovery reconcile directly to the current reading instead of reconstructing
+delays from last_changed, which may represent sensor availability rather than
+a physical opening or closing.
 """
 from __future__ import annotations
 
@@ -44,6 +40,7 @@ def _wire_window_listener(coord):
     (window sensors, climate entities, temp sensors, ...) — capture by
     matching on the entity list rather than assuming call order/count.
     """
+    coord.hass.async_create_task = lambda coro: coro.close()
     captured: dict[tuple, callable] = {}
 
     def _fake_track(hass, entity_ids, callback_fn):
@@ -202,6 +199,7 @@ class TestMultipleWindowSensors:
         ):
             coord.setup_event_listeners()
         cb = next(v for k, v in captured.items() if sensor_a in k and sensor_b in k)
+        coord.hass.async_create_task = lambda coro: coro.close()
 
         def _ev(entity_id, old_state, new_state):
             e = MagicMock()
@@ -241,6 +239,76 @@ class TestMultipleWindowSensors:
 
 
 class TestUnknownUnavailableWindowSensor:
+    @pytest.mark.parametrize("new", [None, "unknown", "unavailable"])
+    def test_invalid_event_cancels_pending_timer(self, new):
+        coord = _make(FakeClock(_T0))
+        cb = _wire_window_listener(coord)
+        cancel = MagicMock()
+        coord._window_delay_cancel[_SENSOR] = cancel
+        coord._window_open_at[_SENSOR] = _T0
+        coord._window_close_at[_SENSOR] = _T0
+        event = _event("on", new)
+        event.data["new_state"] = make_state(new) if new is not None else None
+        cb(event)
+        cancel.assert_called_once()
+        assert not coord._window_delay_cancel
+        assert not coord._window_open_at and not coord._window_close_at
+
+    def test_valid_transitions_schedule_expiry_passes(self):
+        clock = FakeClock(_T0)
+        coord = _make(clock)
+        cb = _wire_window_listener(coord)
+        coord.request_pass = MagicMock()
+        with patch("custom_components.thermosmart.coordinator.async_call_later") as timer:
+            cb(_event("off", "on"))
+            assert timer.call_args.args[1] == 300
+            timer.call_args.args[2](None)
+            assert coord.request_pass.call_count == 2
+            clock.advance(300)
+            cb(_event("on", "off"))
+            assert timer.call_args.args[1] == 120
+            timer.call_args.args[2](None)
+            assert coord.request_pass.call_count == 4
+            assert all(call.args == ("window",) for call in coord.request_pass.call_args_list)
+
+    @pytest.mark.parametrize("value", [None, "unknown", "unavailable"])
+    def test_invalid_poll_cancels_tracking_then_reconciles_immediately(self, value):
+        clock = FakeClock(_T0)
+        coord = _make(clock)
+        cancel = MagicMock()
+        coord._window_delay_cancel[_SENSOR] = cancel
+        coord._window_open_at[_SENSOR] = _T0 - timedelta(minutes=10)
+        coord._window_close_at[_SENSOR] = _T0
+        coord._window_open_temp[_SENSOR] = 19
+        set_hass_states(coord, {_SENSOR: _state_with_last_changed(value, _T0)} if value else {})
+        assert not coord._check_window_open(coord.zone_cfg)
+        cancel.assert_called_once()
+        assert not coord._window_open_at and not coord._window_close_at
+        assert not coord._window_open_temp and not coord._window_delay_cancel
+        for state, expected in [("off", False), ("on", True)]:
+            set_hass_states(coord, {_SENSOR: _state_with_last_changed(state, _T0)})
+            assert coord._check_window_open(coord.zone_cfg) is expected
+
+    @pytest.mark.parametrize("old,new", [
+        (None, "off"), (None, "on"), ("on", None), ("off", None),
+        ("unavailable", "off"), ("unknown", "on"), ("on", "unavailable"),
+        ("off", "unknown"), ("off", "off"),
+    ])
+    def test_availability_events_refresh_without_starting_delay(self, old, new):
+        clock = FakeClock(_T0)
+        coord = _make(clock)
+        cb = _wire_window_listener(coord)
+        coord.request_pass = MagicMock()
+        event = _event(old, new)
+        event.data["old_state"] = make_state(old) if old is not None else None
+        event.data["new_state"] = make_state(new) if new is not None else None
+        set_hass_states(coord, {_SENSOR: _state_with_last_changed(new, _T0)} if new is not None else {})
+        with patch("custom_components.thermosmart.coordinator.async_call_later") as timer:
+            cb(event)
+            timer.assert_not_called()
+        coord.request_pass.assert_called_once_with("window")
+        assert coord._check_window_open(coord.zone_cfg) is (new == "on")
+
     @pytest.mark.parametrize("bad_state", ["unknown", "unavailable"])
     def test_unknown_or_unavailable_sensor_treated_as_closed_not_crashing(self, bad_state):
         clock = FakeClock(_T0)
@@ -252,14 +320,9 @@ class TestUnknownUnavailableWindowSensor:
 
 
 class TestRestartDuringDelay:
-    """Simulates a coordinator restart/reload (fresh in-memory dicts) while a
-    real window sensor transition happened moments before, using the window
-    sensor's own last_changed timestamp — the only state that survives an
-    integration reload — to reconstruct the interrupted delay window."""
+    """Startup readings reconcile immediately, regardless of last_changed."""
 
-    def test_restart_during_open_delay_does_not_grant_free_pause(self):
-        """Window opened 2min ago (open_delay=5min still pending) — a restart
-        must not retroactively treat the open_delay as already elapsed."""
+    def test_restart_during_open_delay_suspends_immediately(self):
         clock = FakeClock(_T0)
         coord = _make(clock)
         opened_at = _T0 - timedelta(minutes=2)
@@ -269,7 +332,7 @@ class TestRestartDuringDelay:
         })
         cfg = coord.zone_cfg
 
-        assert coord._check_window_open(cfg, current_temp=19.0) is False
+        assert coord._check_window_open(cfg, current_temp=19.0) is True
 
     def test_restart_after_open_delay_already_elapsed_reports_open(self):
         clock = FakeClock(_T0)
@@ -283,10 +346,7 @@ class TestRestartDuringDelay:
 
         assert coord._check_window_open(cfg, current_temp=19.0) is True
 
-    def test_restart_during_close_delay_preserves_remaining_grace_period(self):
-        """This is the confirmed root cause: closed 1min ago (close_delay=2min
-        still pending) — before the fix, a fresh coordinator's empty
-        _window_close_at dict caused this to report closed immediately."""
+    def test_restart_during_close_delay_releases_immediately(self):
         clock = FakeClock(_T0)
         coord = _make(clock)
         closed_at = _T0 - timedelta(minutes=1)
@@ -296,7 +356,7 @@ class TestRestartDuringDelay:
         })
         cfg = coord.zone_cfg
 
-        assert coord._check_window_open(cfg, current_temp=19.0) is True
+        assert coord._check_window_open(cfg, current_temp=19.0) is False
 
         clock.set_utc(clock.now_utc() + timedelta(minutes=2))
         assert coord._check_window_open(cfg, current_temp=19.0) is False
@@ -352,9 +412,7 @@ class _LiveWindowRig:
             },
             clock=self.clock,
         )
-        # Sensors have been closed for a long time before the scenario starts —
-        # a state that changed moments ago would legitimately look like a close
-        # delay still running after a restart (see the reconstruction tests).
+        # Begin with a closed sensor before driving live transitions.
         self.sensors = {sid: ("off", _T0 - timedelta(days=1)) for sid in sensors}
         self.coord.hass.states.get.side_effect = self._get
         self.coord.hass.async_create_task = lambda c: getattr(c, "close", lambda: None)()
@@ -498,8 +556,8 @@ class TestMultipleWindowsWithRealisticStates:
         assert rig.window_open() is False
 
 
-class TestRestartReconstructionIsUnchangedForUnobservedSensors:
-    def test_close_delay_still_resumes_for_a_sensor_the_listener_has_not_seen(self):
+class TestUnobservedClosedSensor:
+    def test_recent_closed_reading_does_not_reconstruct_close_delay(self):
         clock = FakeClock(_T0)
         coord = _make(clock)
         closed_30s_ago = _T0 - timedelta(seconds=30)
@@ -507,4 +565,4 @@ class TestRestartReconstructionIsUnchangedForUnobservedSensors:
             _SENSOR: _state_with_last_changed("off", closed_30s_ago),
             "sensor.test_temp": make_state("19.0"),
         })
-        assert coord._check_window_open(coord.zone_cfg, current_temp=19.0) is True
+        assert coord._check_window_open(coord.zone_cfg, current_temp=19.0) is False

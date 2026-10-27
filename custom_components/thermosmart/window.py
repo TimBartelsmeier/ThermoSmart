@@ -10,7 +10,7 @@ Zwei Erkennungsstrategien:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from .const import (
     WINDOW_SLOPE_EMA_ALPHA,
@@ -24,6 +24,14 @@ _LOGGER = logging.getLogger(__name__)
 class WindowMixin:
     """Fenstererkennung mit konfigurierbaren Verzögerungen + Slope-Erkennung."""
 
+    def _clear_window_tracking(self, entity_id: str) -> None:
+        cancel = self._window_delay_cancel.pop(entity_id, None)
+        if cancel is not None:
+            cancel()
+        self._window_open_at.pop(entity_id, None)
+        self._window_close_at.pop(entity_id, None)
+        self._window_open_temp.pop(entity_id, None)
+
     def _check_window_open(self, cfg: dict, current_temp: float | None = None) -> bool:
         now = self._now_local()
         open_delay = timedelta(minutes=cfg.get("window_open_delay", 5))
@@ -36,46 +44,25 @@ class WindowMixin:
             if not ws_id:
                 continue
             ws = self.hass.states.get(ws_id)
-            if ws is None:
+            if ws is None or ws.state not in ("on", "off"):
+                self._clear_window_tracking(ws_id)
                 continue
-
-            # HA's own last-changed timestamp for this entity, when it is a
-            # real aware datetime (never true for the plain-Mock states used
-            # by tests that don't care about restart behavior). Used below
-            # to reconstruct in-progress open/close delays that would
-            # otherwise be silently lost whenever the coordinator's
-            # in-memory _window_open_at/_window_close_at dicts are reset by
-            # an integration reload or HA restart.
-            last_changed = getattr(ws, "last_changed", None)
-            if not isinstance(last_changed, datetime):
-                last_changed = None
 
             if ws.state == "on":
                 if ws_id not in self._window_open_at:
-                    self._window_open_at[ws_id] = last_changed if last_changed is not None else (now - open_delay)
+                    # No observed opening: reconcile startup/recovery immediately.
+                    self._window_open_at[ws_id] = now - open_delay
+                self._window_close_at.pop(ws_id, None)
                 if now - self._window_open_at[ws_id] >= open_delay:
                     sensor_detected = True
             else:
-                # Reconstruct an in-progress close delay from HA's last_changed
-                # only for a sensor this coordinator has not observed closing
-                # itself. For observed sensors the event listener is
-                # authoritative: it deliberately starts no close delay when the
-                # window closes before the open delay elapsed (the window was
-                # never confirmed open), and reconstructing one here would
-                # activate the window override after a short airing.
-                if (
-                    ws_id not in self._window_close_at
-                    and ws_id not in self._window_seen
-                    and last_changed is not None
-                    and now - last_changed < close_delay
-                ):
-                    self._window_close_at[ws_id] = last_changed
                 if ws_id in self._window_close_at:
                     if now - self._window_close_at[ws_id] < close_delay:
                         sensor_detected = True
                     else:
                         self._window_close_at.pop(ws_id, None)
                 self._window_open_at.pop(ws_id, None)
+                self._window_open_temp.pop(ws_id, None)
 
         # Slope-basierte Erkennung nur wenn kein Sensor konfiguriert
         if not has_sensors:

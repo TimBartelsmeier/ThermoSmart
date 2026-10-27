@@ -303,6 +303,13 @@ There is one mechanism, not one restore routine per case: when the last suspensi
 
 **Windows.** Open/close are detected from window/door sensors with separate open and close delays; without sensors, a falling-temperature (slope) detection is used. Per TRV, *Turn off when window is open* switches HVAC to `off` instead of using the window-open temperature (only enable for TRVs with frost protection while off).
 
+Delays apply only to observed `off → on` and `on → off` transitions. Closing before
+the open delay expires never activates a suspension or close delay. Startup and
+availability recovery reconcile immediately: `on` suspends heating, `off` releases
+the window hold. Missing/unknown/unavailable readings cancel that sensor's timers
+and tracking; availability problems are reported separately. Every sensor state
+change requests a debounced control pass. Reloads do not reconstruct prior delays.
+
 While Active Control is on, a TRV entering an unwanted HVAC mode (such as `auto`)
 requests a control pass without waiting for the regular interval. The watchdog
 restores `heat` where supported and permitted by the device profile, except during
@@ -354,7 +361,7 @@ Periodically (every control interval), and **only** for the reasons below. Anyth
 | `target_change` | You changed the target or preset |
 | `schedule_event` | A schedule event fired (exact timer) |
 | `preheat_start` | The planned pre-heat start was reached (exact timer) |
-| `window` | A window open/close delay expired |
+| `window` | A window sensor changed or an open/close delay expired |
 | `room_temperature` | The room temperature moved by at least the refresh threshold |
 | `physical_setpoint` | A physical TRV change was adopted or must be corrected |
 | `switch` | Active Control or Learning was switched |

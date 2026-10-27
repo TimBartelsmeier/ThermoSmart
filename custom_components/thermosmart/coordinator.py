@@ -199,11 +199,6 @@ class ThermoSmartCoordinator(
         # Fenster-Tracking (genutzt von WindowMixin)
         self._window_open_at: dict[str, datetime] = {}
         self._window_close_at: dict[str, datetime] = {}
-        # Sensors whose open/close transitions this coordinator has observed live
-        # (event listener). For those, _window_open_at/_window_close_at are
-        # authoritative; HA's last_changed is only used to reconstruct an
-        # in-progress delay for sensors not yet observed (reload / HA restart).
-        self._window_seen: set[str] = set()
         self._window_open_temp: dict[str, float] = {}
         # Cancel functions for scheduled delay-expiry refreshes (one slot per sensor)
         self._window_delay_cancel: dict[str, Callable[[], None]] = {}
@@ -601,14 +596,16 @@ class ThermoSmartCoordinator(
             def _handle_state_change(event) -> None:
                 old = event.data.get("old_state")
                 new = event.data.get("new_state")
-                if old is None or new is None or old.state == new.state:
-                    return
                 entity_id = event.data["entity_id"]
                 now = self._now_local()
+                old_value = old.state if old is not None else None
+                new_value = new.state if new is not None else None
 
                 if entity_id in window_sensors:
-                    self._window_seen.add(entity_id)
-                    if new.state == "on":
+                    if old_value == new_value:
+                        self.request_pass(TRIGGER_WINDOW)
+                        return
+                    if old_value == "off" and new_value == "on":
                         self._window_open_at[entity_id] = now
                         # Cancel any pending timer (leftover close-delay or open-delay)
                         _cancel = self._window_delay_cancel.pop(entity_id, None)
@@ -631,7 +628,7 @@ class ThermoSmartCoordinator(
                         self._window_delay_cancel[entity_id] = async_call_later(
                             self.hass, open_delay_secs, _open_delay_expired
                         )
-                    else:
+                    elif old_value == "on" and new_value == "off":
                         # Cancel any pending open-delay timer (sensor closed before delay elapsed)
                         _cancel = self._window_delay_cancel.pop(entity_id, None)
                         if _cancel is not None:
@@ -661,11 +658,18 @@ class ThermoSmartCoordinator(
                             # LE v1 window-cooling observation removed (frozen no-op).
                             self._window_open_temp.pop(entity_id, None)
                         self._window_open_at.pop(entity_id, None)
+                    else:
+                        self._clear_window_tracking(entity_id)
+                        if new_value == "on":
+                            self._window_open_at[entity_id] = now - timedelta(
+                                minutes=cfg.get("window_open_delay", 5)
+                            )
 
                 _LOGGER.info(
                     "ThermoSmart '%s': window sensor %s changed (%s → %s)",
-                    self.zone_name, entity_id, old.state, new.state,
+                    self.zone_name, entity_id, old_value, new_value,
                 )
+                self.request_pass(TRIGGER_WINDOW)
 
             cancel = async_track_state_change_event(
                 self.hass, list(all_tracked), _handle_state_change
