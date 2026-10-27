@@ -303,6 +303,8 @@ There is one mechanism, not one restore routine per case: when the last suspensi
 
 **Windows.** Open/close are detected from window/door sensors with separate open and close delays; without sensors, a falling-temperature (slope) detection is used. Per TRV, *Turn off when window is open* switches HVAC to `off` instead of using the window-open temperature (only enable for TRVs with frost protection while off).
 
+Both delays are specified in seconds and default to **20 seconds**. Existing saved
+numbers are interpreted as seconds, without automatic conversion from minutes.
 Delays apply only to observed `off → on` and `on → off` transitions. Closing before
 the open delay expires never activates a suspension or close delay. Startup and
 availability recovery reconcile immediately: `on` suspends heating, `off` releases

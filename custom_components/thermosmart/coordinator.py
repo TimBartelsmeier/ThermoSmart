@@ -618,7 +618,7 @@ class ThermoSmartCoordinator(
                         # Schedule a coordinator refresh exactly when the open delay expires
                         # so window-open mode activates at the configured time, not at the
                         # next regular 5-minute coordinator cycle.
-                        open_delay_secs = cfg.get("window_open_delay", 5) * 60
+                        open_delay_secs = cfg.get("window_open_delay", 20)
 
                         @callback
                         def _open_delay_expired(_now, _eid=entity_id):
@@ -635,7 +635,7 @@ class ThermoSmartCoordinator(
                             _cancel()
                         if entity_id in self._window_open_at:
                             opened_at = self._window_open_at[entity_id]
-                            open_delay_td = timedelta(minutes=cfg.get("window_open_delay", 5))
+                            open_delay_td = timedelta(seconds=cfg.get("window_open_delay", 20))
 
                             # Close-Timer nur setzen wenn open_delay tatsächlich abgelaufen war.
                             # Schließt das Fenster VOR Ablauf des open_delay, darf weder
@@ -644,7 +644,7 @@ class ThermoSmartCoordinator(
                                 self._window_close_at[entity_id] = now
                                 # Schedule refresh when close delay expires so the TRV
                                 # returns to normal at the configured time, not the next cycle.
-                                close_delay_secs = cfg.get("window_close_delay", 2) * 60
+                                close_delay_secs = cfg.get("window_close_delay", 20)
 
                                 @callback
                                 def _close_delay_expired(_now, _eid=entity_id):
@@ -662,7 +662,7 @@ class ThermoSmartCoordinator(
                         self._clear_window_tracking(entity_id)
                         if new_value == "on":
                             self._window_open_at[entity_id] = now - timedelta(
-                                minutes=cfg.get("window_open_delay", 5)
+                                seconds=cfg.get("window_open_delay", 20)
                             )
 
                 _LOGGER.info(

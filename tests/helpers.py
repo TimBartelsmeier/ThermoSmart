@@ -79,8 +79,8 @@ def make_zone_config(**overrides) -> dict:
         "sched_we_morning": "08:00",
         "sched_we_night": "23:00",
         "learning_enabled": True,
-        "window_open_delay": 5,
-        "window_close_delay": 2,
+        "window_open_delay": 20,
+        "window_close_delay": 20,
         "valve_maintenance": True,
         "calibration_invert": False,
     }

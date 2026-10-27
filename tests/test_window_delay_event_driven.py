@@ -72,8 +72,8 @@ def _event(old_state, new_state):
 def _make(clock, **cfg_overrides):
     overrides = {
         "window_sensors": [_SENSOR],
-        "window_open_delay": 5,
-        "window_close_delay": 2,
+        "window_open_delay": 300,
+        "window_close_delay": 120,
         "temp_sensors": ["sensor.test_temp"],
     }
     overrides.update(cfg_overrides)
@@ -86,6 +86,28 @@ def _make(clock, **cfg_overrides):
 
 
 class TestEventDrivenOpenDelay:
+    def test_default_delays_expire_at_twenty_seconds(self):
+        clock = FakeClock(_T0)
+        coord = _make(clock)
+        coord.entry.data.pop("window_open_delay")
+        coord.entry.data.pop("window_close_delay")
+        cb = _wire_window_listener(coord)
+        with patch("custom_components.thermosmart.coordinator.async_call_later") as timer:
+            set_hass_states(coord, {_SENSOR: make_state("on")})
+            cb(_event("off", "on"))
+            assert timer.call_args.args[1] == 20
+            clock.advance(19)
+            assert not coord._check_window_open(coord.zone_cfg)
+            clock.advance(1)
+            assert coord._check_window_open(coord.zone_cfg)
+            set_hass_states(coord, {_SENSOR: make_state("off")})
+            cb(_event("on", "off"))
+            assert timer.call_args.args[1] == 20
+            clock.advance(19)
+            assert coord._check_window_open(coord.zone_cfg)
+            clock.advance(1)
+            assert not coord._check_window_open(coord.zone_cfg)
+
     def test_open_delay_prevents_immediate_reaction(self):
         clock = FakeClock(_T0)
         coord = _make(clock)
@@ -177,8 +199,8 @@ class TestMultipleWindowSensors:
         clock = FakeClock(_T0)
         coord = make_coordinator({
             "window_sensors": [sensor_a, sensor_b],
-            "window_open_delay": 5,
-            "window_close_delay": 2,
+            "window_open_delay": 300,
+            "window_close_delay": 120,
             "temp_sensors": ["sensor.test_temp"],
         }, clock=clock)
         set_hass_states(coord, {
@@ -406,8 +428,8 @@ class _LiveWindowRig:
         self.coord = make_coordinator(
             {
                 "window_sensors": list(sensors),
-                "window_open_delay": open_delay,
-                "window_close_delay": close_delay,
+                "window_open_delay": open_delay * 60,
+                "window_close_delay": close_delay * 60,
                 "temp_sensors": ["sensor.test_temp"],
             },
             clock=self.clock,

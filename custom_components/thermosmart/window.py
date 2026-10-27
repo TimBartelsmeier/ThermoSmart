@@ -34,8 +34,8 @@ class WindowMixin:
 
     def _check_window_open(self, cfg: dict, current_temp: float | None = None) -> bool:
         now = self._now_local()
-        open_delay = timedelta(minutes=cfg.get("window_open_delay", 5))
-        close_delay = timedelta(minutes=cfg.get("window_close_delay", 2))
+        open_delay = timedelta(seconds=cfg.get("window_open_delay", 20))
+        close_delay = timedelta(seconds=cfg.get("window_close_delay", 20))
 
         sensor_detected = False
         has_sensors = bool(cfg.get("window_sensors"))

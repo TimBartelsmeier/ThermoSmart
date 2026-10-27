@@ -124,13 +124,13 @@ def _schema_devices(d: dict) -> vol.Schema:
                 domain="binary_sensor", device_class=["window", "opening", "door"], multiple=True
             )),
 
-        vol.Required("window_open_delay", default=d.get("window_open_delay", 5)):
+        vol.Required("window_open_delay", default=d.get("window_open_delay", 20)):
             selector.NumberSelector(selector.NumberSelectorConfig(
-                min=0, max=60, step=1, unit_of_measurement="min", mode=selector.NumberSelectorMode.BOX,
+                min=0, max=3600, step=1, unit_of_measurement="s", mode=selector.NumberSelectorMode.BOX,
             )),
-        vol.Required("window_close_delay", default=d.get("window_close_delay", 2)):
+        vol.Required("window_close_delay", default=d.get("window_close_delay", 20)):
             selector.NumberSelector(selector.NumberSelectorConfig(
-                min=0, max=30, step=1, unit_of_measurement="min", mode=selector.NumberSelectorMode.BOX,
+                min=0, max=1800, step=1, unit_of_measurement="s", mode=selector.NumberSelectorMode.BOX,
             )),
     })
 

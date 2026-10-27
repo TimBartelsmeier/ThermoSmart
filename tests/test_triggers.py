@@ -214,8 +214,8 @@ class TestWindow:
 
     def test_state_changes_and_delay_timers_trigger_passes(self):
         clock = FakeClock(_T0)
-        coord = _zone(clock, window_sensors=[_WINDOW], window_open_delay=5,
-                      window_close_delay=2, temp_sensors=["sensor.test_temp"])
+        coord = _zone(clock, window_sensors=[_WINDOW], window_open_delay=300,
+                      window_close_delay=120, temp_sensors=["sensor.test_temp"])
         set_hass_states(coord, {_WINDOW: make_state("on"), "sensor.test_temp": make_state("19.0")})
         timers = []
         with patch("custom_components.thermosmart.coordinator.async_call_later",

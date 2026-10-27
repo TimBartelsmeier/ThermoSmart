@@ -15,7 +15,7 @@ from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.thermosmart.config_flow import ThermoSmartConfigFlow
+from custom_components.thermosmart.config_flow import ThermoSmartConfigFlow, _schema_devices
 from custom_components.thermosmart.const import (
     DOMAIN,
     CONF_WEATHER_ENTITY,
@@ -42,6 +42,17 @@ from custom_components.thermosmart.const import (
     CONTROL_MODE_INHERIT,
     CONTROL_MODE_DIRECT_VALVE,
 )
+
+
+def test_window_delay_selectors_use_seconds_and_twenty_second_defaults():
+    schema = _schema_devices({}).schema
+    for name, maximum in [("window_open_delay", 3600), ("window_close_delay", 1800)]:
+        key = next(key for key in schema if key.schema == name)
+        assert key.default() == 20
+        assert schema[key].config["unit_of_measurement"] == "s"
+        assert schema[key].config["min"] == 0
+        assert schema[key].config["max"] == maximum
+        assert schema[key].config["step"] == 1
 
 # ── Shared form-step data ─────────────────────────────────────────────────────
 

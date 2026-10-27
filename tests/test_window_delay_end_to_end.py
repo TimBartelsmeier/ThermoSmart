@@ -53,8 +53,8 @@ class _Rig:
         self.clock = FakeClock(_T0)
         base = make_coordinator({
             "window_sensors": [_CONTACT] if contact else [],
-            "window_open_delay": open_delay,
-            "window_close_delay": 2,
+            "window_open_delay": open_delay * 60,
+            "window_close_delay": 120,
             "window_open_temp": 5.0,
             "temp_sensors": [_TEMP],
             "climate_entities": [_TRV],
@@ -232,7 +232,7 @@ class TestConfiguredDelayReachesRuntime:
 
     async def test_options_value_overrides_data_value_including_zero(self):
         rig = _Rig(open_delay=0)                       # entry.data says 0
-        rig.coord.entry.options = {"window_open_delay": 5.0}   # options flow saved 5
+        rig.coord.entry.options = {"window_open_delay": 300.0}
         await rig.refresh()
         rig.calls.clear()
         rig.open_window()
