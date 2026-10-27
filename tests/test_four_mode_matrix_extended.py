@@ -127,9 +127,8 @@ class TestLE1FrozenSemantics:
         async_observe/update_heating_session/async_observe_trv_setpoint calls
         were dead no-ops (the frozen check always short-circuited them) and
         have since been removed from the coordinator's real cycle. LE v1
-        continues to serve exactly one live purpose: the schedule lookup via
-        async_get_base_target(), which must still be called every cycle in
-        all four modes — this removal does not gate or disable any Learning path.
+        continues to exist only as a frozen persistence shell; the schedule lookup
+        it once served is gone (the coordinator owns the desired target).
 
         async_observe_window_cooling() is not exercised here: it is only
         reached from the window-sensor state-change listener wired by
@@ -146,9 +145,6 @@ class TestLE1FrozenSemantics:
                 f"le1.update_heating_session unexpectedly called in mode ({lm},{ac})")
             assert not coord.learning_engine.async_observe_trv_setpoint.called, (
                 f"le1.async_observe_trv_setpoint unexpectedly called in mode ({lm},{ac})")
-            assert coord.learning_engine.async_get_base_target.called, (
-                f"le1.async_get_base_target (schedule lookup) must still be "
-                f"called in mode ({lm},{ac})")
             coord.learning_engine.reset_mock()
 
     @pytest.mark.asyncio

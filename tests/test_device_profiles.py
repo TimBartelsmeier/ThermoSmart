@@ -2,40 +2,41 @@
 
 All tests are pure Python — no HA fixtures required.
 """
+
 from __future__ import annotations
 
 import dataclasses
 
 import pytest
 
-from custom_components.thermosmart.device_profiles import get_profile
+from custom_components.thermosmart.device_profiles import get_preset, get_profile
 from custom_components.thermosmart.device_profiles.capabilities import (
-    DeviceProfile,
     SETPOINT_CLIMATE,
     SETPOINT_HVAC_FIRST,
-    VALVE_READ_ONLY,
     VALVE_MAX_LIMIT,
+    VALVE_READ_ONLY,
+    DeviceProfile,
 )
 from custom_components.thermosmart.device_profiles.profiles import (
-    GENERIC,
-    SONOFF_TRVZB,
-    TUYA_TS0601,
-    MOES_TV02,
+    ALL_PROFILES,
+    AQARA_TRV,
+    AVATTO_ME167,
+    BECA_BHT_002,
+    DAIKIN_CLIMATE,
     DANFOSS_ALLY,
     EUROTRONIC_SPIRIT,
     EUROTRONIC_SPZB0001,
     EVE_THERMO,
-    AQARA_TRV,
-    AVATTO_ME167,
-    BECA_BHT_002,
-    TADO,
-    DAIKIN_CLIMATE,
+    GENERIC,
+    MOES_TV02,
     NETATMO,
-    ALL_PROFILES,
+    SONOFF_TRVZB,
+    TADO,
+    TUYA_TS0601,
 )
 
-
 # ── Registry matching ────────────────────────────────────────────────────────
+
 
 class TestGetProfile:
     def test_unknown_device_returns_generic(self):
@@ -66,7 +67,10 @@ class TestGetProfile:
 
     def test_sonoff_partial_model_match(self):
         """Matching works as substring — real devices report longer strings."""
-        assert get_profile("SONOFF TRVZB zigbee thermostat v2", None).identifier == "sonoff_trvzb"
+        assert (
+            get_profile("SONOFF TRVZB zigbee thermostat v2", None).identifier
+            == "sonoff_trvzb"
+        )
 
     # ── Tuya TS0601 ─────────────────────────────────────────────────────────
     def test_tuya_matched_by_model(self):
@@ -103,7 +107,9 @@ class TestGetProfile:
         assert get_profile("Spirit Zigbee", None).identifier == "eurotronic_spirit"
 
     def test_eurotronic_spirit_matched_by_manufacturer(self):
-        assert get_profile("UnknownModel", "Eurotronic").identifier == "eurotronic_spirit"
+        assert (
+            get_profile("UnknownModel", "Eurotronic").identifier == "eurotronic_spirit"
+        )
 
     # ── Avatto / Beca / Bosch ────────────────────────────────────────────────
     def test_avatto_me167_matched(self):
@@ -136,12 +142,46 @@ class TestGetProfile:
 
     def test_all_profile_ids_resolvable(self):
         """Every identifier referenced in _MATCH_TABLE resolves to a real profile."""
-        from custom_components.thermosmart.device_profiles.registry import _MATCH_TABLE, _BY_ID
+        from custom_components.thermosmart.device_profiles.registry import (
+            _BY_ID,
+            _MATCH_TABLE,
+        )
+
         for identifier, _, _ in _MATCH_TABLE:
-            assert identifier in _BY_ID, f"Profile '{identifier}' in match table but not in profiles"
+            assert identifier in _BY_ID, (
+                f"Profile '{identifier}' in match table but not in profiles"
+            )
+
+
+class TestDevicePresets:
+    def test_sonoff_preset_recommends_tpi_and_external_temperature(self):
+        preset = get_preset("TRVZB", "SONOFF")
+        assert preset.preset_id == "sonoff_trvzb"
+        assert preset.recommended_mode == "tpi_boost"
+        assert preset.feed_external_temp is True
+        assert preset.default_state_settings == [
+            {
+                "entity_pattern": "temperature_sensor",
+                "value": "remote_temperature",
+            }
+        ]
+
+    def test_eurotronic_preset_recommends_direct_valve(self):
+        preset = get_preset("Spirit", "Eurotronic")
+        assert preset.recommended_mode == "direct_valve"
+        assert preset.valve_entity_pattern == "valve_position"
+        assert preset.hvac_mode_before_write == "heat"
+        assert preset.setpoint_delay_seconds == 0.5
+
+    def test_unrecognized_device_gets_generic_preset(self):
+        preset = get_preset("Unrecognized", "Unknown")
+        assert preset.preset_id == "generic"
+        assert preset.recommended_mode == "inherit"
+        assert "auto-detected" in preset.info_summary
 
 
 # ── Profile capability verification ─────────────────────────────────────────
+
 
 class TestProfileCapabilities:
     def test_all_profiles_have_non_empty_identifier(self):
@@ -159,7 +199,9 @@ class TestProfileCapabilities:
     def test_all_active_profiles_have_positive_burst_guard(self):
         for p in ALL_PROFILES:
             if p.is_active:
-                assert p.burst_guard_seconds > 0, f"{p.identifier} has non-positive burst_guard"
+                assert p.burst_guard_seconds > 0, (
+                    f"{p.identifier} has non-positive burst_guard"
+                )
 
     def test_sonoff_has_valve_max_limit_semantics(self):
         assert SONOFF_TRVZB.valve_semantics == VALVE_MAX_LIMIT
@@ -167,7 +209,6 @@ class TestProfileCapabilities:
     def test_eve_thermo_is_read_only_no_calibration(self):
         assert EVE_THERMO.valve_semantics == VALVE_READ_ONLY
         assert EVE_THERMO.allow_external_temp_input is False
-        assert EVE_THERMO.allow_temp_source_select is False
         assert EVE_THERMO.calibration_sync is False
 
     def test_avatto_has_inverted_calibration(self):
@@ -195,7 +236,9 @@ class TestProfileCapabilities:
 
     def test_profiles_are_immutable(self):
         """Profiles are frozen dataclasses — mutation must raise an error."""
-        with pytest.raises((dataclasses.FrozenInstanceError, AttributeError, TypeError)):
+        with pytest.raises(
+            (dataclasses.FrozenInstanceError, AttributeError, TypeError)
+        ):
             GENERIC.identifier = "hacked"  # type: ignore[misc]
 
     def test_beca_has_valve_control_uncertain(self):
@@ -211,4 +254,6 @@ class TestProfileCapabilities:
         """When minimum_setpoint is set, it must be a positive number."""
         for p in ALL_PROFILES:
             if p.minimum_setpoint is not None:
-                assert p.minimum_setpoint > 0, f"{p.identifier} minimum_setpoint not positive"
+                assert p.minimum_setpoint > 0, (
+                    f"{p.identifier} minimum_setpoint not positive"
+                )

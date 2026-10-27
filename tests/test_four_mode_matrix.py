@@ -240,7 +240,7 @@ class TestPreheatAuthorityPerMode:
         coord = _base_coord(False, True, extra_cfg=cfg)
         zone = await _cycle(coord)
         # When Learning is not used, preheat_status comes from the deterministic baseline
-        preheat_status = zone.get("preheat_status", "")
+        preheat_status = zone.get("preheat_status") or ""
         # Both "cold_start_prior" (no evidence) and "prior_only" map to deterministic path
         assert "prior" in preheat_status or "baseline" in preheat_status or preheat_status == "", (
             f"Unexpected deterministic preheat_status: {preheat_status!r}")
@@ -252,7 +252,7 @@ class TestPreheatAuthorityPerMode:
         zone = await _cycle(coord)
         # With Learning shadow: preheat_status must NOT be the deterministic baseline
         # (even with cold start, the shadow's read_preheat_minutes_safe was called)
-        preheat_status = zone.get("preheat_status", "")
+        preheat_status = zone.get("preheat_status") or ""
         # Any status is fine — but we confirm the Learning path was taken
         # (if shadow has no data yet, "cold_start_prior" via Learning path is expected)
         assert preheat_status is not None
@@ -262,7 +262,7 @@ class TestPreheatAuthorityPerMode:
         """INACTIVE: no shadow → deterministic baseline preheat path."""
         coord = _base_coord(False, False)
         zone = await _cycle(coord)
-        preheat_status = zone.get("preheat_status", "")
+        preheat_status = zone.get("preheat_status") or ""
         # Without learning shadow, must use deterministic baseline
         assert "prior" in preheat_status or "baseline" in preheat_status or preheat_status == "", (
             f"INACTIVE preheat status unexpected: {preheat_status!r}")

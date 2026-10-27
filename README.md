@@ -1,119 +1,419 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Mikasmarthome/ThermoSmart/main/custom_components/thermosmart/brand/logo.png" alt="ThermoSmart" width="256"/>
+  <img src="custom_components/thermosmart/brand/logo.png" alt="ThermoSmart" width="256"/>
 </p>
 
 <h1 align="center">ThermoSmart</h1>
-<p align="center"><strong>Self-learning, weather-aware heating control for Home Assistant</strong></p>
+<p align="center"><strong>Self-learning, schedule-driven heating control for Home Assistant TRVs</strong></p>
 
 <p align="center">
   <a href="https://hacs.xyz"><img src="https://img.shields.io/badge/HACS-Custom-orange.svg" alt="HACS Custom"/></a>
-  <a href="https://github.com/Mikasmarthome/ThermoSmart/releases/tag/v1.3.1"><img src="https://img.shields.io/badge/stable-v1.3.1-brightgreen.svg" alt="Stable Release"/></a>
-  <img src="https://img.shields.io/badge/status-stable-brightgreen.svg" alt="Stable"/>
   <a href="https://www.home-assistant.io"><img src="https://img.shields.io/badge/HA-2024.12%2B-brightgreen.svg" alt="HA min"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"/></a>
 </p>
 
----
+> ⚠️ **Use at your own risk.** ThermoSmart controls physical heating devices and is not affiliated with Home Assistant or Nabu Casa. Set a safe minimum temperature and verify the behaviour in observation mode before you let it control anything.
 
-> ⚠️ **Use at your own risk.** ThermoSmart is not affiliated with Home Assistant or Nabu Casa. It controls physical heating devices. Always set a safe minimum temperature and verify behaviour in Observation mode before enabling Active Control.
+ThermoSmart controls the thermostatic radiator valves (TRVs) of a **heating zone**. One config entry is one zone (a room or a group of rooms). Everything is local: no cloud, no subscription.
 
----
+This is a fork that reworks control and scheduling. If you know the original project, read [What is different from the original](#what-is-different-from-the-original) first.
 
-ThermoSmart observes how your building heats and cools, then uses that data — together with weather forecasts and presence detection — to control your TRVs. **One config entry = one heating zone.**
-
-## Why ThermoSmart?
-
-- **Learns your building** — heating rate, heat loss and weather sensitivity derived from real observations in your home, not factory defaults
-- **Adapts to conditions** — outdoor temperature, wind, solar radiation and forecasts feed into heating control decisions
-- **Starts passively** — Observation mode collects data without touching your existing setup
-- **Fully local** — no cloud, no subscription
-
-**Features:** automatic pre-heating · TPI control with learned coefficients · weather-aware setpoints · slope-based window detection · outcome scoring to improve learning quality
+Upstream fixes through v1.3.2 are integrated while retaining this fork's target,
+scheduling and suspension model. Bundled-card registration waits for frontend readiness, and its
+browser cache version follows the card version independently of the integration
+version. Unloading the last zone releases the shared learning engine without
+removing the session-wide card registration.
 
 ---
 
-## Dashboard Card
+## Contents
 
-A dedicated Lovelace card — temperature ring, drag-to-set, mode buttons, history sparkline, confidence bar — is bundled with the integration and registered automatically in Home Assistant. **No separate HACS installation is required.**
+1. [Concepts](#concepts)
+2. [Installation and setup](#installation-and-setup)
+3. [Scheduling](#scheduling)
+4. [Pre-heating](#pre-heating)
+5. [Window, summer and vacation (suspensions)](#window-summer-and-vacation-suspensions)
+6. [How the TRVs are controlled](#how-the-trvs-are-controlled)
+7. [Outdoor data and learning](#outdoor-data-and-learning)
+8. [Entities](#entities)
+9. [Device compatibility](#device-compatibility)
+10. [FAQ](#faq) · [Diagnostics](#diagnostics)
+11. [Known leftovers and deferred work](#known-leftovers-and-deferred-work)
 
-Add it to a dashboard like any other card:
+---
+
+## Concepts
+
+### One target temperature
+
+A zone has exactly **one desired target temperature**. It is what the climate entity shows. Anything can change it, and **the most recent change wins**:
+
+| Source | Example |
+|---|---|
+| You | Moving the temperature slider of the climate entity |
+| A preset | Selecting *Comfort*, *Eco*, *Night*, *Away* or *Vacation* |
+| A TRV dial | Turning the knob on a TRV (if enabled for that TRV) |
+| A schedule event | "Mon–Fri 06:30 → 21 °C" |
+
+There is no *Auto* mode and no separate "override" state. A schedule event does not "take over" or "end" anything; it just sets the target at its time, like you would by hand. After a manual temperature change no preset is highlighted.
+
+Things ThermoSmart does internally (for example the boost of TPI control) never change the desired target.
+
+The desired target survives Home Assistant restarts. A restart does not replay schedule events.
+
+### Presets
+
+Presets are named temperatures: **Comfort, Eco, Night, Away, Vacation**, each configurable per zone. Selecting a preset sets the target once and nothing else. *Away* is a plain preset; there is no automatic presence detection.
+
+### Suspensions
+
+Three conditions can *suspend* normal control: an **open window**, **summer mode** and **vacation mode**. While suspended, the TRVs are driven by the suspension, but **everything else keeps being registered**: target changes and schedule events still update the desired target, and the pre-heat plan is still computed. When the suspension ends, the zone simply continues with the then-current desired target. See [Window, summer and vacation](#window-summer-and-vacation-suspensions).
+
+### Active Control, Learning and observation mode
+
+Two independent switches per zone:
+
+| Active Control | Learning | Result |
+|---|---|---|
+| on | off | Deterministic control (TPI), no learned parameters |
+| on | on | Control with learned parameters (pre-heat time, TPI coefficients, boost) |
+| off | on | **Observation mode**: nothing is written to your TRVs (including the room-temperature feed), ThermoSmart only watches and learns. The target, schedule events and pre-heat plan are still tracked. |
+| off | off | Zone inactive |
+
+The climate entity's HVAC mode `heat`/`off` maps to Active Control on/off.
+Both controls share one state and update each other immediately. New zones default
+to Active Control off; existing zones restore the saved Active Control switch state.
+Start with observation mode if you want to verify sensors and settings first.
+
+---
+
+## Installation and setup
+
+1. HACS → Integrations → **⋮** → **Custom repositories** → add this repository as category *Integration*, then download **ThermoSmart**.
+2. Restart Home Assistant, then **Settings → Devices & services → Add Integration → ThermoSmart**.
+3. Add the **ThermoSmart System** entry first (needed for vacation and summer mode), then one entry per heating zone.
+
+### Bundled dashboard cards
+
+Two configurable cards are available without a separate download or manual
+resource setup. Both select the zone by its climate entity and discover related
+entities through HA's entity registry (including renamed entities). By default,
+the climate entity's friendly name appears as the title; set `show_zone_name: false`
+to hide it.
 
 ```yaml
-type: custom:thermosmart-card
+type: custom:thermosmart-zone-card
 entity: climate.thermosmart_living_room
+show_control: full
+show_graph: true
+show_zone_name: true
+hours_to_show: 24
 ```
 
-The card updates together with the integration — there is no separate version to track.
+**Zone card:** shows zone controls above the temperature graph. All sections
+are optional:
 
----
+| Property | Values | Default |
+|---|---|---|
+| `show_control` | `full`, `minimal`, `true` (same as `full`), `false` | `full` |
+| `show_graph` | `true`, `false` | `true` |
+| `show_zone_name` | `true`, `false` | `true` |
+| `hours_to_show` | Positive number | `24` |
 
-## Screenshots
+**Zone controls:** `show_control: minimal` shows the status, current and target
+temperatures, +/- buttons and equal-width preset buttons centered on each wrapped
+row. `show_control: full` adds HA's
+native climate dial with a live target preview while dragging. Its fill follows
+the desired target, with a separate current-temperature marker. HA handles dial
+interaction and keyboard controls. The dial
+and selected preset text/icons are orange while heating, blue while holding,
+and grey during overrides. Manual temperature
+changes clear that highlight. Summer, vacation and observation modes disable
+temperature/preset controls. An open window takes display priority over other
+statuses, without changing their control restrictions.
 
-![Three ThermoSmart heating zones displayed in a Lovelace dashboard — each zone shows a temperature ring with current and target temperature, active mode indicator, outdoor temperature, humidity, and mode buttons for Auto, Eco, Night, Comfort, Away and Vacation](brand/screenshots/dashboard-zones.jpeg)
+```yaml
+type: custom:thermosmart-zone-schedule-card
+entity: climate.thermosmart_living_room
+show_control: true
+show_plan: true
+show_zone_name: true
+max-events: 5
+max-days: 3
+```
 
-*Three heating zones managed by ThermoSmart. The temperature ring shows current and target temperature at a glance. Mode buttons, outdoor conditions, and a history graph (Actual / Target / Outdoor) are visible per zone. Screenshot uses the bundled ThermoSmart Card, described above.*
+**Schedule card:** shows schedule controls above the upcoming-event plan.
 
----
+| Property | Values | Default |
+|---|---|---|
+| `show_control` | `true`, `false`, `collapsed`, `expanded` | `true` |
+| `show_plan` | `true`, `false` | `true` |
+| `show_zone_name` | `true`, `false` | `true` |
+| `max-events` | Positive integer or `null` | Unset (picker starts with `5`) |
+| `max-days` | Positive integer or `null` | Unset |
 
-## Installation
+Hidden sections do not make requests or run refresh timers. If both sections of
+either card are hidden, the card displays **No sections enabled.**
 
-### 1 — Add Custom Repository
+For the Schedule card, `show_control: true` keeps controls always visible, while
+`false` hides them entirely. `collapsed` and `expanded` show a native **Schedule
+controls** expansion panel with the specified initial state. Toggling the panel
+preserves entered values and survives live HA updates; a fresh card load or
+configuration change restores the configured initial state. Collapsed controls
+remain loaded, unlike hidden controls. The Zone card's `show_control` options
+remain unchanged.
 
-HACS → Integrations → **⋮** → **Custom repositories** → URL: `https://github.com/Mikasmarthome/ThermoSmart` → Category: **Integration** → Add
+**Schedule plan:** lists events that will actually run, excluding skipped events
+during a schedule suspension. `max-days` includes today; `max-events` includes the
+next event. Both limits apply when supplied. Either can be omitted or `null`; if
+both are omitted/null, no events are shown and the card explains that a limit is
+required. The card picker starts with `max-events: 5`, but YAML without either
+limit does not silently assume one. Scheduling disabled entirely hides all events.
+The plan shows a status message only when scheduling is disabled or suspended.
+Only the next event shows pre-heating information. If it is beyond a suspension
+and no plan has been calculated for it yet, the card says so rather than inventing
+an estimate. Its height grows with the event list.
+Day headings use **Today** and **Tomorrow** in HA's timezone; later days show dates.
 
-### 2 — Download
+**Schedule controls:** enables scheduling and provides a **Suspend until:**
+button showing the current deadline (or **Not set**). It opens a custom dialog
+with a combined browser-native date/time input and **Save/Cancel**. The dialog
+uses the HA server's timezone, displays it explicitly, and submits the complete
+deadline only when saved. Initially unset dates are supported; failed saves retain
+the draft and show the error. Picker appearance depends on the browser/device.
+The registered datetime entity is used, including after renaming.
+Shortcuts skip the next
+runnable event, pause until the next local midnight, or pause for 12/24 elapsed
+hours (including across DST transitions). They never enable a disabled schedule
+and reject attempts to shorten a longer suspension; use a date editor
+to intentionally shorten it. **Remove suspension (set to past)** on the card and in the dialog
+saves a timestamp one minute in the past, ending the suspension without clearing
+the datetime entity or changing the scheduling switch. Schedule actions use
+HA's filled neutral buttons.
 
-HACS → Integrations → find **ThermoSmart** → **Download** → select the latest release → Download
+Collapsible controls are inset and use the theme's `secondary-background-color`.
+The next event uses an 18% `primary-color` tint over that background, with a
+primary-colored **Next event** label. Both follow theme changes without fixed colors.
 
-### 3 — Restart and Add
+**Temperature history:** uses the original ThermoSmart compact graph style:
+blue actual temperature, orange desired target, and red outdoor temperature when
+available, with temperature grid lines, time labels and a legend.
+`hours_to_show` defaults to 24. It reads recorded attributes of the zone's climate
+entity (not the boosted/TRV setpoint); Recorder/history must be enabled and the
+climate entity must not be excluded from recording. The graph refreshes every five
+minutes. Click the graph section, or focus it and press Enter/Space, to open HA's
+History page filtered to that climate entity. The numeric actual/desired sensors
+remain available for users' own HA graphs but are not required by this card.
 
-Restart Home Assistant, then: **Settings → Integrations → Add Integration → ThermoSmart**
+The former `custom:thermosmart-card` and the four standalone control/plan/history
+card types have been removed. Replace existing dashboard entries with the two
+new card types; the single bundled resource path remains unchanged. To reproduce
+an individual former card, hide the other section (and optionally the title).
 
----
+ThermoSmart serves its bundled JavaScript and waits for Home Assistant's frontend
+to finish initializing. With storage-managed resources, it automatically creates
+or updates one **JavaScript module** under **Settings → Dashboards → Resources**.
+With YAML-managed resources, it uses HA's supported extra-frontend-module helper
+instead, without editing your YAML; this automatic module is not listed in Resources.
+Writing a dashboard in YAML does not by itself mean resources are YAML-managed.
 
-## Setup
+The URL is `/thermosmart/thermosmart-card.js?v=<card asset version>`. Only entries
+for that exact local path are managed; old versions are updated and duplicate
+entries for that path are removed. Other resources are untouched. If you explicitly
+list this bundle in YAML-managed resources, use a single module entry with the
+current versioned URL, or remove it to let ThermoSmart load the card automatically.
+Restart HA after changing such an explicit YAML entry.
 
-Add **ThermoSmart System** first (Summer mode select + Vacation switch), then add each heating zone.
+Restart HA after installing/updating the integration, then reload an already-open
+dashboard in your browser. Zone reloads do not remove or duplicate resources.
+Registration failures appear in **Settings → System → Repairs** and the HA logs;
+heating remains operational. After correcting the problem, reload a ThermoSmart
+entry or restart HA to attempt registration again. There is no periodic retry loop.
 
-**Observation mode is recommended to start.** With Active Control off, ThermoSmart watches your existing TRVs and builds an initial thermal model without changing anything in your setup. Use the first day or two to verify that sensors, temperatures, and schedules are configured correctly — then enable Active Control whenever you're ready. Learning continues in both modes; Observation mode is not a prerequisite.
+### System entry
 
-### Zone Configuration (4 steps)
+Optional **weather entity** and/or **outdoor temperature sensor** (used only for automatic summer mode), and the automatic-summer thresholds (default: on above 18 °C, off below 15 °C).
 
-| Step | Fields |
+### Zone entry
+
+The setup flow and the options flow ask **the same questions with the same texts**. The options flow additionally starts with a menu so you can change one section at a time; the only other difference is that setup pre-fills the outdoor section with the system's weather entity. Steps:
+
+| Step | What you configure |
 |---|---|
-| **1 – Devices** | Zone name · TRVs · Temperature sensors *(optional)* · Humidity sensors · Window / door sensors · Window delays · Valve maintenance · Calibration invert |
-| **2 – Temperatures** | Comfort · Night · Away · Vacation · Eco · Tolerance · Weekday/weekend schedule times |
-| **3 – Presence** | Person entities · Home zone · Learning on/off |
-| **4 – Weather** | Weather entity · Outdoor temp/humidity · Wind speed · Solar radiation · Precipitation |
+| **Devices** | Zone name, TRVs, room temperature and humidity sensors (optional – the TRV's own sensor is the fallback), window/door sensors with open and close delay |
+| **Control strategy** | Zone control mode, minimum control interval, temperature tolerance, external temperature write threshold, physical-setpoint debounce and settling time |
+| **Per TRV** | See [Per-TRV options](#per-trv-options); one pass per TRV |
+| **Temperatures** | Comfort, Eco, Night, Away, Vacation and the window-open temperature |
+| **Schedule** | Add, edit and remove weekly events |
+| **Outdoor** | Optional outdoor sensors (temperature, humidity, wind, solar, rain) and an optional weather entity as fallback |
 
-> **External temperature sensors are optional.** Since v1.0.3, ThermoSmart automatically uses the TRV's built-in temperature sensor as fallback when no external sensor is configured. Adding a dedicated room sensor improves accuracy, but is not required to get started.
+Changes in the options flow reload the zone and run one control pass.
+
+---
+
+## Scheduling
+
+A schedule is a list of **events**. An event means: *at time T on these weekdays, set the target to X* – nothing else. X is a temperature (5–30 °C) or a preset name (resolved to that preset's temperature when the event fires). There are no time slots and no "active event".
+
+Events fire **at their exact time**, not at the next control cycle. An event that was missed because scheduling was off, paused, or Home Assistant was not running is **skipped, never caught up**.
+
+Edit the event list in the zone's setup flow or under **Settings → Devices & services → ThermoSmart zone → Configure → Schedule**. Each event has one or more weekdays, a local time, a target temperature or preset, and an optional pre-heat flag. Events with an overlapping weekday and time are rejected rather than silently overriding each other. The schedule is stored with that zone's Home Assistant config entry; editing it does not require a separate YAML file. Existing `thermosmart_schedules.yaml` files are not imported; recreate those events in the flow.
+
+Controls per zone:
+
+* **Scheduling enabled** (switch): persistent on/off.
+* **Scheduling disabled until** (date/time): temporary pause; the scheduler continues afterwards, without catching up.
+* **Next scheduled event** (sensor): when it is, and its target.
+
+While vacation or summer mode is active, events still fire but only update the desired target that will apply when the suspension ends.
+
+---
+
+## Pre-heating
+
+An event with `preheat: true` makes the zone start heating early so that the event's target is reached **at** the event time instead of merely starting to heat then. It applies when the event's target is higher than the current target (numeric or preset).
+
+* The lead time comes from learned heat-up behaviour once there is enough data, otherwise from a deterministic default (about 1.5 °C per hour plus a 5 minute onset), capped at 180 minutes. No pre-heating if the gap is small.
+* Only the **next** event is considered. If its pre-heat would begin before the previous event, it begins right after the previous event instead.
+* Once started, pre-heating continues until the event fires (a shrinking estimate cannot end it early).
+* The **Pre-heat start** sensor shows when it starts (attributes: state, reason, duration and where it came from). The status becomes `preheating`.
+* **A manual target change while pre-heating cancels it** for that event (climate entity, preset, TRV dial). The event itself still fires on time. A manual change *before* the planned start does not cancel the plan.
+* **Suspensions:** pre-heating is not performed while a window is open or summer/vacation is on, but the plan is kept. If the suspension ends after the planned start and before the event, pre-heating starts at that moment. If the event has fired in the meantime, its target simply applies.
+
+---
+
+## Window, summer and vacation (suspensions)
+
+| Suspension | TRVs are held at | Ends when |
+|---|---|---|
+| **Summer** | Frost protection (12 °C); valves are exercised periodically | Summer mode is switched off (or automatic summer ends) |
+| **Vacation** | The zone's *Vacation* temperature | Vacation mode is switched off |
+| **Window open** | Per TRV: the window-open temperature (default 5 °C), or HVAC `off` | The window is closed (after the close delay) |
+
+If several apply, the highest priority drives the TRVs: **summer > vacation > window**. The others are registered state only.
+
+During any suspension:
+
+| What happens | Behaviour |
+|---|---|
+| Schedule events | Fire normally and update the desired target |
+| You change the target (slider, preset) | Registered as the desired target, applied when the suspension ends |
+| TRV dial turned | Registered as the desired target, the TRV is corrected back to the held temperature immediately and the correction is logged (while a window is open the TRV stays in its window state) |
+| Pre-heating | Not performed; the plan is kept (see above) |
+| Climate entity | Keeps showing the desired target |
+| Status sensor | `window_open`, `vacation` or `summer`, with attributes for the active suspension and the temperature held |
+
+There is one mechanism, not one restore routine per case: when the last suspension ends, the zone continues with its current desired target.
+
+**Windows.** Open/close are detected from window/door sensors with separate open and close delays; without sensors, a falling-temperature (slope) detection is used. Per TRV, *Turn off when window is open* switches HVAC to `off` instead of using the window-open temperature (only enable for TRVs with frost protection while off).
+
+Both delays are specified in seconds and default to **20 seconds**. Existing saved
+numbers are interpreted as seconds, without automatic conversion from minutes.
+Delays apply only to observed `off → on` and `on → off` transitions. Closing before
+the open delay expires never activates a suspension or close delay. Startup and
+availability recovery reconcile immediately: `on` suspends heating, `off` releases
+the window hold. Missing/unknown/unavailable readings cancel that sensor's timers
+and tracking; availability problems are reported separately. Every sensor state
+change requests a debounced control pass. Reloads do not reconstruct prior delays.
+
+While Active Control is on, a TRV entering an unwanted HVAC mode (such as `auto`)
+requests a control pass without waiting for the regular interval. The watchdog
+restores `heat` where supported and permitted by the device profile, except during
+summer or window suspension. Requests use the normal refresh debouncer.
+
+The open delay must elapse before window suspension starts. Closing a window
+before that point starts neither a suspension nor a close delay. After a
+confirmed opening, the close delay holds the window state before normal control
+resumes with the latest desired target. Without configured contact sensors,
+slope detection does not use the contact-sensor delays.
+
+**Vacation and summer** are controlled by the ThermoSmart System entry (required):
+
+| Entity | Meaning |
+|---|---|
+| Vacation Mode | All zones hold their vacation temperature |
+| Force Summer Mode | Summer on, irrespective of the weather |
+| Auto-enable Summer Mode | Switches summer on/off from the outdoor temperature (72 h average, on/off thresholds from the System entry). Needs an outdoor temperature (sensor, else weather entity) and a full 72 h of samples before it first decides (history is not persisted, so after a restart the previous state is kept until 72 h have been collected again; the switch's `sample_hours` attribute shows how much exists). |
+
+---
+
+## How the TRVs are controlled
+
+### Zone control mode (default for all TRVs of the zone)
+
+| Mode | What is sent |
+|---|---|
+| **Setpoint only** | The plain target; the TRV regulates itself |
+| **TPI setpoint modulation** | ThermoSmart computes the heating demand and raises or lowers the setpoint sent to the TRV (boost up to +8 °C). The setpoint actually sent is shown by the *TPI boosted TRV setpoint* sensor; the climate entity still shows the desired target |
+| **Direct valve control** | The calculated valve opening (0–100 %) is written to the TRV's valve entity; the plain target is sent as setpoint |
+
+Other zone options: minimum control interval (default 5 min), temperature tolerance (a new setpoint is only written if it differs from the TRV's by this much), external temperature write threshold, physical-setpoint debounce and settling time (default 5 s each).
+
+### Per-TRV options
+
+Control mode override (or inherit), valve entity, feeding the room temperature to the TRV (+ entity), calibration (entity, on/off, invert), valve exercise, *Turn off when window is open*, *accept physical setpoint changes* and **state settings**: any `select`/`number`/`switch` entity of the TRV that ThermoSmart keeps at a value you choose (e.g. child lock off); a service is only called if the value differs. Known devices get these fields pre-filled from a device preset. Detection happens only in the flow; at runtime exactly the configured values are used, and a cleared field turns the feature off. TRVs in one zone may use different strategies.
+
+### Physical changes on a TRV
+
+If enabled for that TRV, the TRV's reported setpoint (after the debounce) becomes the zone target and is applied to all TRVs, like any other manual change. Echoes of ThermoSmart's own writes are ignored during the settling time. If disabled for that TRV, the change is corrected back.
+
+### When does a control pass run?
+
+Periodically (every control interval), and **only** for the reasons below. Anything else (TRV attribute noise, humidity changes, small room-temperature drift) does not cause a pass. Bursts are merged into one pass. The last pass's reasons are in the `pass_triggers` attribute of the status sensor.
+
+| Trigger | Cause |
+|---|---|
+| `periodic` | The control interval elapsed |
+| `target_change` | You changed the target or preset |
+| `schedule_event` | A schedule event fired (exact timer) |
+| `preheat_start` | The planned pre-heat start was reached (exact timer) |
+| `window` | A window sensor changed or an open/close delay expired |
+| `room_temperature` | The room temperature moved by at least the refresh threshold |
+| `physical_setpoint` | A physical TRV change was adopted or must be corrected |
+| `switch` | Active Control or Learning was switched |
+| `scheduling` | Scheduling was switched or paused/resumed |
+| `system_state` | The System entry changed summer or vacation |
+| `startup` | The zone was (re)loaded, including options changes |
+
+### Robustness
+
+Missing room sensors fall back to the TRV's own sensor; spikes are filtered; offline sensors are averaged out (control pauses only if all are unavailable); heating-failure detection (commanded heating, but the temperature falls for 35+ minutes); valve maintenance in summer and vacation; device profiles with a generic fallback.
+
+---
+
+## Outdoor data and learning
+
+**Outdoor data.** Each zone has one view of the *current* outdoor conditions: temperature, humidity, wind, solar radiation and precipitation. Each value comes from the zone's own outdoor sensor if configured and available, otherwise from the *current conditions* of the zone's weather entity, otherwise it is unavailable. Forecasts are not used.
+
+**Everything works without outdoor data.** Missing values are never an error and never block heating: learning and control simply continue with their outdoor-independent behaviour.
+
+Outdoor data is used by **learning** and by **control** (the outdoor part of the TPI calculation and the pre-heat estimate). It is **not** used to change the target.
+
+**Learning** observes heat-up rate, heat loss, onset delay, boost and after-heat behaviour of the zone and exposes *Learning progress* and diagnostic sensors. Data is stored locally. Learned values are used for the pre-heat duration, TPI coefficients and adaptive boost.
 
 ---
 
 ## Entities
 
-### Per Zone
+### Per zone
+
 | Entity | Description |
 |---|---|
-| `climate.thermosmart_*` | Virtual thermostat — target/current temp, HVAC mode, presets |
-| `select.*_mode` | Heating mode: Auto / Comfort / Eco / Night / Away / Vacation |
-| `switch.*_active_control` | Active Control on/off |
-| `switch.*_learning` | Learning algorithm on/off |
-| `sensor.*_status` | Zone status |
-| `sensor.*_confidence` | Learning progress 0–100 % |
-| `sensor.*_adjusted_target` | Configured target temperature (schedule or mode) |
-| `sensor.*_preheat_minutes` | Calculated preheat lead time in minutes |
+| `climate.*` | Virtual thermostat: target, current temperature, HVAC `heat`/`off`, presets |
+| `select.*_preset` | Preset selection |
+| `switch.*_active_control` / `*_learning` | Active Control and Learning |
+| `switch.*_scheduling_enabled` | Scheduling on/off |
+| `datetime.*_scheduling_disabled_until` | Temporary scheduling pause |
+| `sensor.*_status` | `observation_mode`, `heating`, `idle`, `preheating`, `window_open`, `vacation`, `summer`, `heating_failure`, `disabled` (+ attributes) |
+| `sensor.*_learning_progress` | 0–100 % |
+| `sensor.*_next_scheduled_event` | Time of the next event (attributes: target, minutes until) |
+| `sensor.*_pre_heat_start` | Planned pre-heat start (attributes: state, reason, duration) |
+| Actual temperature / Desired target temperature sensors | Numeric room/desired-target histories; enabled by default |
 
-Additional diagnostic sensors (disabled by default): TRV setpoint · TPI duty-cycle · Weather offset · Temperature slope · Heat loss · Heating power · Outcome score · Solar gain · TRV observations · Window cooling rate · EMA temperature
+Diagnostic sensors (disabled by default): Pre-heat minutes · TPI boosted TRV setpoint · TPI duty cycle · Temperature slope · Heat loss · Heating power · Outcome score · Solar heat gain · TRV observations · Window cooling rate · Temperature EMA 1h.
 
-> **Note:** `sensor.*_confidence` and the Heat Loss, Heating Power, Outcome Score, TRV Observations, and Window Cooling Rate diagnostic sensors are backed by the Learning Engine — their values and extra attributes reflect the Learning Engine's model state.
+### System entry
 
-### Global (ThermoSmart System)
-| Entity | Description |
-|---|---|
-| `select.thermosmart_summer_mode` | Summer mode — `automatic` / `on` / `off` |
-| `switch.thermosmart_vacation_mode` | Vacation mode — all zones → vacation temperature |
-| `switch.thermosmart_global_debug` | Debug Log — enables `DEBUG` logging for the integration at runtime |
+`switch.*_vacation_mode` · `switch.*_force_summer_mode` · `switch.*_auto_summer_mode`
 
 ---
 
@@ -140,16 +440,16 @@ These devices have a named profile with device-specific handling applied automat
 
 | Device | Protocol | Profile-specific behavior |
 |---|---|---|
-| SONOFF TRVZB | Zigbee (Z2M) | `valve_opening_degree` treated as max-opening limit (not written). Room temperature pushed to `external_temperature_input` for improved TRV-internal accuracy. Motor-protection on valve close. HVAC watchdog active. |
+| SONOFF TRVZB | Zigbee (Z2M) | `valve_opening_degree` treated as max-opening limit (not written). While Active Control is on, the room temperature is pushed to `external_temperature_input` for improved TRV-internal accuracy. Motor-protection on valve close. HVAC watchdog active. |
 | Eurotronic Spirit | Zigbee (Z2M / ZHA) | HVAC mode written to `heat` before each setpoint — required for the TRV to accept external setpoints reliably. |
 | Eurotronic SPZB0001 | Zigbee (Z2M / ZHA) | Same HVAC-first setpoint workflow as Eurotronic Spirit. |
 | Avatto ME167 | Zigbee (Z2M) | Calibration offset sign is inverted to match this device's firmware convention. |
-| Eve Thermo (HomeKit / SEA80x) | HomeKit | Valve position exposed as read-only sensor — ThermoSmart reads it for learning but does not write to it. External temperature, temperature source select, and calibration writes are disabled. |
+| Eve Thermo (HomeKit / SEA80x) | HomeKit | Valve position exposed as read-only sensor — ThermoSmart reads it for learning but does not write to it. External temperature and calibration writes are disabled. |
 | Beca BHT-002 | Zigbee (Z2M) | Calibration plausibility limit tightened to ±3 °C to account for known firmware offset behaviour on some revisions. |
 
 ### Prepared profiles — standard behavior
 
-These devices have a named profile. Autodetection of valve, calibration, and quirk entities runs as normal. No device-specific overrides apply beyond what the hardware exposes. Dedicated profiles allow future device-specific optimizations and quirks handling while remaining compatible with generic climate devices.
+These devices have a named profile. Valve, calibration, and quirk entities are detected once when you set up the TRV and pre-filled in its settings. No device-specific overrides apply beyond what the hardware exposes. Dedicated profiles allow future device-specific optimizations and quirks handling while remaining compatible with generic climate devices.
 
 | Device | Protocol |
 |---|---|
@@ -172,7 +472,7 @@ ThermoSmart can observe these devices and record learning data, but active setpo
 
 ### Generic fallback
 
-Any `climate` entity supporting `set_temperature` that does not match a named profile receives the generic fallback profile. Setpoint boost and all auto-detected features (valve, calibration, quirk entities) apply as normal.
+Any `climate` entity supporting `set_temperature` that does not match a named profile receives the generic fallback profile. Setpoint boost and all detected features (valve, calibration) are pre-filled in the TRV settings during setup.
 
 | Profile | Applies to |
 |---|---|
@@ -200,139 +500,103 @@ Any `climate` entity supporting `set_temperature` that does not match a named pr
 
 ---
 
-## Summer & Vacation Mode
-
-### Summer Mode (`select.thermosmart_summer_mode`)
-
-| Option | Behaviour |
-|---|---|
-| `automatic` | Activates when the 72 h rolling outdoor average exceeds **18 °C**; deactivates below **15 °C** (3 °C hysteresis prevents rapid toggling) |
-| `on` | Forces summer mode — heating disabled, frost protection (12 °C) active |
-| `off` | Forces winter mode — normal heating regardless of outdoor temperature |
-
-In summer mode all normal heating is suspended. TRVs are held at 12 °C to keep valves exercised.
-
-### Vacation Mode (`switch.thermosmart_vacation_mode`)
-
-Sets all zones to the configured vacation temperature (default 12 °C). Takes priority over schedule and presence detection. Independent of summer mode.
-
----
-
-## Status Values
-
-| Status | Meaning |
-|---|---|
-| `observation_mode` | Active Control OFF, learning ON |
-| `heating` | Actively heating toward target |
-| `idle` | Target reached, maintaining |
-| `preheating` | Heating before scheduled comfort time |
-| `window_open` | Window detected (sensor or slope), heating paused |
-| `away` | All persons away |
-| `vacation` | Vacation mode active |
-| `summer` | Summer mode — frost protection only |
-| `heating_failure` | Heating commanded but temperature falling 35+ min |
-| `disabled` | Active Control OFF, learning OFF |
-
----
-
 ## FAQ
 
-**How do I update ThermoSmart?**  
-HACS → Integrations → ThermoSmart → **Update** → Restart Home Assistant. Learning data is preserved across updates.
+**What is observation mode?**  
+Active Control off, Learning on: ThermoSmart reads what your existing controller does and learns from it, and writes nothing to your TRVs. Switch Active Control on when you are ready.
 
-**What is Observation mode?**  
-Active Control OFF: ThermoSmart reads what your existing controller does and learns from it — nothing in your setup changes. Switch to Active Control when you're ready.
+**How long until learning is effective?**  
+Learning builds from actual heating cycles, so it depends on how often your heating runs. *Learning progress* (0–100 %) combines how much, how diverse and how clean the data is. Early on, built-in physical defaults carry more weight.
 
-**What do the Learning and Active Control switches actually do together?**  
-ThermoSmart combines two independent switches:
+**A sensor goes offline – what happens?**  
+The remaining sensors are averaged. Control pauses only if all room sensors of the zone are unavailable.
 
-- **Learning enabled + Active Control off** — ThermoSmart observes and learns, but does not control your devices (no service calls).
-- **Learning disabled + Active Control on** — ThermoSmart controls deterministically using TPI, without any adaptive learning adjustments.
-- **Learning enabled + Active Control on** — ThermoSmart controls using TPI as usual, while Learning evaluates potential adaptive adjustments in the background (shadow-only, visible in diagnostics). This version does not yet apply those adjustments to control.
-- **Both off** — ThermoSmart remains inactive for that zone.
-
-**How long until the learning algorithm is effective?**  
-Learning builds from active heating observations and works in both Observation mode and Active Control. The `sensor.*_confidence` value (0–100%) is a calibrated combination of how much data has accumulated, how diverse and clean it is, and how well outcomes have been validated — not a simple observation count. Early on, built-in physical defaults carry more weight; confidence rises steadily and learning takes over more of the decision as real heating cycles accumulate. How quickly this happens depends on how often your heating runs.
-
-**A sensor goes offline — what happens?**  
-ThermoSmart averages the remaining sensors. Temperature decisions pause only if all sensors in a zone are unavailable simultaneously.
-
-**Where is the learning data stored?**  
-Learning data is stored locally under Home Assistant's `/config/.storage/` directory. For debugging or support, download ThermoSmart's diagnostics (see below) instead of sharing raw storage files. Do not share or manually edit files under `/config/.storage` unless specifically asked by a maintainer.
+**Where is learning data stored?**  
+Locally under `/config/.storage/`. Share the downloaded diagnostics instead of raw storage files.
 
 **Which TRVs use direct valve control?**  
-ThermoSmart auto-detects a direct-valve entity on each TRV device and writes the TPI duty-cycle (0–100%) to it when one is found. Recognised patterns:
+When you set up a TRV, a detected valve entity is pre-filled; with *Direct valve control* the calculated opening (0–100 %) is written to it. Recognised patterns: `valve_position` (Eurotronic Spirit), `pi_heating_demand` (Tuya TS0601, some Danfoss), `heating_demand`, `level` (Homematic IP). TRVs without one – including the **SONOFF TRVZB** – use setpoint modulation. On the TRVZB the room temperature is additionally written to `external_temperature_input`. `valve_opening_degree` is never written: on that device it is a maximum-opening limit.
 
-| Pattern | Example devices |
-|---|---|
-| `valve_position` | Eurotronic Spirit (SPZB0001) |
-| `pi_heating_demand` | Tuya TS0601_3/5, some Danfoss |
-| `heating_demand` | Alternative name for the above |
-| `level` | Homematic IP (hahomematic, 0.0–1.0 scaled) |
+**SONOFF TRVZB via Zigbee2MQTT – `heat` vs `auto`**  
+In `heat` the TRV follows the setpoint written by ThermoSmart; in `auto` it follows its internal weekly schedule and ignores external setpoints. With Active Control on, every setpoint write switches the TRV to `heat`, so the internal schedule is bypassed (no need to delete it). In observation mode nothing is written, so the TRV stays in its last mode.
 
-TRVs without a recognised pattern — including **SONOFF TRVZB** — are controlled via setpoint boost (`climate.set_temperature`). On SONOFF TRVZB, ThermoSmart additionally writes the room temperature to `external_temperature_input`, which feeds the TRV's own internal controller for better accuracy. `valve_opening_degree` is intentionally not written: on this device it configures a maximum-opening limit, not the live valve position.
+**Why did the TRVs not do what the climate entity shows?**  
+A suspension is active (window, vacation, summer). The climate entity shows the *desired* target; check the status sensor and its attributes for the held temperature.
 
-**SONOFF TRVZB via Zigbee2MQTT — `heat` vs `auto` mode and internal weekly schedule**  
-Zigbee2MQTT exposes two HVAC modes on the SONOFF TRVZB:
-
-- **`heat`** — manual setpoint mode: the TRV follows the setpoint written by ThermoSmart (or any other controller)
-- **`auto`** — the TRV follows its own internal weekly schedule and ignores externally written setpoints
-
-When ThermoSmart is in **Active Control**, it calls `climate.set_temperature` on every cycle. This automatically switches the TRV to `heat` mode, so the internal weekly schedule is bypassed — the TRV follows ThermoSmart's setpoints instead.
-
-**You do not need to delete the internal schedule.** It has no effect while the TRV is in `heat` mode. If Active Control is ever disabled and the TRV is switched back to `auto` manually, the internal schedule becomes active again.
-
-In **Observation mode** ThermoSmart does not write setpoints, so the TRV stays in whatever mode it was last set to (typically `auto` after initial pairing). Observations and learning are recorded correctly regardless of the TRV's active mode.
+**Why did a control pass run / not run?**  
+Look at `pass_triggers` on the status sensor (and `outdoor_sources` for where outdoor values came from) and the trigger table above.
 
 ---
 
 ## Diagnostics
 
-ThermoSmart uses Home Assistant's built-in diagnostics download — no separate export button or service.
+### Temporary entity unavailability
 
-**How to download:**
-- Home Assistant → **Settings** → **Devices & services** → **ThermoSmart** → select an entry (a heating zone, or the global "ThermoSmart System" entry) → **⋮** → **Download diagnostics**
+After Home Assistant has fully started, ThermoSmart reports missing, `unknown`
+or `unavailable` configured entities under **Settings → System → Repairs**.
+Monitoring covers each zone's sensors, weather source and TRVs, the System
+entry's outdoor sources, and enabled per-TRV valve-control, external-temperature
+input, calibration and state-setting entities. Unused optional entities and
+disabled device features are not monitored.
 
-Each heating zone's diagnostics include analytics, learning progress, episode history, storage health, and recent critical events for that zone — useful for debugging or for sharing with a maintainer. The "ThermoSmart System" entry's diagnostics are a brief overview (versions, configured zone count).
+Each Repair identifies the affected zone/System entry, entity and its role. It
+clears automatically when that entity becomes available again. Short outages
+produce no warning in the log. After **three continuous minutes**, ThermoSmart
+logs one warning per affected entity and entry; after recovery it logs one
+informational message. Repeated unavailable/unknown updates do not restart that
+timer. Removing or reconfiguring an entry cleans up its Repairs.
 
-**Privacy — diagnostics contain:**
-- ThermoSmart version, zone count
-- Per-zone: TRV count, sensor counts, feature flags (booleans only)
-- Per-zone: all numeric learning data (observations, rates, confidence, boost factor, …)
-- Observation timestamps (required for longitudinal learning analysis)
+Monitoring does not delay control, send commands or change fallback behavior.
+An available fallback does not hide a Repair for a configured primary source.
+An entity becoming available does not prove its readings are valid or that writes
+succeed. Write failures and heating-failure alarms retain their existing handling.
 
-**Privacy — diagnostics do NOT contain:**
-- Passwords or authentication tokens of any kind
-- Entity IDs, device names, or integration names
-- Person names or user identifiers
-- Street addresses or geographic coordinates
+### Downloading diagnostics
 
-**Diagnostics stay strictly local until you choose to share the downloaded file.** No data is sent anywhere automatically. Review the file before sharing it with anyone.
+**Settings → Devices & services → ThermoSmart →** pick an entry **→ ⋮ → Download diagnostics.** A zone's file contains analytics, learning progress, episode history, storage health and recent critical events. The System entry's file is a short overview.
+
+The files contain numeric learning data, feature flags and timestamps. They do **not** contain credentials, entity IDs, device or person names, or locations. Nothing is sent anywhere; review the file before you share it.
+
+For debug logs use Home Assistant's built-in logger configuration for `custom_components.thermosmart`.
 
 ---
 
-## Languages
+## What is different from the original
 
-24 UI languages supported: BG · CA · CS · DA · DE · EL · EN · ES · FI · FR · HU · IT · NB · NL · PL · PT · RO · RU · SK · SL · SV · TR · UK · ZH-Hans
+* One desired target; no *Auto* mode, no override state, no presence-based *Away*, no weekday/weekend fields.
+* Free-form schedule events configured in the zone flow, independent of presets and modes, with exact-time firing and optional per-event pre-heating.
+* Window, summer and vacation share one suspension mechanism.
+* Control strategy (zone and per-TRV), state settings and physical-setpoint handling are configurable; setup and options flows are one implementation.
+* A fixed list of reasons for control passes.
+* Outdoor data: sensors first, then the weather entity's current conditions; no forecasts.
+* **Weather-based correction of the target (weather offset, forecast suppression) was removed.** Re-add or remove it deliberately later.
+* Removed: *Adjusted target* sensor, *Weather offset* sensor, `away` status, the debug-log switch and the indoor summer bypass.
+* There is no migration from earlier configurations; set zones up again.
 
-Additional languages welcome via Pull Request (`custom_components/thermosmart/translations/`).
+---
+
+## Known leftovers and deferred work
+
+**Leftovers to resolve:**
+
+* The `learning/` package still contains the forecast trust/bias models (e.g. `forecast_high` fields, notes in `legacy_map.py`). Nothing feeds or uses them. Remove them, or reconnect them if weather-based correction is re-introduced.
+* Learning stores a `mode_context` per outcome (a former mode name); it is informational only.
+
+**Deferred (wanted, not implemented):**
+
+* Translations other than English: new strings exist in English only; other languages fall back to English and are not checked by the completeness test.
+* A separate debugging dashboard card and a backend operation to remove the schedule suspension date remain deferred.
+* Early cutoff / coasting (stop heating slightly early and let after-heat finish).
+* Weather-based correction (see above).
 
 ---
 
 ## Contributing
 
-**Bugs** → [GitHub Issues](https://github.com/Mikasmarthome/ThermoSmart/issues/new): HA version, ThermoSmart version, what happened, log lines (`Settings → System → Logs → thermosmart`)
+**Bugs** and **feature requests**: GitHub Issues of this repository – include HA version, ThermoSmart version, what happened and log lines (`Settings → System → Logs → thermosmart`). **New TRV model?** Open a discussion with the model, protocol and log lines; that is the fastest way to a device profile.
 
-**Features** → [Issues](https://github.com/Mikasmarthome/ThermoSmart/issues/new) with label `enhancement`
-
-**Especially welcome:** Testing with more TRV models · Additional translations · Device quirk patterns
-
-**New device?** If your TRV is not listed above or behaves unexpectedly, open a [GitHub Discussion](https://github.com/Mikasmarthome/ThermoSmart/discussions) with your device model, protocol, and HA log lines — this is the fastest path to getting a dedicated profile added.
-
-[Discussions →](https://github.com/Mikasmarthome/ThermoSmart/discussions)
-
----
+Tests: `uv run python -m pytest -p no:cacheprovider --asyncio-mode=auto`.
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT – see [LICENSE](LICENSE)

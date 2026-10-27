@@ -37,10 +37,8 @@ def make_coordinator(zone_cfg_overrides: dict | None = None, *, clock=None):
     entry.options = {}
     entry.data = make_zone_config(**(zone_cfg_overrides or {}))
 
-    weather_engine = MagicMock()
-    weather_engine.compute_temperature_offset.return_value = 0.0
-    weather_engine.compute_forecast_suppression.return_value = 1.0
-    weather_engine.async_get_data = AsyncMock(return_value={"temperature": 10.0})
+    outdoor = MagicMock()
+    outdoor.read.return_value = {"temperature": 10.0}
 
     learning_engine = MagicMock()
     learning_engine.async_get_base_target = AsyncMock(return_value=21.0)
@@ -55,7 +53,7 @@ def make_coordinator(zone_cfg_overrides: dict | None = None, *, clock=None):
     learning_engine.record_forecast_decision = MagicMock()
 
     with _patch("homeassistant.helpers.frame.report_usage"):
-        return ThermoSmartCoordinator(hass, entry, weather_engine, learning_engine,
+        return ThermoSmartCoordinator(hass, entry, outdoor, learning_engine,
                                       clock=clock)
 
 
@@ -81,10 +79,9 @@ def make_zone_config(**overrides) -> dict:
         "sched_we_morning": "08:00",
         "sched_we_night": "23:00",
         "learning_enabled": True,
-        "window_open_delay": 5,
-        "window_close_delay": 2,
+        "window_open_delay": 20,
+        "window_close_delay": 20,
         "valve_maintenance": True,
-        "manage_temp_source": False,
         "calibration_invert": False,
     }
     defaults.update(overrides)
@@ -101,7 +98,7 @@ def make_weather_data(
     condition: str | None = "sunny",
     rain: float | None = None,
 ) -> dict:
-    """Return a weather data dict matching WeatherEngine.async_get_data() output."""
+    """Return a weather data dict matching OutdoorConditions.read() output."""
     data: dict = {}
     if outdoor_temp is not None:
         data["temperature"] = outdoor_temp

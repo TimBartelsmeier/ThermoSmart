@@ -1,4 +1,114 @@
 {
+  "card": {
+    "loading": "Wird geladen…",
+    "zone_unavailable": "Zone nicht verfügbar",
+    "zone_not_found": "Zonen-Entity nicht gefunden",
+    "select_zone": "Wähle die Climate-Entity einer ThermoSmart-Zone",
+    "current": "Ist",
+    "target": "Ziel",
+    "decrease_target": "Zieltemperatur senken",
+    "increase_target": "Zieltemperatur erhöhen",
+    "controls_disabled": "Die Temperatursteuerung ist in diesem Modus deaktiviert",
+    "status": {
+      "window": "Heizung ausgesetzt: Fenster offen",
+      "summer": "Sommermodus",
+      "vacation": "Urlaubsmodus",
+      "observation": "Beobachtungsmodus",
+      "preheat": "Vorheizen",
+      "heating": "Heizen",
+      "holding": "Temperatur halten"
+    },
+    "preset": {
+      "comfort": "Komfort",
+      "eco": "Eco",
+      "sleep": "Nacht",
+      "away": "Abwesend",
+      "vacation": "Urlaub"
+    },
+    "preheat": {
+      "active": "Vorheizen aktiv",
+      "planned": "Vorheizen beginnt um {time}",
+      "suspended": "Vorheizen ausgesetzt",
+      "cancelled": "Vorheizen abgebrochen",
+      "not_calculated": "Vorheizen nicht berechnet",
+      "unavailable": "Vorheizen nicht verfügbar",
+      "none": "Kein Vorheizen"
+    },
+    "schedule": {
+      "today": "Heute",
+      "tomorrow": "Morgen",
+      "disabled": "Zeitplanung deaktiviert",
+      "disabled_until": "Zeitplanung ausgesetzt bis {time}",
+      "summer_enabled": "Der Sommermodus ist aktiv. Zeitplanereignisse werden ausgeführt, aber die gesetzte Zieltemperatur wird erst nach Ende des Sommermodus angewendet.",
+      "summer_disabled": "Der Sommermodus ist aktiv. Wenn die Zeitplanung aktiviert ist, werden Zeitplanereignisse ausgeführt, aber die gesetzte Zieltemperatur wird erst nach Ende des Sommermodus angewendet.",
+      "vacation_enabled": "Der Urlaubsmodus ist aktiv. Zeitplanereignisse werden ausgeführt, aber die gesetzte Zieltemperatur wird erst nach Ende des Urlaubsmodus angewendet.",
+      "vacation_disabled": "Der Urlaubsmodus ist aktiv. Wenn die Zeitplanung aktiviert ist, werden Zeitplanereignisse ausgeführt, aber die gesetzte Zieltemperatur wird erst nach Ende des Urlaubsmodus angewendet.",
+      "set_limits": "Setze max-days oder max-events, um Zeitplanereignisse anzuzeigen.",
+      "no_events": "Keine Zeitplanereignisse innerhalb dieser Grenzen.",
+      "next_event": "Nächstes Ereignis",
+      "enable": "Zeitplanung aktivieren",
+      "not_set": "Nicht festgelegt",
+      "suspend_until": "Aussetzen bis: {time}",
+      "remove_suspension": "Aussetzung aufheben (in die Vergangenheit setzen)",
+      "skip_next": "Nächstes Ereignis überspringen",
+      "midnight": "Bis Mitternacht aussetzen",
+      "12h": "Für 12 Stunden aussetzen",
+      "24h": "Für 24 Stunden aussetzen",
+      "entities_missing": "Zeitplan-Entities fehlen oder sind deaktiviert",
+      "controls": "Zeitplansteuerung",
+      "loading_controls": "Zeitplansteuerung wird geladen…",
+      "controls_error": "Zeitplansteuerung konnte nicht geladen werden: {error}"
+    },
+    "dialog": {
+      "title": "Aussetzen bis",
+      "date_time": "Datum und Uhrzeit",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "time_zone": "Zeitzone: {zone}"
+    },
+    "history": {
+      "show": "Vollständigen Temperaturverlauf anzeigen",
+      "loading": "Temperaturverlauf wird geladen…",
+      "actual": "Isttemperatur",
+      "target": "Zieltemperatur",
+      "outdoor": "Außentemperatur",
+      "empty": "Kein Temperaturverlauf in diesem Zeitraum.",
+      "invalid": "Home Assistant hat einen ungültigen Temperaturverlauf zurückgegeben"
+    },
+    "editor": {
+      "entity": "Zone",
+      "show_zone_name": "Zonennamen anzeigen",
+      "show_control": "Steuerung anzeigen",
+      "show_graph": "Temperaturdiagramm anzeigen",
+      "show_plan": "Zeitplan anzeigen",
+      "max-days": "Maximale Tage (einschließlich heute)",
+      "max-events": "Maximale Ereignisse",
+      "hours_to_show": "Verlauf in Stunden",
+      "full": "Vollständig",
+      "minimal": "Minimal",
+      "hidden": "Ausgeblendet",
+      "always_visible": "Immer sichtbar",
+      "collapsed": "Ausklappbar (anfangs eingeklappt)",
+      "expanded": "Ausklappbar (anfangs ausgeklappt)"
+    },
+    "no_sections": "Keine Abschnitte aktiviert.",
+    "zone_card": "ThermoSmart-Zonenkarte",
+    "zone_description": "Optionale Zonensteuerung und Temperaturverlauf",
+    "schedule_card": "ThermoSmart-Zeitplankarte",
+    "schedule_description": "Optionale Zeitplansteuerung und kommende Ereignisse",
+    "helpers_unavailable": "Die Kartenhelfer von Home Assistant sind nicht verfügbar",
+    "components_unavailable": "HA-Oberflächenkomponenten wurden nicht geladen: {components}"
+  },
+  "issues": {
+    "card_registration_failed": {
+      "title": "ThermoSmart-Dashboard-Karte konnte nicht registriert werden",
+      "description": "Die Registrierung ist bei **{stage}** fehlgeschlagen: `{error}`.\n\nDie Heizungssteuerung läuft weiter, aber die mitgelieferte Dashboard-Karte wird möglicherweise nicht geladen. Prüfe die Home-Assistant-Protokolle und die Konfiguration der Dashboard-Ressourcen. Lade nach der Behebung einen ThermoSmart-Konfigurationseintrag neu oder starte Home Assistant neu. Diese Meldung wird nach erfolgreicher Registrierung automatisch entfernt. Ein bereits geöffnetes Dashboard muss möglicherweise im Browser neu geladen werden."
+    },
+    "entity_unavailable": {
+      "title": "Entity nicht verfügbar: {entity_id} [Zone {name}]",
+      "description": "**{name}** kann `{entity_id}` ({roles}) derzeit nicht verwenden, weil die Entity fehlt, unbekannt oder nicht verfügbar ist.\n\nPrüfe die Integration der Entity, die Geräteverbindung und die ThermoSmart-Konfiguration. ThermoSmart nutzt weiterhin die vorhandenen Ersatzwerte, soweit verfügbar; betroffene Eingaben oder Geräteaktionen werden möglicherweise übersprungen. Diese Meldung wird automatisch entfernt, sobald die Entity wieder verfügbar ist. Wenn der Ausfall nach dem Start von Home Assistant mindestens drei Minuten anhält, wird eine Warnung protokolliert."
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -11,193 +121,473 @@
       },
       "add_system": {
         "title": "Globale Steuerung",
-        "description": "Richtet den globalen Sommer- und Urlaubsmodus ein. Kein Thermostat erforderlich. Die globalen Schalter steuern alle Zonen gleichzeitig."
+        "description": "Richtet die globalen Schalter für Urlaubsmodus, erzwungenen Sommermodus und automatische Sommermodus-Aktivierung ein. Kein Thermostat erforderlich. Sie gelten für alle Zonen. Die automatische Sommererkennung nutzt die unten gewählte Außentemperaturquelle (eigener Sensor zuerst, Wetter-Entity als Ersatz); ohne eine dieser Quellen wird der Sommermodus nie automatisch aktiviert.",
+        "data": {
+          "weather_entity": "Wetter-Entity (Ersatzquelle für die Außentemperatur)",
+          "outdoor_temp_sensor": "Außentemperatursensor (bevorzugt)",
+          "summer_on_threshold": "Sommermodus beginnt bei einem 72-h-Mittelwert von",
+          "summer_off_threshold": "Sommermodus endet bei einem 72-h-Mittelwert von"
+        },
+        "data_description": {
+          "summer_on_threshold": "Der automatische Sommermodus wird aktiviert, wenn die mittlere Außentemperatur der letzten 72 Stunden diesen Wert erreicht oder überschreitet.",
+          "summer_off_threshold": "Der automatische Sommermodus wird deaktiviert, wenn der 72-h-Mittelwert diesen Wert erreicht oder unterschreitet. Muss niedriger als der Einschaltwert sein; dazwischen bleibt der aktuelle Zustand erhalten."
+        }
       },
-      "add_zone": {
-        "title": "Schritt 1 / 4 – Geräte & Sensoren",
+      "devices": {
+        "title": "Geräte & Sensoren",
         "description": "Wähle die TRVs und Sensoren für diese Heizzone. Kalibrierungs-Entities und Quirk-Switches erkennt ThermoSmart automatisch.",
         "data": {
           "name": "Zonenname (z. B. Wohnzimmer)",
           "climate_entities": "Thermostate / TRVs",
           "temp_sensors": "Temperatursensoren im Raum",
           "humidity_sensors": "Luftfeuchtigkeitssensoren im Raum",
-          "window_sensors": "Fenstersensoren (binary_sensor)",
+          "window_sensors": "Fenstersensoren",
           "window_open_delay": "Heizung aus – Verzögerung nach Fenster öffnen",
-          "window_close_delay": "Heizung an – Verzögerung nach Fenster schließen",
-          "valve_maintenance": "Ventil-Wartung aktivieren (Sonntag 03:00 – nur im Sommer- oder Urlaubsmodus)",
-          "manage_temp_source": "Externe Raumtemperatur automatisch für TRVs verwenden",
-          "calibration_invert": "Kalibrierungs-Offset invertieren (für TRVs wie ME167 die das Vorzeichen umkehren)"
+          "window_close_delay": "Heizung an – Verzögerung nach Fenster schließen"
+        },
+        "data_description": {}
+      },
+      "control_options": {
+        "title": "Zonen-Regelstrategie",
+        "description": "Zone **{zone}**: Wähle eine Standardstrategie für die Zone. Einstellungen pro Gerät (nächste Seiten) können diese Strategie überschreiben.\n\nErkannte Geräte:\n\n{detected_devices}",
+        "data": {
+          "zone_control_mode": "Zonen-Regelmodus",
+          "control_interval": "Minimales Regelzyklus-Intervall",
+          "temp_tolerance": "Temperaturtoleranz",
+          "ext_temp_threshold": "Schwellenwert für externe Temperatur",
+          "trv_setpoint_debounce": "Entprellzeit für physische TRV-Sollwertänderungen",
+          "trv_setpoint_settling": "Einschwingzeit des TRV-Sollwerts"
         },
         "data_description": {
-          "valve_maintenance": "Verhindert das Festsetzen von Ventilen während längerer Phasen ohne Heizbetrieb. ThermoSmart bewegt die Ventile gelegentlich automatisch, wenn Sommer- oder Urlaubsmodus aktiv ist.",
-          "manage_temp_source": "ThermoSmart nutzt externe Temperatursensoren weiterhin für die eigene Regelung. Wenn diese Option aktiv ist, stellt ThermoSmart unterstützte TRVs zusätzlich auf deren externe Temperaturquelle um und fällt bei Sensorausfall wieder auf den internen TRV-Sensor zurück.",
-          "calibration_invert": "Invertiert das Vorzeichen des Kalibrierungs-Offsets für bestimmte TRV-Modelle, bei denen die Richtung nicht mit dem Standard übereinstimmt. Nur aktivieren, wenn dies für das verwendete Gerät erforderlich ist."
+          "zone_control_mode": "**Nur Sollwert:** ThermoSmart sendet die reine Zieltemperatur, und das TRV regelt sein Ventil selbst.\n\n**TPI-Sollwertmodulation:** ThermoSmart berechnet den Heizbedarf und erhöht oder senkt den an das TRV gesendeten Sollwert, um dessen Ventil zu öffnen oder zu schließen.\n\n**Direkte Ventilsteuerung:** ThermoSmart schreibt die berechnete Ventilöffnung (0–100 %) in die Ventilpositions-Entity des TRV und sendet die reine Zieltemperatur als Sollwert.",
+          "control_interval": "Minimale Zeit zwischen regulären Regelzyklen. In jedem Zyklus wird der Heizbedarf neu berechnet und Sollwerte, Ventilpositionen und Zustandseinstellungen werden an die TRVs geschrieben. Ereignisse wie das Öffnen eines Fensters oder eine manuelle Änderung können früher einen zusätzlichen Zyklus auslösen. Kürzere Intervalle sorgen für schnellere Reaktionen, können aber Geräte überlasten oder Netzwerke (z. B. Zigbee) verstopfen. In der Praxis sind 2–3 Minuten in Kombination mit sinnvollen Schwellenwerten für Temperaturänderungen, die überschritten werden müssen, damit neue Werte an das TRV gesendet werden, ausreichend.",
+          "ext_temp_threshold": "Der Wert des externen Temperatursensors wird erst an den TRV gesendet, wenn er sich seit der letzten Aktualisierung um mehr als diesen Schwellwert geändert hat. Wirkt nur, wenn ein externer Sensor konfiguriert ist und für TRVs mit aktivierter externer Temperatureingabe.",
+          "temp_tolerance": "Eine neue Solltemperatur wird nur an den TRV gesendet, wenn sie sich um mindestens diesen Wert von der aktuellen Solltemperatur des TRV unterscheidet. Größere Werte verringern den Funkverkehr, kleinere Werte lassen den TRV ThermoSmart enger folgen.",
+          "trv_setpoint_debounce": "Warte nach der letzten Sollwertmeldung eines TRV diese Zeit, bevor der Wert als Zonen-Zieltemperatur übernommen wird. So kannst du die Einstellung beenden; nur der zuletzt gemeldete Wert wird verwendet.",
+          "trv_setpoint_settling": "Nach einem Schreibvorgang von ThermoSmart werden Sollwertmeldungen dieses TRV für diese Zeit ignoriert, damit verzögerte Rückmeldungen oder Zwischenwerte nicht als manuelle Änderungen gelten."
+        }
+      },
+      "device_settings": {
+        "title": "TRV-Einstellungen (TRV {index}/{total})",
+        "description": "**Zone:** {zone}\n**TRV {index} von {total}:** {device_name}\n\nDiese Einstellungen gelten nur für dieses TRV. Anschließend kannst du die Zustandseinstellungen für dieses TRV bearbeiten. Es wird nichts gespeichert, bevor du das letzte TRV durchlaufen hast.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Regelmodus",
+          "valve_entity": "Ventilsteuerungs-Entity",
+          "feed_external_temp": "Raumtemperatur an TRV übermitteln",
+          "ext_temp_entity": "Entity für externen Temperatureingang",
+          "calibration_sync": "Kalibrierungs-Offset schreiben",
+          "calibration_entity": "Entität für Kalibrierungs-Offset",
+          "calibration_invert": "Kalibrierungs-Offset invertieren",
+          "valve_maintenance": "Ventilbewegung / Wartung aktivieren",
+          "window_off": "Bei geöffnetem Fenster ausschalten",
+          "accept_setpoint_changes": "Physische Sollwertänderungen übernehmen"
+        },
+        "data_description": {
+          "feed_external_temp": "Sendet die Raumtemperatur an das TRV. Erfordert die Auswahl der richtigen Entity für den externen Temperatureingang unten; ohne sie wird nichts gesendet.",
+          "valve_maintenance": "Verhindert das Festsetzen von Ventilen während längerer Phasen ohne Heizbetrieb. ThermoSmart bewegt die Ventile gelegentlich automatisch, solange der Sommermodus oder der Urlaubsmodus aktiv ist.",
+          "calibration_sync": "Korrigiert den internen Temperatursensor des TRV, indem die Differenz zur Raumtemperatur in die unten gewählte Kalibrierungs-Entität geschrieben wird. Für TRVs mit externer Temperaturquelle ausschalten. Erfordert eine Kalibrierungs-Entität.",
+          "calibration_entity": "Number-Entität mit dem lokalen Kalibrierungs-Offset des TRV. Leer lassen, um die Kalibrierung zu deaktivieren.",
+          "calibration_invert": "Aktivieren, wenn der TRV den Offset mit umgekehrtem Vorzeichen anwendet.",
+          "valve_entity": "Number-Entität, die die Ventilöffnung dieses TRV steuert. Nur nötig, wenn die direkte Ventilsteuerung für diesen TRV aktiviert ist; andernfalls wird sie ignoriert und kann leer bleiben. ThermoSmart schreibt 0–100 (%), bzw. 0–1 bei Entitäten mit \"level\" im Namen.",
+          "window_off": "Schaltet das Gerät aus (HVAC-Modus „Aus“), wenn ein Fenster geöffnet ist. Wenn du dies nutzt, stelle sicher, dass dein TRV auch im ausgeschalteten Zustand noch einen Frostschutz aktiv hat (manche Modelle haben das, andere nicht), damit nichts einfriert. Wenn du diesen Schalter deaktivierst, bleibt der TRV im Heizmodus und wird bei geöffnetem Fenster stattdessen auf die auf einer der nächsten Seiten festgelegte Fenster-offen-Zieltemperatur gesetzt.",
+          "accept_setpoint_changes": "Wenn aktiviert, wird ein an diesem TRV geänderter Sollwert nach der eingestellten Entprellzeit als Zonen-Zieltemperatur übernommen und an alle TRVs verteilt. Änderungen werden auch bei geöffnetem Fenster übernommen."
+        }
+      },
+      "state_menu": {
+        "title": "TRV-Zustandseinstellungen",
+        "description": "**Zone:** {zone}\n**TRV {index} von {total}:** {device_name}\n\nZustandseinstellungen halten ausgewählte Entities dieses TRV (Select, Number oder Switch) auf einem von dir festgelegten Wert. Bei jedem Regelzyklus oder Regelereignis prüft ThermoSmart sie und setzt einen Wert nur, wenn er abweicht. Lass die Liste leer, wenn du das nicht benötigst.\n\n**Aktuell konfiguriert:**\n\n{state_rules}\n\nWähle eine Aktion. Wähle **Fertig mit diesem TRV**, wenn du fertig bist.",
+        "menu_options": {
+          "state_add_device": "Entity dieses TRV hinzufügen",
+          "state_add_any": "Beliebige andere Entity hinzufügen",
+          "state_remove": "Einstellungen entfernen",
+          "state_done": "Fertig mit diesem TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Zustandseinstellung hinzufügen (TRV {index}/{total})",
+        "description": "**TRV {index} von {total}:** {device_name}\n\nWähle die Entity, die ThermoSmart auf einem bestimmten Wert halten soll. {scope}\n\nDen Wert wählst du auf der nächsten Seite.",
+        "data": {
+          "entity_id": "Entity"
+        },
+        "data_description": {
+          "entity_id": "Leer lassen und absenden, um zurückzugehen, ohne etwas hinzuzufügen."
+        }
+      },
+      "state_add_any": {
+        "title": "Zustandseinstellung hinzufügen (TRV {index}/{total})",
+        "description": "**TRV {index} von {total}:** {device_name}\n\nWähle die Entity, die ThermoSmart auf einem bestimmten Wert halten soll. {scope}\n\nDen Wert wählst du auf der nächsten Seite.",
+        "data": {
+          "entity_id": "Entity"
+        },
+        "data_description": {
+          "entity_id": "Leer lassen und absenden, um zurückzugehen, ohne etwas hinzuzufügen."
+        }
+      },
+      "state_value": {
+        "title": "Wert der Zustandseinstellung (TRV {index}/{total})",
+        "description": "**TRV {index} von {total}:** {device_name}\n\nLege den Wert fest, den ThermoSmart für **{entity}** erzwingt.\n\nAktueller Wert: {current}",
+        "data": {
+          "value": "Zu erzwingender Wert",
+          "cancel": "Abbrechen – diese Einstellung nicht speichern"
+        },
+        "data_description": {
+          "value": "Weicht die Entity von diesem Wert ab, setzt ThermoSmart ihn beim nächsten Regelzyklus oder Ereignis.",
+          "cancel": "Ankreuzen und absenden, um ohne Speichern zur Liste zurückzukehren."
+        }
+      },
+      "state_remove": {
+        "title": "Zustandseinstellungen entfernen (TRV {index}/{total})",
+        "description": "**TRV {index} von {total}:** {device_name}\n\nWähle die Zustandseinstellungen aus, die ThermoSmart für dieses TRV nicht mehr erzwingen soll.",
+        "data": {
+          "remove": "Zu entfernende Einstellungen"
+        },
+        "data_description": {
+          "remove": "Leer lassen und absenden, um zurückzugehen, ohne etwas zu entfernen."
+        }
+      },
+      "temperatures": {
+        "title": "Temperaturen",
+        "description": "Zone **{zone}**: Temperaturen für die Voreinstellungen (Komfort, Eco, Nacht, Abwesend, Urlaub) und für geöffnete Fenster. Eine Voreinstellung setzt lediglich die Zieltemperatur der Zone.",
+        "data": {
+          "comfort_temp": "Komforttemperatur",
+          "night_temp": "Nachttemperatur (Absenkung beim Schlafen)",
+          "away_temp": "Abwesenheitstemperatur",
+          "vacation_temp": "Urlaubstemperatur (Frostschutz)",
+          "eco_temp": "Eco-Temperatur (energiesparend, zwischen Nacht und Komfort)",
+          "window_open_temp": "Fenster-offen-Temperatur"
+        },
+        "data_description": {
+          "window_open_temp": "Zieltemperatur, die bei geöffnetem Fenster am TRV eingestellt wird – außer der TRV ist so konfiguriert, dass er bei geöffnetem Fenster ausgeschaltet wird (siehe Geräteeinstellungen). Für Thermostate, die sehr niedrige Sollwerte nicht unterstützen, einen höheren Wert wie 10 °C verwenden."
         }
       },
       "schedule": {
-        "title": "Schritt 2 / 4 – Temperaturen & Zeitplan",
-        "description": "Tagesablauf: Nacht → Komfort → Nacht\n\nWenn alle Personen abwesend sind, schaltet ThermoSmart automatisch auf die Abwesenheitstemperatur – unabhängig vom Zeitplan.",
-        "data": {
-          "comfort_temp": "Komforttemperatur (wenn jemand zuhause)",
-          "night_temp": "Nachttemperatur (Absenkung beim Schlafen)",
-          "away_temp": "Abwesenheitstemperatur (automatisch wenn alle weg sind)",
-          "vacation_temp": "Urlaubstemperatur (Frostschutz)",
-          "eco_temp": "Eco-Temperatur (energiesparend, zwischen Nacht und Komfort)",
-          "window_open_temp": "Fenster-offen-Temperatur",
-          "temp_tolerance": "Temperaturtoleranz – Schreib-Schwelle für TRV-Sollwert",
-          "schedule_enabled": "Zeitplan aktivieren",
-          "sched_wd_morning": "Werktag: Komfort ab",
-          "sched_wd_night": "Werktag: Nacht ab",
-          "sched_we_morning": "Wochenende: Komfort ab",
-          "sched_we_night": "Wochenende: Nacht ab"
-        },
-        "data_description": {
-          "schedule_enabled": "Wenn deaktiviert, gilt die Komforttemperatur rund um die Uhr – kein automatischer Tag/Nacht-Wechsel.",
-          "sched_wd_morning": "Die Komforttemperatur soll zu dieser Uhrzeit erreicht sein – ThermoSmart heizt automatisch früher vor",
-          "sched_wd_night": "Ab dieser Uhrzeit gilt die Nachttemperatur",
-          "sched_we_morning": "Die Komforttemperatur soll zu dieser Uhrzeit erreicht sein – ThermoSmart heizt automatisch früher vor",
-          "sched_we_night": "Ab dieser Uhrzeit gilt die Nachttemperatur",
-          "away_temp": "Wird nur automatisch angewendet wenn die Präsenzerkennung konfiguriert ist (Schritt 3). Kann auch manuell über den Heizmodus-Selector gesetzt werden.",
-          "eco_temp": "Wird verwendet wenn der Heizmodus-Selector manuell auf 'Eco' gesetzt wird. Wird nicht automatisch aktiviert.",
-          "window_open_temp": "Zieltemperatur, solange ein Fenster geöffnet ist. Für Thermostate, die sehr niedrige Sollwerte nicht unterstützen, kann z. B. 10 °C verwendet werden.",
-          "temp_tolerance": "Mindeständerung des berechneten TRV-Sollwerts, bevor ThermoSmart einen neuen Wert an das Thermostat sendet. Reduziert unnötige Schreibvorgänge. 0,5 °C funktioniert gut für die meisten Räume."
+        "title": "Zeitplanereignisse",
+        "description": "Konfiguriere wöchentliche Ereignisse für diese Zone. Ereignisse zur gleichen Uhrzeit mit überschneidenden Wochentagen werden abgelehnt.\n\n**Aktuell konfiguriert:**\n\n{events}",
+        "menu_options": {
+          "schedule_add": "Ereignis hinzufügen",
+          "schedule_edit": "Ereignis bearbeiten",
+          "schedule_remove": "Ereignisse entfernen",
+          "schedule_done": "Fertig mit dem Zeitplan"
         }
       },
-      "presence": {
-        "title": "Schritt 3 / 4 – Präsenz",
-        "description": "Wer ist zuhause? ThermoSmart schaltet automatisch in den Abwesenheitsmodus wenn alle weg sind.\n\nPersonenliste leer lassen um die automatische Abwesenheitserkennung zu deaktivieren – ThermoSmart folgt dann ausschließlich dem Zeitplan.",
+      "schedule_edit": {
+        "title": "Zeitplanereignis bearbeiten",
         "data": {
-          "presence_persons": "Personen für Präsenzerkennung",
-          "home_zone": "Heimzone (Standard: zone.home)"
+          "event": "Ereignis"
         }
       },
-      "weather": {
-        "title": "Schritt 4 / 4 – Wetter & Außensensoren",
-        "description": "Alle Felder optional – eigene Sensoren haben Vorrang vor der Wetter-Entity. Das System arbeitet auch ohne Wetterdaten.",
+      "schedule_event": {
+        "title": "Zeitplanereignis",
+        "description": "Wähle die Wochentage, die lokale Uhrzeit und ob vor diesem Ereignis vorgeheizt werden soll. Anschließend wählst oder bearbeitest du die Zieltemperatur bzw. Voreinstellung.",
         "data": {
-          "weather_entity": "Wetter-Entity (z. B. weather.home)",
-          "outdoor_temp_sensor": "Außentemperatur – eigene Wetterstation (Vorrang)",
+          "days": "Wochentage",
+          "time": "Uhrzeit",
+          "preheat": "Vor dem Ereignis vorheizen"
+        }
+      },
+      "schedule_target_type": {
+        "title": "Ziel des Zeitplanereignisses",
+        "description": "Wähle den Zieltyp. Aktuelles Ziel: {current_target}",
+        "menu_options": {
+          "schedule_target_temperature": "Temperatur",
+          "schedule_target_preset": "Voreinstellung"
+        }
+      },
+      "schedule_target_temperature": {
+        "title": "Zieltemperatur im Zeitplan",
+        "data": {
+          "target": "Zieltemperatur"
+        }
+      },
+      "schedule_target_preset": {
+        "title": "Voreinstellung im Zeitplan",
+        "data": {
+          "target": "Zielvoreinstellung"
+        }
+      },
+      "schedule_remove": {
+        "title": "Zeitplanereignisse entfernen",
+        "data": {
+          "remove": "Zu entfernende Ereignisse"
+        }
+      },
+      "outdoor": {
+        "title": "Außendaten",
+        "description": "Zone **{zone}**: Alle Felder sind optional. Jeder eigene Sensor wird zuerst verwendet; für jeden Wert ohne funktionierenden Sensor wird stattdessen der aktuelle Wert der Wetter-Entity genutzt. Die Zone funktioniert auch ohne Außendaten.",
+        "data": {
+          "weather_entity": "Wetter-Entity (Ersatzquelle, z. B. weather.home)",
+          "outdoor_temp_sensor": "Außentemperatur (eigener Sensor, bevorzugt)",
           "outdoor_humidity_sensor": "Außenluftfeuchtigkeit",
           "outdoor_wind_sensor": "Windgeschwindigkeit (m/s oder km/h)",
           "outdoor_solar_sensor": "Sonneneinstrahlung (W/m²)",
           "outdoor_rain_sensor": "Niederschlag"
         },
         "data_description": {
-          "weather_entity": "Für Wettervorhersagen und Prognose-Unterdrückung. Leer lassen wenn nur eigene Sensoren genutzt werden.",
+          "weather_entity": "Es werden nur die aktuellen Bedingungen verwendet (keine Vorhersage). Leer lassen, wenn du nur eigene Sensoren nutzt.",
           "outdoor_temp_sensor": "Eigene Sensoren sind genauer als die Wetter-Entity und werden bevorzugt."
         }
       }
     },
     "error": {
       "entity_not_found": "Wetter-Entity nicht gefunden. Bitte eine gültige Entity auswählen oder das Feld leer lassen.",
+      "summer_thresholds_inverted": "Der Ausschaltwert muss niedriger als der Einschaltwert sein.",
       "name_required": "Bitte einen Zonennamen eingeben.",
       "required": "Mindestens ein Thermostat / TRV erforderlich.",
       "night_temp_too_high": "Nachttemperatur muss niedriger als die Komforttemperatur sein.",
-      "away_temp_too_high": "Abwesenheitstemperatur darf nicht höher als die Nachttemperatur sein."
+      "away_temp_too_high": "Abwesenheitstemperatur darf nicht höher als die Nachttemperatur sein.",
+      "schedule_conflict": "Dieses Ereignis überschneidet sich an mindestens einem Wochentag zur gleichen Uhrzeit mit einem vorhandenen Ereignis. Wähle einen anderen Tag oder eine andere Uhrzeit.",
+      "schedule_invalid": "Das Zeitplanereignis ist ungültig. Wähle mindestens einen Wochentag und prüfe die Uhrzeit sowie die Zieltemperatur bzw. Voreinstellung."
     },
     "abort": {
       "already_configured": "Diese Zone ist bereits konfiguriert.",
-      "system_already_configured": "Die globale ThermoSmart-Steuerung ist bereits eingerichtet.",
-      "system_no_options": "ThermoSmart System hat keine konfigurierbaren Optionen. Verwende die globalen Schalter für Sommer- und Urlaubsmodus."
+      "system_already_configured": "Die globale ThermoSmart-Steuerung ist bereits eingerichtet."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Einstellungen",
+        "description": "Wähle, welchen Teil der Zone **{zone}** du bearbeiten möchtest. Jeder Abschnitt wird separat gespeichert.",
         "menu_options": {
           "devices": "Geräte & Sensoren",
-          "schedule": "Temperaturen & Zeitplan",
-          "presence": "Präsenz",
-          "weather": "Wetter & Außensensoren"
+          "control_options": "Zonen-Regelstrategie (Standardmodus, Intervall, Schwellenwerte)",
+          "device_settings": "Einstellungen pro TRV (Modus-Überschreibung, Entities, Zustandseinstellungen)",
+          "temperatures": "Temperaturen",
+          "schedule": "Zeitplanereignisse",
+          "outdoor": "Außendaten"
         }
       },
       "devices": {
         "title": "Geräte & Sensoren",
-        "description": "Kalibrierungs-Entities und Quirk-Switches erkennt ThermoSmart automatisch.",
+        "description": "Wähle die TRVs und Sensoren für diese Heizzone. Kalibrierungs-Entities und Quirk-Switches erkennt ThermoSmart automatisch.",
         "data": {
-          "name": "Zonenname",
+          "name": "Zonenname (z. B. Wohnzimmer)",
           "climate_entities": "Thermostate / TRVs",
           "temp_sensors": "Temperatursensoren im Raum",
           "humidity_sensors": "Luftfeuchtigkeitssensoren im Raum",
           "window_sensors": "Fenstersensoren",
           "window_open_delay": "Heizung aus – Verzögerung nach Fenster öffnen",
-          "window_close_delay": "Heizung an – Verzögerung nach Fenster schließen",
-          "valve_maintenance": "Ventil-Wartung aktivieren (nur Sommer- / Urlaubsmodus)",
-          "manage_temp_source": "Externe Raumtemperatur automatisch für TRVs verwenden",
-          "calibration_invert": "Kalibrierungs-Offset invertieren (ME167 und ähnliche)"
+          "window_close_delay": "Heizung an – Verzögerung nach Fenster schließen"
+        },
+        "data_description": {}
+      },
+      "control_options": {
+        "title": "Zonen-Regelstrategie",
+        "description": "Zone **{zone}**: Wähle eine Standardstrategie für die Zone. Einstellungen pro Gerät (nächste Seiten) können diese Strategie überschreiben.\n\nErkannte Geräte:\n\n{detected_devices}",
+        "data": {
+          "zone_control_mode": "Zonen-Regelmodus",
+          "control_interval": "Minimales Regelzyklus-Intervall",
+          "temp_tolerance": "Temperaturtoleranz",
+          "ext_temp_threshold": "Schwellenwert für externe Temperatur",
+          "trv_setpoint_debounce": "Entprellzeit für physische TRV-Sollwertänderungen",
+          "trv_setpoint_settling": "Einschwingzeit des TRV-Sollwerts"
         },
         "data_description": {
-          "valve_maintenance": "Verhindert das Festsetzen von Ventilen während längerer Phasen ohne Heizbetrieb. ThermoSmart bewegt die Ventile gelegentlich automatisch, wenn Sommer- oder Urlaubsmodus aktiv ist.",
-          "manage_temp_source": "ThermoSmart nutzt externe Temperatursensoren weiterhin für die eigene Regelung. Wenn diese Option aktiv ist, stellt ThermoSmart unterstützte TRVs zusätzlich auf deren externe Temperaturquelle um und fällt bei Sensorausfall wieder auf den internen TRV-Sensor zurück.",
-          "calibration_invert": "Invertiert das Vorzeichen des Kalibrierungs-Offsets für bestimmte TRV-Modelle, bei denen die Richtung nicht mit dem Standard übereinstimmt. Nur aktivieren, wenn dies für das verwendete Gerät erforderlich ist."
+          "zone_control_mode": "**Nur Sollwert:** ThermoSmart sendet die reine Zieltemperatur, und das TRV regelt sein Ventil selbst.\n\n**TPI-Sollwertmodulation:** ThermoSmart berechnet den Heizbedarf und erhöht oder senkt den an das TRV gesendeten Sollwert, um dessen Ventil zu öffnen oder zu schließen.\n\n**Direkte Ventilsteuerung:** ThermoSmart schreibt die berechnete Ventilöffnung (0–100 %) in die Ventilpositions-Entity des TRV und sendet die reine Zieltemperatur als Sollwert.",
+          "control_interval": "Minimale Zeit zwischen regulären Regelzyklen. In jedem Zyklus wird der Heizbedarf neu berechnet und Sollwerte, Ventilpositionen und Zustandseinstellungen werden an die TRVs geschrieben. Ereignisse wie das Öffnen eines Fensters oder eine manuelle Änderung können früher einen zusätzlichen Zyklus auslösen. Kürzere Intervalle sorgen für schnellere Reaktionen, können aber Geräte überlasten oder Netzwerke (z. B. Zigbee) verstopfen. In der Praxis sind 2–3 Minuten in Kombination mit sinnvollen Schwellenwerten für Temperaturänderungen, die überschritten werden müssen, damit neue Werte an das TRV gesendet werden, ausreichend.",
+          "ext_temp_threshold": "Der Wert des externen Temperatursensors wird erst an den TRV gesendet, wenn er sich seit der letzten Aktualisierung um mehr als diesen Schwellwert geändert hat. Wirkt nur, wenn ein externer Sensor konfiguriert ist und für TRVs mit aktivierter externer Temperatureingabe.",
+          "temp_tolerance": "Eine neue Solltemperatur wird nur an den TRV gesendet, wenn sie sich um mindestens diesen Wert von der aktuellen Solltemperatur des TRV unterscheidet. Größere Werte verringern den Funkverkehr, kleinere Werte lassen den TRV ThermoSmart enger folgen.",
+          "trv_setpoint_debounce": "Warte nach der letzten Sollwertmeldung eines TRV diese Zeit, bevor der Wert als Zonen-Zieltemperatur übernommen wird. So kannst du die Einstellung beenden; nur der zuletzt gemeldete Wert wird verwendet.",
+          "trv_setpoint_settling": "Nach einem Schreibvorgang von ThermoSmart werden Sollwertmeldungen dieses TRV für diese Zeit ignoriert, damit verzögerte Rückmeldungen oder Zwischenwerte nicht als manuelle Änderungen gelten."
+        }
+      },
+      "device_settings": {
+        "title": "TRV-Einstellungen (TRV {index}/{total})",
+        "description": "**Zone:** {zone}\n**TRV {index} von {total}:** {device_name}\n\nDiese Einstellungen gelten nur für dieses TRV. Anschließend kannst du die Zustandseinstellungen für dieses TRV bearbeiten. Es wird nichts gespeichert, bevor du das letzte TRV durchlaufen hast.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Regelmodus",
+          "valve_entity": "Ventilsteuerungs-Entity",
+          "feed_external_temp": "Raumtemperatur an TRV übermitteln",
+          "ext_temp_entity": "Entity für externen Temperatureingang",
+          "calibration_sync": "Kalibrierungs-Offset schreiben",
+          "calibration_entity": "Entität für Kalibrierungs-Offset",
+          "calibration_invert": "Kalibrierungs-Offset invertieren",
+          "valve_maintenance": "Ventilbewegung / Wartung aktivieren",
+          "window_off": "Bei geöffnetem Fenster ausschalten",
+          "accept_setpoint_changes": "Physische Sollwertänderungen übernehmen"
+        },
+        "data_description": {
+          "feed_external_temp": "Sendet die Raumtemperatur an das TRV. Erfordert die Auswahl der richtigen Entity für den externen Temperatureingang unten; ohne sie wird nichts gesendet.",
+          "valve_maintenance": "Verhindert das Festsetzen von Ventilen während längerer Phasen ohne Heizbetrieb. ThermoSmart bewegt die Ventile gelegentlich automatisch, solange der Sommermodus oder der Urlaubsmodus aktiv ist.",
+          "calibration_sync": "Korrigiert den internen Temperatursensor des TRV, indem die Differenz zur Raumtemperatur in die unten gewählte Kalibrierungs-Entität geschrieben wird. Für TRVs mit externer Temperaturquelle ausschalten. Erfordert eine Kalibrierungs-Entität.",
+          "calibration_entity": "Number-Entität mit dem lokalen Kalibrierungs-Offset des TRV. Leer lassen, um die Kalibrierung zu deaktivieren.",
+          "calibration_invert": "Aktivieren, wenn der TRV den Offset mit umgekehrtem Vorzeichen anwendet.",
+          "valve_entity": "Number-Entität, die die Ventilöffnung dieses TRV steuert. Nur nötig, wenn die direkte Ventilsteuerung für diesen TRV aktiviert ist; andernfalls wird sie ignoriert und kann leer bleiben. ThermoSmart schreibt 0–100 (%), bzw. 0–1 bei Entitäten mit \"level\" im Namen.",
+          "window_off": "Schaltet das Gerät aus (HVAC-Modus „Aus“), wenn ein Fenster geöffnet ist. Wenn du dies nutzt, stelle sicher, dass dein TRV auch im ausgeschalteten Zustand noch einen Frostschutz aktiv hat (manche Modelle haben das, andere nicht), damit nichts einfriert. Wenn du diesen Schalter deaktivierst, bleibt der TRV im Heizmodus und wird bei geöffnetem Fenster stattdessen auf die auf einer der nächsten Seiten festgelegte Fenster-offen-Zieltemperatur gesetzt.",
+          "accept_setpoint_changes": "Wenn aktiviert, wird ein an diesem TRV geänderter Sollwert nach der eingestellten Entprellzeit als Zonen-Zieltemperatur übernommen und an alle TRVs verteilt. Änderungen werden auch bei geöffnetem Fenster übernommen."
+        }
+      },
+      "state_menu": {
+        "title": "TRV-Zustandseinstellungen",
+        "description": "**Zone:** {zone}\n**TRV {index} von {total}:** {device_name}\n\nZustandseinstellungen halten ausgewählte Entities dieses TRV (Select, Number oder Switch) auf einem von dir festgelegten Wert. Bei jedem Regelzyklus oder Regelereignis prüft ThermoSmart sie und setzt einen Wert nur, wenn er abweicht. Lass die Liste leer, wenn du das nicht benötigst.\n\n**Aktuell konfiguriert:**\n\n{state_rules}\n\nWähle eine Aktion. Wähle **Fertig mit diesem TRV**, wenn du fertig bist.",
+        "menu_options": {
+          "state_add_device": "Entity dieses TRV hinzufügen",
+          "state_add_any": "Beliebige andere Entity hinzufügen",
+          "state_remove": "Einstellungen entfernen",
+          "state_done": "Fertig mit diesem TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Zustandseinstellung hinzufügen (TRV {index}/{total})",
+        "description": "**TRV {index} von {total}:** {device_name}\n\nWähle die Entity, die ThermoSmart auf einem bestimmten Wert halten soll. {scope}\n\nDen Wert wählst du auf der nächsten Seite.",
+        "data": {
+          "entity_id": "Entity"
+        },
+        "data_description": {
+          "entity_id": "Leer lassen und absenden, um zurückzugehen, ohne etwas hinzuzufügen."
+        }
+      },
+      "state_add_any": {
+        "title": "Zustandseinstellung hinzufügen (TRV {index}/{total})",
+        "description": "**TRV {index} von {total}:** {device_name}\n\nWähle die Entity, die ThermoSmart auf einem bestimmten Wert halten soll. {scope}\n\nDen Wert wählst du auf der nächsten Seite.",
+        "data": {
+          "entity_id": "Entity"
+        },
+        "data_description": {
+          "entity_id": "Leer lassen und absenden, um zurückzugehen, ohne etwas hinzuzufügen."
+        }
+      },
+      "state_value": {
+        "title": "Wert der Zustandseinstellung (TRV {index}/{total})",
+        "description": "**TRV {index} von {total}:** {device_name}\n\nLege den Wert fest, den ThermoSmart für **{entity}** erzwingt.\n\nAktueller Wert: {current}",
+        "data": {
+          "value": "Zu erzwingender Wert",
+          "cancel": "Abbrechen – diese Einstellung nicht speichern"
+        },
+        "data_description": {
+          "value": "Weicht die Entity von diesem Wert ab, setzt ThermoSmart ihn beim nächsten Regelzyklus oder Ereignis.",
+          "cancel": "Ankreuzen und absenden, um ohne Speichern zur Liste zurückzukehren."
+        }
+      },
+      "state_remove": {
+        "title": "Zustandseinstellungen entfernen (TRV {index}/{total})",
+        "description": "**TRV {index} von {total}:** {device_name}\n\nWähle die Zustandseinstellungen aus, die ThermoSmart für dieses TRV nicht mehr erzwingen soll.",
+        "data": {
+          "remove": "Zu entfernende Einstellungen"
+        },
+        "data_description": {
+          "remove": "Leer lassen und absenden, um zurückzugehen, ohne etwas zu entfernen."
+        }
+      },
+      "temperatures": {
+        "title": "Temperaturen",
+        "description": "Zone **{zone}**: Temperaturen für die Voreinstellungen (Komfort, Eco, Nacht, Abwesend, Urlaub) und für geöffnete Fenster. Eine Voreinstellung setzt lediglich die Zieltemperatur der Zone.",
+        "data": {
+          "comfort_temp": "Komforttemperatur",
+          "night_temp": "Nachttemperatur (Absenkung beim Schlafen)",
+          "away_temp": "Abwesenheitstemperatur",
+          "vacation_temp": "Urlaubstemperatur (Frostschutz)",
+          "eco_temp": "Eco-Temperatur (energiesparend, zwischen Nacht und Komfort)",
+          "window_open_temp": "Fenster-offen-Temperatur"
+        },
+        "data_description": {
+          "window_open_temp": "Zieltemperatur, die bei geöffnetem Fenster am TRV eingestellt wird – außer der TRV ist so konfiguriert, dass er bei geöffnetem Fenster ausgeschaltet wird (siehe Geräteeinstellungen). Für Thermostate, die sehr niedrige Sollwerte nicht unterstützen, einen höheren Wert wie 10 °C verwenden."
         }
       },
       "schedule": {
-        "title": "Temperaturen & Zeitplan",
-        "description": "Tagesablauf: Nacht → Komfort → Nacht\n\nWenn alle Personen abwesend sind, schaltet ThermoSmart automatisch auf die Abwesenheitstemperatur – unabhängig vom Zeitplan.",
-        "data": {
-          "comfort_temp": "Komforttemperatur",
-          "night_temp": "Nachttemperatur",
-          "away_temp": "Abwesenheitstemperatur",
-          "vacation_temp": "Urlaubstemperatur",
-          "eco_temp": "Eco-Temperatur",
-          "window_open_temp": "Fenster-offen-Temperatur",
-          "temp_tolerance": "Temperaturtoleranz",
-          "schedule_enabled": "Zeitplan aktivieren",
-          "sched_wd_morning": "Werktag: Komfort ab",
-          "sched_wd_night": "Werktag: Nacht ab",
-          "sched_we_morning": "Wochenende: Komfort ab",
-          "sched_we_night": "Wochenende: Nacht ab"
-        },
-        "data_description": {
-          "schedule_enabled": "Wenn deaktiviert, gilt die Komforttemperatur rund um die Uhr – kein automatischer Tag/Nacht-Wechsel.",
-          "sched_wd_morning": "Komforttemperatur soll zu dieser Uhrzeit erreicht sein – ThermoSmart heizt automatisch früher vor",
-          "sched_wd_night": "Ab dieser Uhrzeit gilt die Nachttemperatur",
-          "sched_we_morning": "Komforttemperatur soll zu dieser Uhrzeit erreicht sein – ThermoSmart heizt automatisch früher vor",
-          "sched_we_night": "Ab dieser Uhrzeit gilt die Nachttemperatur",
-          "away_temp": "Wird nur automatisch angewendet wenn die Präsenzerkennung konfiguriert ist. Kann auch manuell über den Heizmodus-Selector gesetzt werden.",
-          "eco_temp": "Wird verwendet wenn der Heizmodus-Selector manuell auf 'Eco' gesetzt wird. Wird nicht automatisch aktiviert.",
-          "window_open_temp": "Zieltemperatur, solange ein Fenster geöffnet ist. Für Thermostate, die sehr niedrige Sollwerte nicht unterstützen, kann z. B. 10 °C verwendet werden.",
-          "temp_tolerance": "Mindeständerung des berechneten TRV-Sollwerts, bevor ThermoSmart einen neuen Wert an das Thermostat sendet. Reduziert unnötige Schreibvorgänge. 0,5 °C funktioniert gut für die meisten Räume."
+        "title": "Zeitplanereignisse",
+        "description": "Konfiguriere wöchentliche Ereignisse für diese Zone. Ereignisse zur gleichen Uhrzeit mit überschneidenden Wochentagen werden abgelehnt.\n\n**Aktuell konfiguriert:**\n\n{events}",
+        "menu_options": {
+          "schedule_add": "Ereignis hinzufügen",
+          "schedule_edit": "Ereignis bearbeiten",
+          "schedule_remove": "Ereignisse entfernen",
+          "schedule_done": "Fertig mit dem Zeitplan"
         }
       },
-      "presence": {
-        "title": "Präsenz",
-        "description": "Wer ist zuhause? ThermoSmart schaltet automatisch in den Abwesenheitsmodus wenn alle weg sind.\n\nPersonenliste leer lassen um die automatische Abwesenheitserkennung zu deaktivieren – ThermoSmart folgt dann ausschließlich dem Zeitplan.",
+      "schedule_edit": {
+        "title": "Zeitplanereignis bearbeiten",
         "data": {
-          "presence_persons": "Personen für Präsenzerkennung",
-          "home_zone": "Heimzone (Standard: zone.home)"
+          "event": "Ereignis"
         }
       },
-      "weather": {
-        "title": "Wetter & Außensensoren",
-        "description": "Alle Felder optional. Eigene Sensoren haben Vorrang vor der Wetter-Entity.",
+      "schedule_event": {
+        "title": "Zeitplanereignis",
+        "description": "Wähle die Wochentage, die lokale Uhrzeit und ob vor diesem Ereignis vorgeheizt werden soll. Anschließend wählst oder bearbeitest du die Zieltemperatur bzw. Voreinstellung.",
         "data": {
-          "weather_entity": "Wetter-Entity",
-          "outdoor_temp_sensor": "Außentemperatur (eigene Station)",
+          "days": "Wochentage",
+          "time": "Uhrzeit",
+          "preheat": "Vor dem Ereignis vorheizen"
+        }
+      },
+      "schedule_target_type": {
+        "title": "Ziel des Zeitplanereignisses",
+        "description": "Wähle den Zieltyp. Aktuelles Ziel: {current_target}",
+        "menu_options": {
+          "schedule_target_temperature": "Temperatur",
+          "schedule_target_preset": "Voreinstellung"
+        }
+      },
+      "schedule_target_temperature": {
+        "title": "Zieltemperatur im Zeitplan",
+        "data": {
+          "target": "Zieltemperatur"
+        }
+      },
+      "schedule_target_preset": {
+        "title": "Voreinstellung im Zeitplan",
+        "data": {
+          "target": "Zielvoreinstellung"
+        }
+      },
+      "schedule_remove": {
+        "title": "Zeitplanereignisse entfernen",
+        "data": {
+          "remove": "Zu entfernende Ereignisse"
+        }
+      },
+      "outdoor": {
+        "title": "Außendaten",
+        "description": "Zone **{zone}**: Alle Felder sind optional. Jeder eigene Sensor wird zuerst verwendet; für jeden Wert ohne funktionierenden Sensor wird stattdessen der aktuelle Wert der Wetter-Entity genutzt. Die Zone funktioniert auch ohne Außendaten.",
+        "data": {
+          "weather_entity": "Wetter-Entity (Ersatzquelle, z. B. weather.home)",
+          "outdoor_temp_sensor": "Außentemperatur (eigener Sensor, bevorzugt)",
           "outdoor_humidity_sensor": "Außenluftfeuchtigkeit",
-          "outdoor_wind_sensor": "Windgeschwindigkeit",
-          "outdoor_solar_sensor": "Sonneneinstrahlung",
+          "outdoor_wind_sensor": "Windgeschwindigkeit (m/s oder km/h)",
+          "outdoor_solar_sensor": "Sonneneinstrahlung (W/m²)",
           "outdoor_rain_sensor": "Niederschlag"
         },
         "data_description": {
-          "weather_entity": "Für Wettervorhersagen und Prognose-Unterdrückung. Leer lassen wenn nur eigene Sensoren genutzt werden.",
+          "weather_entity": "Es werden nur die aktuellen Bedingungen verwendet (keine Vorhersage). Leer lassen, wenn du nur eigene Sensoren nutzt.",
           "outdoor_temp_sensor": "Eigene Sensoren sind genauer als die Wetter-Entity und werden bevorzugt."
+        }
+      },
+      "system": {
+        "title": "Globale Steuerung",
+        "description": "Außentemperaturquelle und Schwellenwerte für den automatischen Sommermodus. Eigener Sensor zuerst, Wetter-Entity als Ersatz; ohne eine dieser Quellen wird der Sommermodus nie automatisch aktiviert.",
+        "data": {
+          "weather_entity": "Wetter-Entity (Ersatzquelle für die Außentemperatur)",
+          "outdoor_temp_sensor": "Außentemperatursensor (bevorzugt)",
+          "summer_on_threshold": "Sommermodus beginnt bei einem 72-h-Mittelwert von",
+          "summer_off_threshold": "Sommermodus endet bei einem 72-h-Mittelwert von"
+        },
+        "data_description": {
+          "summer_on_threshold": "Der automatische Sommermodus wird aktiviert, wenn die mittlere Außentemperatur der letzten 72 Stunden diesen Wert erreicht oder überschreitet.",
+          "summer_off_threshold": "Der automatische Sommermodus wird deaktiviert, wenn der 72-h-Mittelwert diesen Wert erreicht oder unterschreitet. Muss niedriger als der Einschaltwert sein; dazwischen bleibt der aktuelle Zustand erhalten."
         }
       }
     },
-    "abort": {
-      "system_no_options": "ThermoSmart System hat keine konfigurierbaren Optionen. Verwende die globalen Schalter für Sommer- und Urlaubsmodus."
+    "error": {
+      "entity_not_found": "Wetter-Entity nicht gefunden. Bitte eine gültige Entity auswählen oder das Feld leer lassen.",
+      "summer_thresholds_inverted": "Der Ausschaltwert muss niedriger als der Einschaltwert sein.",
+      "name_required": "Bitte einen Zonennamen eingeben.",
+      "required": "Mindestens ein Thermostat / TRV erforderlich.",
+      "night_temp_too_high": "Nachttemperatur muss niedriger als die Komforttemperatur sein.",
+      "away_temp_too_high": "Abwesenheitstemperatur darf nicht höher als die Nachttemperatur sein.",
+      "schedule_conflict": "Dieses Ereignis überschneidet sich an mindestens einem Wochentag zur gleichen Uhrzeit mit einem vorhandenen Ereignis. Wähle einen anderen Tag oder eine andere Uhrzeit.",
+      "schedule_invalid": "Das Zeitplanereignis ist ungültig. Wähle mindestens einen Wochentag und prüfe die Uhrzeit sowie die Zieltemperatur bzw. Voreinstellung."
     }
   },
   "entity": {
+    "datetime": {
+      "scheduling_disabled_until": {
+        "name": "Zeitplanung ausgesetzt bis"
+      }
+    },
     "climate": {
       "zone": {
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "auto": "Auto",
               "vacation": "Urlaub",
               "sleep": "Nacht"
             }
@@ -212,40 +602,40 @@
       "learning": {
         "name": "Lernmodus"
       },
+      "scheduling_enabled": {
+        "name": "Zeitplanung aktiviert"
+      },
       "vacation_mode": {
         "name": "Urlaubsmodus"
       },
-      "debug_log": {
-        "name": "Debug Log"
+      "force_summer_mode": {
+        "name": "Sommermodus erzwingen"
+      },
+      "auto_summer_mode": {
+        "name": "Sommermodus automatisch aktivieren"
       }
     },
     "select": {
-      "mode": {
-        "name": "Heizmodus",
+      "preset": {
+        "name": "Voreinstellung",
         "state": {
-          "auto": "Auto",
           "comfort": "Komfort",
           "eco": "Eco",
           "night": "Nacht",
           "away": "Abwesend",
           "vacation": "Urlaub"
         }
-      },
-      "summer_mode": {
-        "name": "Sommermodus",
-        "state": {
-          "automatic": "Automatisch",
-          "on": "An",
-          "off": "Aus"
-        }
       }
     },
     "sensor": {
-      "adjusted_target": {
-        "name": "Zieltemperatur"
+      "actual_temperature": {
+        "name": "Isttemperatur"
+      },
+      "desired_temperature": {
+        "name": "Gewünschte Zieltemperatur"
       },
       "trv_setpoint": {
-        "name": "TRV-Sollwert"
+        "name": "TPI-erhöhter TRV-Sollwert"
       },
       "tpi_duty_cycle": {
         "name": "TPI Duty-Cycle"
@@ -257,13 +647,16 @@
         }
       },
       "preheat_minutes": {
-        "name": "Vorheizzeit"
+        "name": "Vorheizzeit in Minuten"
+      },
+      "preheat_start": {
+        "name": "Vorheizbeginn"
+      },
+      "next_scheduled_event": {
+        "name": "Nächstes Zeitplanereignis"
       },
       "confidence": {
         "name": "Lernfortschritt"
-      },
-      "weather_offset": {
-        "name": "Wetterkorrektur"
       },
       "status": {
         "name": "Status",
@@ -276,14 +669,13 @@
           "summer": "Sommer – Heizung aus",
           "window_open": "Fenster offen",
           "vacation": "Urlaub",
-          "away": "Abwesend",
           "heating": "Heizend",
           "idle": "Temperatur gehalten",
           "active": "Aktiv"
         }
       },
       "temp_slope": {
-        "name": "Temperatur Slope"
+        "name": "Temperaturänderungsrate"
       },
       "temp_ema_1h": {
         "name": "Temperatur EMA 1h"
@@ -311,6 +703,39 @@
       },
       "trv_observations": {
         "name": "TRV Beobachtungen"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Nur Solltemperatur (TRV autonom)",
+        "tpi_boost": "TPI-Solltemperatur-Modulation (berechneter Boost)",
+        "direct_valve": "Direkte Ventilsteuerung (0–100 %)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Von Zone erben (Nur Solltemperatur)",
+        "setpoint": "Nur Solltemperatur",
+        "tpi_boost": "TPI-Solltemperatur-Modulation",
+        "direct_valve": "Direkte Ventilsteuerung"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Von Zone erben (TPI-Solltemperatur-Modulation)",
+        "setpoint": "Nur Solltemperatur",
+        "tpi_boost": "TPI-Solltemperatur-Modulation",
+        "direct_valve": "Direkte Ventilsteuerung"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Von Zone erben (Direkte Ventilsteuerung)",
+        "setpoint": "Nur Solltemperatur",
+        "tpi_boost": "TPI-Solltemperatur-Modulation",
+        "direct_valve": "Direkte Ventilsteuerung"
       }
     }
   }

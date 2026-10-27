@@ -29,11 +29,6 @@ class RecordingCoordinator(ThermoSmartCoordinator):
         super().__init__(*args, **kw)
         self.control_calls: list = []
 
-    async def _reset_valve_opening_degree(self) -> bool:
-        return True
-
-    async def _async_apply_quirks(self, cfg):
-        pass
 
     async def _watchdog_hvac(self, cfg, recommendation):
         pass
@@ -72,9 +67,8 @@ class RecordingCoordinator(ThermoSmartCoordinator):
 def make_recording_coordinator(zone_cfg_overrides=None, *, indoor="19.0"):
     base = make_coordinator(zone_cfg_overrides)
     with _patch("homeassistant.helpers.frame.report_usage"):
-        coord = RecordingCoordinator(base.hass, base.entry, base.weather_engine,
+        coord = RecordingCoordinator(base.hass, base.entry, base.outdoor,
                                      base.learning_engine)
-    coord._valve_reset_done = True
     set_hass_states(coord, {"sensor.test_temp": make_state(indoor)})
     return coord
 
@@ -131,11 +125,6 @@ class DispatchingCoordinator(ThermoSmartCoordinator):
         # We initialize it here so the real _apply_temperature can run in tests.
         self._boost_active: dict = {}
 
-    async def _reset_valve_opening_degree(self) -> bool:
-        return True
-
-    async def _async_apply_quirks(self, cfg):
-        pass
 
     async def _watchdog_hvac(self, cfg, recommendation):
         pass
@@ -193,8 +182,7 @@ def make_dispatching_coordinator(zone_cfg_overrides=None, *, indoor="18.0",
 
     with _patch("homeassistant.helpers.frame.report_usage"):
         coord = DispatchingCoordinator(base.hass, base.entry,
-                                       base.weather_engine, base.learning_engine)
-    coord._valve_reset_done = True
+                                       base.outdoor, base.learning_engine)
     coord._last_written_setpoints = {}
 
     # Build per-entity climate state dicts.

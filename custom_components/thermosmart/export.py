@@ -24,7 +24,7 @@ Timestamps are intentionally retained:
   Observation timestamps (ts, hour, minute, weekday) are required for
   longitudinal learning analysis and are the primary reason this data is
   valuable for diagnosis.  A series of heating timestamps can reveal usage
-  patterns (presence, sleep schedule, away periods).  Diagnostics downloads
+  patterns (occupancy, sleep schedule, away periods).  Diagnostics downloads
   in Home Assistant already require the downloading user to be logged in.
 
 has_forecast note:
@@ -43,7 +43,7 @@ Historical (frozen legacy) learning snapshot:
   of LearningEngine.get_export_data(). Per-category allow-lists keep genuine
   diagnostic value (heat rate, delta, outcome score, ts/weekday/hour/minute
   time context) while only fields explicitly named in those allow-lists can
-  ever reach diagnostics — no entity_id/device_id/unique_id/person/presence/
+  ever reach diagnostics — no entity_id/device_id/unique_id/person/occupancy/
   location/home name. event_count_summary reports the true (uncapped) totals;
   research_events is capped per category (see
   _HISTORICAL_RESEARCH_EVENTS_MAX_PER_CATEGORY) with any excess reported via
@@ -168,7 +168,7 @@ _HISTORICAL_RESEARCH_EVENTS_MAX_PER_CATEGORY = 200
 
 _HIST_OBS_ALLOWED_FIELDS = (
     "target", "indoor_temp", "delta", "active_control", "window_open",
-    "control_reason", "preheat_active", "heating_failure", "vacation",
+    "preheat_active", "heating_failure", "vacation",
     "summer_mode", "outdoor_temp", "outdoor_humidity", "wind_speed",
     "solar_radiation", "indoor_humidity", "heat_rate", "norm_heat_rate",
     "cool_rate", "schedule_period", "forecast_high",
@@ -349,7 +349,6 @@ def _zone_meta(cfg: dict) -> dict:
         "humidity_sensor_count": _count("humidity_sensors"),
         "has_window_sensors": _count("window_sensors") > 0,
         "window_sensor_count": _count("window_sensors"),
-        "has_presence": _count("presence_persons") > 0,
         "has_weather": bool(weather),
         "has_forecast": bool(weather),
         "has_solar_sensor": bool(cfg.get(CONF_OUTDOOR_SOLAR_SENSOR)),

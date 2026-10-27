@@ -36,13 +36,6 @@ from .const import (
     LEARNING_MIN_SAMPLES,
     PREHEAT_MAX_MINUTES,
     PREHEAT_MIN_DELTA,
-    HEATING_MODE_AUTO,
-    CONF_VACATION_TEMP,
-    CONF_ECO_TEMP,
-    TEMP_ECO,
-    CONF_SCHEDULE_ENABLED,
-    CONF_SCHED_WD_MORNING, CONF_SCHED_WD_NIGHT,
-    CONF_SCHED_WE_MORNING, CONF_SCHED_WE_NIGHT,
     FORECAST_EVAL_HOURS,
     FORECAST_BIAS_MIN,
     FORECAST_BIAS_MAX,
@@ -417,13 +410,12 @@ class LearningEngine:
             return
 
         current_temp = recommendation.get("current_temp")
-        # Record effective_target (weather-adjusted) – the actual temperature we aimed for.
-        # Fall back to adjusted_target for backward compatibility.
-        adjusted_target = (
+        # Record the temperature the zone was actually driven towards.
+        driven_target = (
             recommendation.get("effective_target")
-            or recommendation.get("adjusted_target")
+            or recommendation.get("desired_target")
         )
-        if current_temp is None or adjusted_target is None:
+        if current_temp is None or driven_target is None:
             return
 
         now = self._now_local()
@@ -440,7 +432,7 @@ class LearningEngine:
         # Abkühlrate messen wenn Raum unter Ziel liegt und sich abkühlt
         # → Wärmeverlustrate des Gebäudes (°C/min)
         cool_rate: float | None = None
-        is_cooling = current_temp < adjusted_target - 0.5
+        is_cooling = current_temp < driven_target - 0.5
         if is_cooling and zone_id in self._last_idle_temp:
             idle_time, idle_temp = self._last_idle_temp[zone_id]
             elapsed_min = (now - idle_time).total_seconds() / 60
@@ -464,9 +456,9 @@ class LearningEngine:
             "hour": now.hour,
             "minute": now.minute,
             "weekday": now.weekday(),
-            "target": adjusted_target,
+            "target": driven_target,
             "indoor_temp": current_temp,
-            "delta": round(adjusted_target - current_temp, 2),
+            "delta": round(driven_target - current_temp, 2),
             "active_control": is_active_control,
             "window_open": window_open,
             "control_reason": control_reason,
@@ -499,7 +491,7 @@ class LearningEngine:
             # Macht Heizraten bei verschiedenen Außentemperaturen direkt vergleichbar.
             # Beschreibt die "thermische Effizienz" des Heizkörpers unabhängig von
             # Außenbedingungen → bessere saisonübergreifende Vorhersage.
-            outdoor_delta = max(adjusted_target - (outdoor_temp_val or 10.0), 1.0)
+            outdoor_delta = max(driven_target - (outdoor_temp_val or 10.0), 1.0)
             obs["norm_heat_rate"] = round(heat_rate / outdoor_delta, 6)
         if cool_rate is not None:
             obs["cool_rate"] = cool_rate
@@ -953,40 +945,6 @@ class LearningEngine:
             "avg_window_cooling_rate": avg_window_cooling,
         }
 
-    async def async_get_base_target(
-        self,
-        zone_id: str,
-        mode: str = HEATING_MODE_AUTO,
-        comfort_temp: float = 21.0,
-        night_temp: float = 18.0,
-        away_temp: float = 17.0,
-        vacation_temp: float = 12.0,
-        eco_temp: float = TEMP_ECO,
-        schedule_cfg: dict | None = None,
-    ) -> float:
-        """Empfohlene Zieltemperatur – Zeitplan oder Modus-Temperatur."""
-        mode_temps = {
-            "comfort": comfort_temp,
-            "night": night_temp,
-            "away": away_temp,
-            "vacation": vacation_temp,
-            "eco": eco_temp,
-        }
-        if mode != HEATING_MODE_AUTO:
-            return mode_temps.get(mode, night_temp)
-
-        if (schedule_cfg or {}).get(CONF_SCHEDULE_ENABLED, True):
-            schedule_temp = self._schedule_target(
-                zone_id, comfort_temp, night_temp, away_temp, schedule_cfg
-            )
-        else:
-            schedule_temp = comfort_temp
-
-        # The learning engine always returns exactly the configured schedule temperature.
-        # Learning is used for heating rates, preheat timing, and TPI coefficients –
-        # NOT for overriding the user's explicitly configured target temperature.
-        return schedule_temp
-
     async def async_get_preheat_minutes(
         self,
         zone_id: str,
@@ -1198,41 +1156,6 @@ class LearningEngine:
         }
 
     # ── Interne Helfer ───────────────────────────────────────────────────
-
-    def _schedule_target(
-        self,
-        zone_id: str,
-        comfort_temp: float = 21.0,
-        night_temp: float = 18.0,
-        away_temp: float = 17.0,
-        schedule_cfg: dict | None = None,
-    ) -> float:
-        """Konfigurierbarer Zeitplan: Werktag 4 Blöcke, Wochenende 2 Blöcke."""
-        now = self._now_local()
-        is_weekend = now.weekday() >= 5
-        cur = now.hour * 60 + now.minute
-
-        def t(key: str, fallback: str) -> int:
-            raw = (schedule_cfg or {}).get(key, fallback)
-            try:
-                parts = str(raw).split(":")
-                return int(parts[0]) * 60 + int(parts[1])
-            except (ValueError, AttributeError, IndexError):
-                h2, m2 = fallback.split(":")
-                return int(h2) * 60 + int(m2)
-
-        # Werktag und Wochenende: gleiches Schema (Nacht → Komfort → Nacht)
-        # Abwesenheit wird automatisch via Präsenzerkennung → away_temp gehandelt
-        if not is_weekend:
-            morning = t(CONF_SCHED_WD_MORNING, "06:00")
-            night   = t(CONF_SCHED_WD_NIGHT,   "22:00")
-        else:
-            morning = t(CONF_SCHED_WE_MORNING, "08:00")
-            night   = t(CONF_SCHED_WE_NIGHT,   "23:00")
-
-        if cur < morning or cur >= night:
-            return night_temp
-        return comfort_temp
 
     def _weighted_targets_for_hour(
         self, zone_id: str, now: datetime

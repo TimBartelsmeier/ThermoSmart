@@ -19,6 +19,7 @@ Capability constants (SETPOINT_*, VALVE_*)
     Re-exported for use in type checks or custom profile construction.
 """
 from .capabilities import (
+    DevicePreset,
     DeviceProfile,
     SETPOINT_CLIMATE,
     SETPOINT_HVAC_FIRST,
@@ -27,11 +28,13 @@ from .capabilities import (
     VALVE_DIRECT,
     device_profile_status,
 )
-from .registry import get_profile
+from .registry import get_preset, get_profile
 
 __all__ = [
     "DeviceProfile",
+    "DevicePreset",
     "get_profile",
+    "get_preset",
     "device_profile_status",
     "SETPOINT_CLIMATE",
     "SETPOINT_HVAC_FIRST",

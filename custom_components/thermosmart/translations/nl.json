@@ -14,7 +14,7 @@
         "description": "Stelt de globale Zomer- en Vakantiemodus-schakelaars in. Geen thermostaat vereist. De globale schakelaars bedienen alle zones tegelijk."
       },
       "add_zone": {
-        "title": "Stap 1 / 4 – Apparaten & Sensoren",
+        "title": "Stap 1 – Apparaten & Sensoren",
         "description": "Selecteer de TRV's en sensoren voor deze verwarmingszone. Kalibratie-entiteiten en quirk-schakelaars worden automatisch gedetecteerd.",
         "data": {
           "name": "Zonenaam (bijv. Woonkamer)",
@@ -23,19 +23,109 @@
           "humidity_sensors": "Binnenluchtvochtigheidsensoren",
           "window_sensors": "Raamsensoren (binary_sensor)",
           "window_open_delay": "Verwarming uit – vertraging na openen raam",
-          "window_close_delay": "Verwarming aan – vertraging na sluiten raam",
-          "valve_maintenance": "Klep-onderhoud inschakelen (zondag 03:00 – alleen in Zomer- of Vakantiemodus)",
-          "manage_temp_source": "Externe kamertemperatuur automatisch gebruiken voor ondersteunde TRV's",
-          "calibration_invert": "Kalibratie-offset omkeren (voor TRV's zoals ME167 die het teken omkeren)"
+          "window_close_delay": "Verwarming aan – vertraging na sluiten raam"
+        }
+      },
+      "control_options": {
+        "title": "Stap 2 – Zonebesturingsstrategie",
+        "description": "Kies een standaard voor de zone. Instellingen per apparaat (volgende pagina's) kunnen deze strategie overschrijven.\n\nGedetecteerde apparaten:\n\n{detected_devices}",
+        "data": {
+          "zone_control_mode": "Zonebesturingsmodus",
+          "control_interval": "Minimaal interval van de regelcyclus",
+          "temp_tolerance": "Temperatuurtolerantie",
+          "ext_temp_threshold": "Drempel voor schrijven van externe temperatuur",
+          "trv_setpoint_debounce": "Vertraging van fysieke TRV-setpointwijzigingen",
+          "trv_setpoint_settling": "Stabilisatietijd van het TRV-setpoint"
         },
         "data_description": {
+          "zone_control_mode": "**Alleen setpoint:** ThermoSmart stuurt de gewone doeltemperatuur en de TRV regelt zijn klep zelf.\n\n**TPI-setpointmodulatie:** ThermoSmart berekent de warmtevraag en verhoogt of verlaagt het setpoint dat naar de TRV wordt gestuurd om de klep te openen of te sluiten.\n\n**Directe klepsturing:** ThermoSmart schrijft de berekende klepopening (0–100 %) naar de klepstandentiteit van de TRV en stuurt de gewone doeltemperatuur als setpoint.",
+          "control_interval": "Minimale tijd tussen reguliere regelcycli. Elke cyclus berekent de warmtevraag opnieuw en schrijft setpoints, klepstanden en statusinstellingen naar de TRV's. Gebeurtenissen zoals het openen van een raam of een handmatige overschrijving kunnen eerder een extra cyclus activeren. Kortere intervallen zorgen voor snellere reacties, maar kunnen ook apparaten overbelasten of netwerken, zoals Zigbee, verstoppen. In de praktijk zijn 2-3 minuten in combinatie met redelijke drempels voor temperatuurveranderingen, die overschreden moeten worden voordat nieuwe waarden naar de TRV worden gestuurd, prima.",
+          "ext_temp_threshold": "De waarde van de externe temperatuursensor wordt pas naar de TRV gestuurd nadat deze meer dan deze drempel is veranderd ten opzichte van de laatste update. Heeft alleen effect als een externe sensor is geconfigureerd en voor TRV's waarvoor de externe temperatuuringang is ingeschakeld.",
+          "temp_tolerance": "Een nieuwe streeftemperatuur wordt alleen naar de TRV gestuurd als deze minstens deze waarde afwijkt van de huidige streeftemperatuur van de TRV. Grotere waarden verminderen radioverkeer, kleinere waarden laten de TRV ThermoSmart nauwer volgen.",
+          "trv_setpoint_debounce": "Wacht deze tijd na de laatste setpointupdate van een TRV voordat deze als doeltemperatuur voor de zone wordt toegepast. Zo kun je de draaiknop afstellen; alleen de laatst gemelde waarde wordt gebruikt.",
+          "trv_setpoint_settling": "Negeer gedurende deze tijd setpointmeldingen van een TRV nadat ThermoSmart ernaar heeft geschreven, zodat vertraagde echo’s of tussenwaarden niet als handmatige wijzigingen worden gezien."
+        }
+      },
+      "device_settings": {
+        "title": "Stap 3 – TRV-instellingen (TRV {index}/{total})",
+        "description": "**Zone:** {zone}\n**TRV {index} van {total}:** {device_name}\n\nDeze instellingen gelden alleen voor deze TRV. Hierna kun je statusinstellingen voor deze TRV definiëren.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Besturingsmodus",
+          "valve_entity": "Klepbesturingsentiteit",
+          "feed_external_temp": "Kamertemperatuur naar TRV sturen",
+          "ext_temp_entity": "Invoerentiteit voor externe temperatuur",
+          "calibration_sync": "Kalibratie-offset schrijven",
+          "calibration_entity": "Entiteit voor kalibratie-offset",
+          "calibration_invert": "Kalibratie-offset omkeren",
+          "valve_maintenance": "Klepbeweging / onderhoud inschakelen",
+          "window_off": "Uitschakelen als een raam open is",
+          "accept_setpoint_changes": "Fysieke setpointwijzigingen accepteren"
+        },
+        "data_description": {
+          "feed_external_temp": "Stuurt de kamertemperatuur naar de TRV. Vereist dat hieronder de juiste invoerentiteit voor externe temperatuur wordt gekozen; zonder deze wordt niets verzonden.",
           "valve_maintenance": "Voorkomt dat kleppen vastlopen tijdens langere periodes zonder verwarming. ThermoSmart beweegt de kleppen af en toe automatisch wanneer de Zomer- of Vakantiemodus actief is.",
-          "manage_temp_source": "ThermoSmart blijft externe temperatuursensoren gebruiken voor zijn eigen regellogica. Indien ingeschakeld, schakelt ThermoSmart ondersteunde TRV's ook over naar hun externe temperatuurbron en valt terug op de interne TRV-sensor als externe sensoren niet beschikbaar zijn.",
-          "calibration_invert": "Keert het teken van de kalibratie-offset om voor specifieke TRV-modellen waarvan de offsetrichting afwijkt van het standaardgedrag. Schakel dit alleen in als uw apparaat dit vereist."
+          "calibration_sync": "Corrigeert de interne temperatuursensor van de TRV door het verschil met de kamertemperatuur naar de onderstaande kalibratie-entiteit te schrijven. Uitschakelen voor TRV's met een externe temperatuurbron. Vereist een kalibratie-entiteit.",
+          "calibration_entity": "Number-entiteit met de lokale kalibratie-offset van de TRV. Laat leeg om kalibratie uit te schakelen.",
+          "calibration_invert": "Inschakelen als de TRV de offset met het tegenovergestelde teken toepast.",
+          "valve_entity": "Number-entiteit die de klepopening van deze TRV regelt. Alleen nodig als directe klepsturing voor deze TRV is ingeschakeld; anders wordt ze genegeerd en kan ze leeg blijven. ThermoSmart schrijft 0–100 (%), of 0–1 voor entiteiten met \"level\" in de naam.",
+          "window_off": "Schakelt het apparaat uit (HVAC-modus uit) wanneer een raam open is. Zorg er bij gebruik voor dat je TRV ook uitgeschakeld nog vorstbeveiliging heeft (sommige modellen wel, andere niet) om bevriezing te voorkomen. Als je deze schakelaar uitschakelt, blijft de TRV in verwarmingsmodus, maar wordt hij bij een open raam ingesteld op de streeftemperatuur voor open raam die op een van de volgende pagina's is ingesteld.",
+          "accept_setpoint_changes": "Als dit is ingeschakeld, wordt een gewijzigd setpoint op deze TRV na de ingestelde vertraging de doeltemperatuur van de zone en toegepast op alle TRV’s. Wijzigingen worden ook geaccepteerd als een raam open is."
+        }
+      },
+      "state_menu": {
+        "title": "Stap 3 – TRV-statusinstellingen",
+        "description": "**Zone:** {zone}\n**TRV {index} van {total}:** {device_name}\n\nStatusinstellingen houden gekozen entiteiten van deze TRV (select, number of switch) op een waarde die je zelf bepaalt. Bij elke regelcyclus of regelgebeurtenis controleert ThermoSmart ze en stelt alleen een waarde in als die afwijkt. Laat de lijst leeg als je dit niet nodig hebt.\n\n**Momenteel geconfigureerd:**\n\n{state_rules}\n\nKies een actie. Selecteer **Klaar met deze TRV** wanneer je klaar bent.",
+        "menu_options": {
+          "state_add_device": "Een entiteit van deze TRV toevoegen",
+          "state_add_any": "Een andere entiteit toevoegen",
+          "state_remove": "Instellingen verwijderen",
+          "state_done": "Klaar met deze TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Stap 3 – Statusinstelling toevoegen (TRV {index}/{total})",
+        "description": "**TRV {index} van {total}:** {device_name}\n\nSelecteer de entiteit die ThermoSmart op een bepaalde waarde moet houden. {scope}\n\nDe waarde kies je op de volgende pagina.",
+        "data": {
+          "entity_id": "Entiteit"
+        },
+        "data_description": {
+          "entity_id": "Laat leeg en verstuur om terug te gaan zonder iets toe te voegen."
+        }
+      },
+      "state_add_any": {
+        "title": "Stap 3 – Statusinstelling toevoegen (TRV {index}/{total})",
+        "description": "**TRV {index} van {total}:** {device_name}\n\nSelecteer de entiteit die ThermoSmart op een bepaalde waarde moet houden. {scope}\n\nDe waarde kies je op de volgende pagina.",
+        "data": {
+          "entity_id": "Entiteit"
+        },
+        "data_description": {
+          "entity_id": "Laat leeg en verstuur om terug te gaan zonder iets toe te voegen."
+        }
+      },
+      "state_value": {
+        "title": "Stap 3 – Waarde van statusinstelling (TRV {index}/{total})",
+        "description": "**TRV {index} van {total}:** {device_name}\n\nBepaal de waarde die ThermoSmart afdwingt voor **{entity}**.\n\nHuidige waarde: {current}",
+        "data": {
+          "value": "Af te dwingen waarde",
+          "cancel": "Annuleren – deze instelling niet opslaan"
+        },
+        "data_description": {
+          "value": "Als de entiteit afwijkt van deze waarde, stelt ThermoSmart deze in bij de volgende regelcyclus of gebeurtenis.",
+          "cancel": "Vink aan en verstuur om zonder opslaan terug te keren naar de lijst."
+        }
+      },
+      "state_remove": {
+        "title": "Stap 3 – Statusinstellingen verwijderen (TRV {index}/{total})",
+        "description": "**TRV {index} van {total}:** {device_name}\n\nSelecteer de statusinstellingen die ThermoSmart niet langer moet afdwingen voor deze TRV.",
+        "data": {
+          "remove": "Te verwijderen instellingen"
+        },
+        "data_description": {
+          "remove": "Laat leeg en verstuur om terug te gaan zonder iets te verwijderen."
         }
       },
       "schedule": {
-        "title": "Stap 2 / 4 – Temperaturen & Schema",
+        "title": "Stap 4 – Temperaturen & Schema",
         "description": "Dagverloop: Nacht → Comfort → Nacht\n\nAls alle personen afwezig zijn, schakelt ThermoSmart automatisch naar de afwezigheidstemperatuur – ongeacht het schema.",
         "data": {
           "comfort_temp": "Comforttemperatuur (als iemand thuis is)",
@@ -44,7 +134,6 @@
           "vacation_temp": "Vakantietemperatuur (vorstbeveiliging)",
           "eco_temp": "Eco-temperatuur (energiezuinig, tussen nacht en comfort)",
           "window_open_temp": "Temperatuur bij open raam",
-          "temp_tolerance": "Temperatuurtolerantie – drempel voor TRV-setpoint-updates",
           "schedule_enabled": "Tijdschema inschakelen",
           "sched_wd_morning": "Werkdag: Comfort vanaf",
           "sched_wd_night": "Werkdag: Nacht vanaf",
@@ -59,12 +148,11 @@
           "sched_we_night": "Vanaf dit tijdstip geldt de nachttemperatuur",
           "away_temp": "Wordt automatisch toegepast alleen als aanwezigheidsdetectie is geconfigureerd (Stap 3). Kan ook handmatig worden ingesteld via de modusselectie.",
           "eco_temp": "Wordt gebruikt wanneer de modusselectie handmatig op 'Eco' wordt gezet. Wordt niet automatisch geactiveerd.",
-          "window_open_temp": "Doeltemperatuur wanneer een raam open is. Voor thermostaten die geen zeer lage instellingen ondersteunen, gebruik een hogere waarde zoals 10 °C.",
-          "temp_tolerance": "Minimale wijziging van het berekende TRV-setpoint voordat ThermoSmart een nieuwe update stuurt. Vermindert onnodige schrijfacties naar de thermostaat. 0,5 °C werkt goed voor de meeste kamers."
+          "window_open_temp": "Streeftemperatuur die op een TRV wordt ingesteld terwijl een raam open is, tenzij die TRV is geconfigureerd om uit te schakelen (zie de instellingen per apparaat). Gebruik voor thermostaten die zeer lage waarden niet ondersteunen een hogere waarde, zoals 10 °C."
         }
       },
       "presence": {
-        "title": "Stap 3 / 4 – Aanwezigheid & Leren",
+        "title": "Stap 5 – Aanwezigheid & Leren",
         "description": "Wie is er thuis? ThermoSmart schakelt automatisch naar afwezigheidsmodus als iedereen vertrekt.",
         "data": {
           "presence_persons": "Personen voor aanwezigheidsdetectie",
@@ -72,7 +160,7 @@
         }
       },
       "weather": {
-        "title": "Stap 4 / 4 – Weer & Buitensensoren",
+        "title": "Stap 6 – Weer & Buitensensoren",
         "description": "Alle velden optioneel – eigen sensoren hebben voorrang op de weer-entiteit. Het systeem werkt ook zonder weergegevens.",
         "data": {
           "weather_entity": "Weer-entiteit (bijv. weather.home)",
@@ -105,8 +193,11 @@
     "step": {
       "init": {
         "title": "Instellingen",
+        "description": "Kies welk deel van zone **{zone}** je wilt bewerken. Elke sectie wordt afzonderlijk opgeslagen.",
         "menu_options": {
           "devices": "Apparaten & Sensoren",
+          "control_options": "Zonebesturingsstrategie (standaardmodus, interval, drempels)",
+          "device_settings": "Instellingen per TRV (modus-overschrijving, entiteiten, statusinstellingen)",
           "schedule": "Temperaturen & Schema",
           "presence": "Aanwezigheid & Leren",
           "weather": "Weer & Buitensensoren"
@@ -122,15 +213,105 @@
           "humidity_sensors": "Binnenluchtvochtigheidsensoren",
           "window_sensors": "Raamsensoren",
           "window_open_delay": "Verwarming uit – vertraging na openen raam",
-          "window_close_delay": "Verwarming aan – vertraging na sluiten raam",
-          "valve_maintenance": "Klep-onderhoud inschakelen (alleen Zomer- / Vakantiemodus)",
-          "manage_temp_source": "Externe kamertemperatuur automatisch gebruiken voor ondersteunde TRV's",
-          "calibration_invert": "Kalibratie-offset omkeren (ME167 en vergelijkbaar)"
+          "window_close_delay": "Verwarming aan – vertraging na sluiten raam"
+        }
+      },
+      "control_options": {
+        "title": "Zonebesturingsstrategie",
+        "description": "Zone **{zone}**: kies een standaard voor de zone. Instellingen per apparaat kunnen deze strategie overschrijven.",
+        "data": {
+          "zone_control_mode": "Zonebesturingsmodus",
+          "control_interval": "Minimaal interval van de regelcyclus",
+          "temp_tolerance": "Temperatuurtolerantie",
+          "ext_temp_threshold": "Drempel voor schrijven van externe temperatuur",
+          "trv_setpoint_debounce": "Vertraging van fysieke TRV-setpointwijzigingen",
+          "trv_setpoint_settling": "Stabilisatietijd van het TRV-setpoint"
         },
         "data_description": {
+          "zone_control_mode": "**Alleen setpoint:** ThermoSmart stuurt de gewone doeltemperatuur en de TRV regelt zijn klep zelf.\n\n**TPI-setpointmodulatie:** ThermoSmart berekent de warmtevraag en verhoogt of verlaagt het setpoint dat naar de TRV wordt gestuurd om de klep te openen of te sluiten.\n\n**Directe klepsturing:** ThermoSmart schrijft de berekende klepopening (0–100 %) naar de klepstandentiteit van de TRV en stuurt de gewone doeltemperatuur als setpoint.",
+          "control_interval": "Minimale tijd tussen reguliere regelcycli. Elke cyclus berekent de warmtevraag opnieuw en schrijft setpoints, klepstanden en statusinstellingen naar de TRV's. Gebeurtenissen zoals het openen van een raam of een handmatige overschrijving kunnen eerder een extra cyclus activeren. Kortere intervallen zorgen voor snellere reacties, maar kunnen ook apparaten overbelasten of netwerken, zoals Zigbee, verstoppen. In de praktijk zijn 2-3 minuten in combinatie met redelijke drempels voor temperatuurveranderingen, die overschreden moeten worden voordat nieuwe waarden naar de TRV worden gestuurd, prima.",
+          "ext_temp_threshold": "De waarde van de externe temperatuursensor wordt pas naar de TRV gestuurd nadat deze meer dan deze drempel is veranderd ten opzichte van de laatste update. Heeft alleen effect als een externe sensor is geconfigureerd en voor TRV's waarvoor de externe temperatuuringang is ingeschakeld.",
+          "temp_tolerance": "Een nieuwe streeftemperatuur wordt alleen naar de TRV gestuurd als deze minstens deze waarde afwijkt van de huidige streeftemperatuur van de TRV. Grotere waarden verminderen radioverkeer, kleinere waarden laten de TRV ThermoSmart nauwer volgen.",
+          "trv_setpoint_debounce": "Wacht deze tijd na de laatste setpointupdate van een TRV voordat deze als doeltemperatuur voor de zone wordt toegepast. Zo kun je de draaiknop afstellen; alleen de laatst gemelde waarde wordt gebruikt.",
+          "trv_setpoint_settling": "Negeer gedurende deze tijd setpointmeldingen van een TRV nadat ThermoSmart ernaar heeft geschreven, zodat vertraagde echo’s of tussenwaarden niet als handmatige wijzigingen worden gezien."
+        }
+      },
+      "device_settings": {
+        "title": "TRV-instellingen (TRV {index}/{total})",
+        "description": "**Zone:** {zone}\n**TRV {index} van {total}:** {device_name}\n\nDeze instellingen gelden alleen voor deze TRV. Hierna kun je statusinstellingen voor deze TRV bewerken. Er wordt niets opgeslagen totdat je de laatste TRV hebt doorlopen.\n\n{preset_info}",
+        "data": {
+          "control_mode": "Besturingsmodus",
+          "valve_entity": "Klepbesturingsentiteit",
+          "feed_external_temp": "Kamertemperatuur naar TRV sturen",
+          "ext_temp_entity": "Invoerentiteit voor externe temperatuur",
+          "calibration_sync": "Kalibratie-offset schrijven",
+          "calibration_entity": "Entiteit voor kalibratie-offset",
+          "calibration_invert": "Kalibratie-offset omkeren",
+          "valve_maintenance": "Klepbeweging / onderhoud inschakelen",
+          "window_off": "Uitschakelen als een raam open is",
+          "accept_setpoint_changes": "Fysieke setpointwijzigingen accepteren"
+        },
+        "data_description": {
+          "feed_external_temp": "Stuurt de kamertemperatuur naar de TRV. Vereist dat hieronder de juiste invoerentiteit voor externe temperatuur wordt gekozen; zonder deze wordt niets verzonden.",
           "valve_maintenance": "Voorkomt dat kleppen vastlopen tijdens langere periodes zonder verwarming. ThermoSmart beweegt de kleppen af en toe automatisch wanneer de Zomer- of Vakantiemodus actief is.",
-          "manage_temp_source": "ThermoSmart blijft externe temperatuursensoren gebruiken voor zijn eigen regellogica. Indien ingeschakeld, schakelt ThermoSmart ondersteunde TRV's ook over naar hun externe temperatuurbron en valt terug op de interne TRV-sensor als externe sensoren niet beschikbaar zijn.",
-          "calibration_invert": "Keert het teken van de kalibratie-offset om voor specifieke TRV-modellen waarvan de offsetrichting afwijkt van het standaardgedrag. Schakel dit alleen in als uw apparaat dit vereist."
+          "calibration_sync": "Corrigeert de interne temperatuursensor van de TRV door het verschil met de kamertemperatuur naar de onderstaande kalibratie-entiteit te schrijven. Uitschakelen voor TRV's met een externe temperatuurbron. Vereist een kalibratie-entiteit.",
+          "calibration_entity": "Number-entiteit met de lokale kalibratie-offset van de TRV. Laat leeg om kalibratie uit te schakelen.",
+          "calibration_invert": "Inschakelen als de TRV de offset met het tegenovergestelde teken toepast.",
+          "valve_entity": "Number-entiteit die de klepopening van deze TRV regelt. Alleen nodig als directe klepsturing voor deze TRV is ingeschakeld; anders wordt ze genegeerd en kan ze leeg blijven. ThermoSmart schrijft 0–100 (%), of 0–1 voor entiteiten met \"level\" in de naam.",
+          "window_off": "Schakelt het apparaat uit (HVAC-modus uit) wanneer een raam open is. Zorg er bij gebruik voor dat je TRV ook uitgeschakeld nog vorstbeveiliging heeft (sommige modellen wel, andere niet) om bevriezing te voorkomen. Als je deze schakelaar uitschakelt, blijft de TRV in verwarmingsmodus, maar wordt hij bij een open raam ingesteld op de streeftemperatuur voor open raam die op een van de volgende pagina's is ingesteld.",
+          "accept_setpoint_changes": "Als dit is ingeschakeld, wordt een gewijzigd setpoint op deze TRV na de ingestelde vertraging de doeltemperatuur van de zone en toegepast op alle TRV’s. Wijzigingen worden ook geaccepteerd als een raam open is."
+        }
+      },
+      "state_menu": {
+        "title": "TRV-statusinstellingen",
+        "description": "**Zone:** {zone}\n**TRV {index} van {total}:** {device_name}\n\nStatusinstellingen houden gekozen entiteiten van deze TRV (select, number of switch) op een waarde die je zelf bepaalt. Bij elke regelcyclus of regelgebeurtenis controleert ThermoSmart ze en stelt alleen een waarde in als die afwijkt. Laat de lijst leeg als je dit niet nodig hebt.\n\n**Momenteel geconfigureerd:**\n\n{state_rules}\n\nKies een actie. Selecteer **Klaar met deze TRV** wanneer je klaar bent; wijzigingen worden opgeslagen na de laatste TRV.",
+        "menu_options": {
+          "state_add_device": "Een entiteit van deze TRV toevoegen",
+          "state_add_any": "Een andere entiteit toevoegen",
+          "state_remove": "Instellingen verwijderen",
+          "state_done": "Klaar met deze TRV"
+        }
+      },
+      "state_add_device": {
+        "title": "Statusinstelling toevoegen (TRV {index}/{total})",
+        "description": "**TRV {index} van {total}:** {device_name}\n\nSelecteer de entiteit die ThermoSmart op een bepaalde waarde moet houden. {scope}\n\nDe waarde kies je op de volgende pagina.",
+        "data": {
+          "entity_id": "Entiteit"
+        },
+        "data_description": {
+          "entity_id": "Laat leeg en verstuur om terug te gaan zonder iets toe te voegen."
+        }
+      },
+      "state_add_any": {
+        "title": "Statusinstelling toevoegen (TRV {index}/{total})",
+        "description": "**TRV {index} van {total}:** {device_name}\n\nSelecteer de entiteit die ThermoSmart op een bepaalde waarde moet houden. {scope}\n\nDe waarde kies je op de volgende pagina.",
+        "data": {
+          "entity_id": "Entiteit"
+        },
+        "data_description": {
+          "entity_id": "Laat leeg en verstuur om terug te gaan zonder iets toe te voegen."
+        }
+      },
+      "state_value": {
+        "title": "Waarde van statusinstelling (TRV {index}/{total})",
+        "description": "**TRV {index} van {total}:** {device_name}\n\nBepaal de waarde die ThermoSmart afdwingt voor **{entity}**.\n\nHuidige waarde: {current}",
+        "data": {
+          "value": "Af te dwingen waarde",
+          "cancel": "Annuleren – deze instelling niet opslaan"
+        },
+        "data_description": {
+          "value": "Als de entiteit afwijkt van deze waarde, stelt ThermoSmart deze in bij de volgende regelcyclus of gebeurtenis.",
+          "cancel": "Vink aan en verstuur om zonder opslaan terug te keren naar de lijst."
+        }
+      },
+      "state_remove": {
+        "title": "Statusinstellingen verwijderen (TRV {index}/{total})",
+        "description": "**TRV {index} van {total}:** {device_name}\n\nSelecteer de statusinstellingen die ThermoSmart niet langer moet afdwingen voor deze TRV.",
+        "data": {
+          "remove": "Te verwijderen instellingen"
+        },
+        "data_description": {
+          "remove": "Laat leeg en verstuur om terug te gaan zonder iets te verwijderen."
         }
       },
       "schedule": {
@@ -143,7 +324,6 @@
           "vacation_temp": "Vakantietemperatuur",
           "eco_temp": "Eco-temperatuur",
           "window_open_temp": "Temperatuur bij open raam",
-          "temp_tolerance": "Temperatuurtolerantie",
           "schedule_enabled": "Tijdschema inschakelen",
           "sched_wd_morning": "Werkdag: Comfort vanaf",
           "sched_wd_night": "Werkdag: Nacht vanaf",
@@ -158,8 +338,7 @@
           "sched_we_night": "Vanaf dit tijdstip geldt de nachttemperatuur",
           "away_temp": "Wordt automatisch toegepast alleen als aanwezigheidsdetectie is geconfigureerd (Stap 3). Kan ook handmatig worden ingesteld via de modusselectie.",
           "eco_temp": "Wordt gebruikt wanneer de modusselectie handmatig op 'Eco' wordt gezet. Wordt niet automatisch geactiveerd.",
-          "window_open_temp": "Doeltemperatuur wanneer een raam open is. Voor thermostaten die geen zeer lage instellingen ondersteunen, gebruik een hogere waarde zoals 10 °C.",
-          "temp_tolerance": "Minimale wijziging van het berekende TRV-setpoint voordat ThermoSmart een nieuwe update stuurt. Vermindert onnodige schrijfacties naar de thermostaat. 0,5 °C werkt goed voor de meeste kamers."
+          "window_open_temp": "Streeftemperatuur die op een TRV wordt ingesteld terwijl een raam open is, tenzij die TRV is geconfigureerd om uit te schakelen (zie de instellingen per apparaat). Gebruik voor thermostaten die zeer lage waarden niet ondersteunen een hogere waarde, zoals 10 °C."
         }
       },
       "presence": {
@@ -311,6 +490,39 @@
       },
       "trv_observations": {
         "name": "TRV-observaties"
+      }
+    }
+  },
+  "selector": {
+    "zone_control_mode": {
+      "options": {
+        "setpoint": "Alleen streeftemperatuur (TRV autonoom)",
+        "tpi_boost": "TPI-modulatie van streeftemperatuur (berekende boost)",
+        "direct_valve": "Directe klepsturing (0–100%)"
+      }
+    },
+    "device_control_mode_setpoint": {
+      "options": {
+        "inherit": "Overnemen van zone (Alleen streeftemperatuur)",
+        "setpoint": "Alleen streeftemperatuur",
+        "tpi_boost": "TPI-modulatie van streeftemperatuur",
+        "direct_valve": "Directe klepsturing"
+      }
+    },
+    "device_control_mode_tpi_boost": {
+      "options": {
+        "inherit": "Overnemen van zone (TPI-modulatie van streeftemperatuur)",
+        "setpoint": "Alleen streeftemperatuur",
+        "tpi_boost": "TPI-modulatie van streeftemperatuur",
+        "direct_valve": "Directe klepsturing"
+      }
+    },
+    "device_control_mode_direct_valve": {
+      "options": {
+        "inherit": "Overnemen van zone (Directe klepsturing)",
+        "setpoint": "Alleen streeftemperatuur",
+        "tpi_boost": "TPI-modulatie van streeftemperatuur",
+        "direct_valve": "Directe klepsturing"
       }
     }
   }

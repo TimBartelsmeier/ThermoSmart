@@ -1,11 +1,11 @@
 """Constants for the ThermoSmart integration."""
 
 DOMAIN = "thermosmart"
-VERSION = "1.3.1"
+VERSION = "1.3.2"
+CARD_ASSET_VERSION = "2.0.1" # Keep CARD_VERSION in the card's .js synchronized with this value
 
 # Bundled Lovelace card (custom_components/thermosmart/www/thermosmart-card.js).
-# Registered once per HA session as a static path + frontend module URL —
-# see async_setup_entry(). No separate HACS plugin install needed anymore.
+# Registered once per HA session through card_registration.py.
 CARD_FILENAME = "thermosmart-card.js"
 CARD_URL_PATH = f"/{DOMAIN}/{CARD_FILENAME}"
 
@@ -18,13 +18,35 @@ CONF_OUTDOOR_WIND_SENSOR = "outdoor_wind_sensor"
 CONF_OUTDOOR_SOLAR_SENSOR = "outdoor_solar_sensor"
 CONF_OUTDOOR_RAIN_SENSOR = "outdoor_rain_sensor"
 CONF_LEARNING_ENABLED = "learning_enabled"
-CONF_SCHEDULE_ENABLED = "schedule_enabled"
-CONF_PRESENCE_PERSONS = "presence_persons"
-CONF_HOME_ZONE = "home_zone"           # Welche Zone gilt als "zuhause"?
-CONF_VACATION_BOOLEAN = "vacation_boolean"
-CONF_CALIBRATION_ENTITIES = "calibration_entities"
-CONF_QUIRK_ENTITIES = "quirk_entities"
-CONF_VALVE_MAINTENANCE = "valve_maintenance"
+CONF_ZONE_CONTROL_MODE = "zone_control_mode"
+CONF_CONTROL_INTERVAL = "control_interval"
+CONF_TEMP_TOLERANCE = "temp_tolerance"
+CONF_EXT_TEMP_THRESHOLD = "ext_temp_threshold"
+CONF_TRV_SETPOINT_DEBOUNCE = "trv_setpoint_debounce"
+CONF_TRV_SETPOINT_SETTLING = "trv_setpoint_settling"
+CONF_DEVICE_SETTINGS = "device_settings"
+CONF_DEV_CONTROL_MODE = "control_mode"
+CONF_DEV_VALVE_ENTITY = "valve_entity"
+CONF_DEV_FEED_EXT_TEMP = "feed_external_temp"
+CONF_DEV_EXT_TEMP_ENTITY = "ext_temp_entity"
+CONF_DEV_CALIBRATION_ENTITY = "calibration_entity"
+CONF_DEV_CALIBRATION_SYNC = "calibration_sync"
+CONF_DEV_CALIBRATION_INVERT = "calibration_invert"
+CONF_DEV_VALVE_MAINTENANCE = "valve_maintenance"
+CONF_DEV_WINDOW_OFF = "window_off"
+CONF_DEV_ACCEPT_SETPOINT_CHANGES = "accept_setpoint_changes"
+CONF_DEV_STATE_SETTINGS = "state_settings"
+CONF_SCHEDULE_EVENTS = "schedule_events"
+CONTROL_MODE_INHERIT = "inherit"
+CONTROL_MODE_SETPOINT = "setpoint"
+CONTROL_MODE_TPI_BOOST = "tpi_boost"
+CONTROL_MODE_DIRECT_VALVE = "direct_valve"
+CONTROL_MODES = (
+    CONTROL_MODE_INHERIT,
+    CONTROL_MODE_SETPOINT,
+    CONTROL_MODE_TPI_BOOST,
+    CONTROL_MODE_DIRECT_VALVE,
+)
 
 # Bekannte Switch-Muster die bei TRVs automatisch deaktiviert werden sollen
 AUTO_QUIRK_PATTERNS = [
@@ -57,18 +79,6 @@ AUTO_VALVE_PATTERNS = [
     "level",                  # Homematic IP via hahomematic (0.0–1.0 scaled to %)
 ]
 
-# Kalibrierungs-Inversion (z.B. ME167 invertiert Offset-Vorzeichen)
-CONF_CALIBRATION_INVERT = "calibration_invert"
-
-# TRV temperature source management (external/internal select on SONOFF TRVZB etc.)
-CONF_MANAGE_TEMP_SOURCE = "manage_temp_source"
-
-# Patterns for temperature_sensor select entity detection
-AUTO_TEMP_SOURCE_PATTERNS = ["temperature_sensor"]
-
-# Seconds all external temp sensors must be unavailable before switching TRV to internal
-TEMP_SOURCE_SENSOR_GRACE_SECONDS = 300
-
 # TPI-Regler Konstanten
 TPI_COEF_INT_DEFAULT  = 0.6    # Duty-Cycle-Anteil pro °C Raumfehler (0→100%)
 TPI_COEF_EXT_DEFAULT  = 0.01   # Duty-Cycle-Anteil pro °C Außentemperatur-Delta
@@ -83,10 +93,6 @@ TPI_VALVE_BUMP_DELAY  = 5.0    # Sekunden zwischen Bump-Open und Zielwert
 CONF_VACATION_TEMP     = "vacation_temp"       # Urlaubstemperatur (Frostschutz)
 CONF_WINDOW_OPEN_TEMP  = "window_open_temp"    # TRV-Setpoint bei geöffnetem Fenster (pro Zone)
 CONF_ECO_TEMP          = "eco_temp"            # Eco-Preset Temperatur
-CONF_SCHED_WD_MORNING  = "sched_wd_morning"   # Werktag: Aufwachen  → comfort_temp
-CONF_SCHED_WD_NIGHT    = "sched_wd_night"     # Werktag: Nacht      → night_temp
-CONF_SCHED_WE_MORNING  = "sched_we_morning"   # Wochenende: Aufwachen → comfort_temp
-CONF_SCHED_WE_NIGHT    = "sched_we_night"     # Wochenende: Nacht     → night_temp
 
 VALVE_MAINTENANCE_HOUR = 3     # 03:00 Uhr nachts
 VALVE_MAINTENANCE_WEEKDAY = 6  # Sonntag (0=Mo … 6=So)
@@ -96,7 +102,6 @@ VALVE_MAINTENANCE_DURATION_SUMMER_SEC = 8  # Sekunden offen (Sommer – kurze Ü
 
 DOMAIN_GLOBAL_SUMMER   = f"{DOMAIN}_global_summer"
 DOMAIN_GLOBAL_VACATION = f"{DOMAIN}_global_vacation"
-DOMAIN_GLOBAL_DEBUG    = f"{DOMAIN}_global_debug"
 
 # Default values
 DEFAULT_WEATHER_ENTITY = "weather.home"
@@ -109,21 +114,8 @@ TEMP_NIGHT = 18.0
 TEMP_AWAY = 17.0
 TEMP_FROST_PROTECTION = 12.0
 TEMP_ECO = 19.0
-INDOOR_SAFETY_TEMP = 16.0  # °C – below this, automatic summer mode is bypassed for one cycle
 WINDOW_OPEN_SETPOINT = 5.0  # TRV-Setpoint bei geöffnetem Fenster
 
-# Weather-based adjustments
-WEATHER_COLD_THRESHOLD = 0.0     # °C outdoor — boost heating
-WEATHER_MILD_THRESHOLD = 10.0   # °C outdoor — reduce heating
-WEATHER_WARM_THRESHOLD = 18.0   # °C outdoor — consider disabling
-WEATHER_HOT_THRESHOLD = 22.0    # °C outdoor — disable heating
-
-WEATHER_BOOST_OFFSET = 1.5      # °C added when very cold
-WEATHER_REDUCE_OFFSET = -1.0    # °C subtracted when mild
-
-# Wind chill factor: extra boost when windy + cold
-WIND_THRESHOLD_MS = 10.0        # m/s
-WIND_CHILL_BOOST = 0.5          # °C extra when cold AND windy
 
 # Learning algorithm settings
 LEARNING_MIN_SAMPLES = 5        # Mindest-Beobachtungen bevor Lernen aktiv wird
@@ -135,12 +127,6 @@ FORECAST_EVAL_HOURS = 5          # Stunden bis Prognose-Entscheidung ausgewertet
 FORECAST_BIAS_MIN = 0.3          # Mindest-Vertrauen in Prognose (nie komplett ignorieren)
 FORECAST_BIAS_MAX = 1.0          # Vollständiges Vertrauen (Standard / Cold-Start)
 FORECAST_BIAS_LEARNING_RATE = 0.06  # Anpassungsrate pro Auswertung
-FORECAST_DELTA_FULL_HEAT = 3.0   # °C unter Ziel → vollständig heizen, Prognose ignorieren
-FORECAST_DELTA_BLEND = 1.5       # °C unter Ziel → Übergang beginnt
-
-# Solar-Einfluss auf Temperatur-Offset (compute_temperature_offset)
-SOLAR_OFFSET_THRESHOLD_W = 400.0   # W/m² – Solar reduziert Heiz-Offset ab diesem Wert
-SOLAR_OFFSET_MIN_OUTDOOR_C = 5.0   # °C – Solar-Offset nur bei wärmerer Außentemp
 
 # Solar-Gain-Erkennung (SunIntensitySensor)
 SOLAR_GAIN_THRESHOLD_W = 300.0   # W/m² – unterhalb kein relevanter Solar-Wärmeeintrag
@@ -151,25 +137,26 @@ SOLAR_GAIN_MAX_REDUCTION = 0.30  # max. 30 % Reduktion des Heizbedarfs durch Son
 SUMMER_THRESHOLD = 18.0   # °C Außentemperatur über X Stunden → Sommer
 WINTER_THRESHOLD = 15.0   # °C Außentemperatur unter X Stunden → Heizung an
 SEASON_HOURS = 72         # Stunden die der Schwellwert überschritten sein muss
+SEASON_SAMPLE_MINUTES = 15  # Abtastintervall der System-Außentemperatur
+CONF_SUMMER_ON_THRESHOLD = "summer_on_threshold"    # System-Entry: 72 h-Ø ab hier → Sommer
+CONF_SUMMER_OFF_THRESHOLD = "summer_off_threshold"  # System-Entry: 72 h-Ø bis hier → Winter
 
 # Sensor-Noise-Filter
 NOISE_FILTER_SPIKE_THRESHOLD = 4.0  # °C – Abweichung > Wert vom EMA → Messung ignorieren
 NOISE_FILTER_EMA_ALPHA = 0.2        # EMA-Glättungsfaktor (kleiner = träger/stabiler)
 
-# Heizmodi
-HEATING_MODE_AUTO     = "auto"
-HEATING_MODE_COMFORT  = "comfort"
-HEATING_MODE_ECO      = "eco"
-HEATING_MODE_NIGHT    = "night"
-HEATING_MODE_AWAY     = "away"
-HEATING_MODE_VACATION = "vacation"
-HEATING_MODES = [
-    HEATING_MODE_AUTO,
-    HEATING_MODE_COMFORT,
-    HEATING_MODE_ECO,
-    HEATING_MODE_NIGHT,
-    HEATING_MODE_AWAY,
-    HEATING_MODE_VACATION,
+# Presets: plain named temperatures (configured per zone)
+PRESET_COMFORT  = "comfort"
+PRESET_ECO      = "eco"
+PRESET_NIGHT    = "night"
+PRESET_AWAY     = "away"
+PRESET_VACATION = "vacation"
+PRESETS = [
+    PRESET_COMFORT,
+    PRESET_ECO,
+    PRESET_NIGHT,
+    PRESET_AWAY,
+    PRESET_VACATION,
 ]
 
 # EMA-Zeitkonstante für 1h-Trend-Sensor (α ≈ 1-e^(-5min/60min))
@@ -195,10 +182,9 @@ STORAGE_VERSION = 1
 STORAGE_KEY = f"{DOMAIN}_learning_data"
 
 # Platforms
-PLATFORMS = ["climate", "sensor", "switch", "select"]
+PLATFORMS = ["climate", "sensor", "switch", "select", "datetime"]
 
 # Icons
 ICON_ZONE = "mdi:home-thermometer"
 ICON_LEARNING = "mdi:brain"
-ICON_WEATHER_ADJUST = "mdi:weather-partly-cloudy"
 ICON_PREHEAT = "mdi:timer-play"

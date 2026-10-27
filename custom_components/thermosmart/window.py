@@ -10,7 +10,7 @@ Zwei Erkennungsstrategien:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from .const import (
     WINDOW_SLOPE_EMA_ALPHA,
@@ -24,10 +24,18 @@ _LOGGER = logging.getLogger(__name__)
 class WindowMixin:
     """Fenstererkennung mit konfigurierbaren Verzögerungen + Slope-Erkennung."""
 
+    def _clear_window_tracking(self, entity_id: str) -> None:
+        cancel = self._window_delay_cancel.pop(entity_id, None)
+        if cancel is not None:
+            cancel()
+        self._window_open_at.pop(entity_id, None)
+        self._window_close_at.pop(entity_id, None)
+        self._window_open_temp.pop(entity_id, None)
+
     def _check_window_open(self, cfg: dict, current_temp: float | None = None) -> bool:
         now = self._now_local()
-        open_delay = timedelta(minutes=cfg.get("window_open_delay", 5))
-        close_delay = timedelta(minutes=cfg.get("window_close_delay", 2))
+        open_delay = timedelta(seconds=cfg.get("window_open_delay", 20))
+        close_delay = timedelta(seconds=cfg.get("window_close_delay", 20))
 
         sensor_detected = False
         has_sensors = bool(cfg.get("window_sensors"))
@@ -36,38 +44,25 @@ class WindowMixin:
             if not ws_id:
                 continue
             ws = self.hass.states.get(ws_id)
-            if ws is None:
+            if ws is None or ws.state not in ("on", "off"):
+                self._clear_window_tracking(ws_id)
                 continue
-
-            # HA's own last-changed timestamp for this entity, when it is a
-            # real aware datetime (never true for the plain-Mock states used
-            # by tests that don't care about restart behavior). Used below
-            # to reconstruct in-progress open/close delays that would
-            # otherwise be silently lost whenever the coordinator's
-            # in-memory _window_open_at/_window_close_at dicts are reset by
-            # an integration reload or HA restart.
-            last_changed = getattr(ws, "last_changed", None)
-            if not isinstance(last_changed, datetime):
-                last_changed = None
 
             if ws.state == "on":
                 if ws_id not in self._window_open_at:
-                    self._window_open_at[ws_id] = last_changed if last_changed is not None else (now - open_delay)
+                    # No observed opening: reconcile startup/recovery immediately.
+                    self._window_open_at[ws_id] = now - open_delay
+                self._window_close_at.pop(ws_id, None)
                 if now - self._window_open_at[ws_id] >= open_delay:
                     sensor_detected = True
             else:
-                if (
-                    ws_id not in self._window_close_at
-                    and last_changed is not None
-                    and now - last_changed < close_delay
-                ):
-                    self._window_close_at[ws_id] = last_changed
                 if ws_id in self._window_close_at:
                     if now - self._window_close_at[ws_id] < close_delay:
                         sensor_detected = True
                     else:
                         self._window_close_at.pop(ws_id, None)
                 self._window_open_at.pop(ws_id, None)
+                self._window_open_temp.pop(ws_id, None)
 
         # Slope-basierte Erkennung nur wenn kein Sensor konfiguriert
         if not has_sensors:
@@ -89,6 +84,11 @@ class WindowMixin:
         """
         if current_temp is None:
             return getattr(self, "_slope_window_active", False)
+
+        # Count only fresh slope samples, so the detection depends on elapsed
+        # time and not on how many control cycles ran.
+        if not getattr(self, "_slope_sample_fresh", True):
+            return self._slope_window_active
 
         slope_now = getattr(self, "_indoor_temp_slope", 0.0) or 0.0
 

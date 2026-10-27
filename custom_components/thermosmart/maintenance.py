@@ -6,13 +6,13 @@ import contextlib
 import logging
 
 from .const import (
-    CONF_VALVE_MAINTENANCE,
+    CONF_DEVICE_SETTINGS,
+    CONF_DEV_VALVE_MAINTENANCE,
     VALVE_MAINTENANCE_HOUR,
     VALVE_MAINTENANCE_WEEKDAY,
     VALVE_MAINTENANCE_BOOST_TEMP,
     VALVE_MAINTENANCE_DURATION_SEC,
     VALVE_MAINTENANCE_DURATION_SUMMER_SEC,
-    HEATING_MODE_VACATION,
 )
 from .temperature_units import from_internal_temperature_c
 
@@ -36,14 +36,12 @@ class MaintenanceMixin:
         climate.set_temperature Service Call ausgelöst, unabhängig von
         Sommer-/Urlaubsmodus.
         """
-        if not cfg.get(CONF_VALVE_MAINTENANCE, True):
-            return
         if self._maintenance_running:
             return
         if not self._active_control:
             return
 
-        in_vacation = recommendation.get("mode") == HEATING_MODE_VACATION
+        in_vacation = bool(recommendation.get("vacation_mode"))
         valve_likely_idle = self._is_summer or in_vacation
         if not valve_likely_idle:
             return
@@ -64,7 +62,7 @@ class MaintenanceMixin:
         # Rückkehrtemperatur nach Wartung: aktuelle Zieltemp bevorzugt,
         # Fallback abhängig vom Modus (nicht hardcoded comfort_temp im Urlaub).
         low_temp_mode = self._is_summer or in_vacation
-        target_after = recommendation.get("adjusted_target") or cfg.get(
+        target_after = recommendation.get("effective_target") or cfg.get(
             "vacation_temp" if low_temp_mode else "comfort_temp",
             12.0 if low_temp_mode else 21.0,
         )
@@ -87,6 +85,10 @@ class MaintenanceMixin:
             """
             payloads = []
             for eid in climate_entities:
+                if not cfg.get(CONF_DEVICE_SETTINGS, {}).get(eid, {}).get(
+                    CONF_DEV_VALVE_MAINTENANCE, True
+                ):
+                    continue
                 state = self.hass.states.get(eid)
                 if state is None or state.state in ("unavailable", "unknown"):
                     continue
@@ -104,9 +106,7 @@ class MaintenanceMixin:
         async def _run_maintenance() -> None:
             try:
                 tasks = [
-                    self.hass.services.async_call(
-                        "climate", "set_temperature", payload, blocking=True,
-                    )
+                    _maintenance_set_temperature(payload, cfg)
                     for payload in _dispatch_payloads(VALVE_MAINTENANCE_BOOST_TEMP)
                 ]
                 if tasks:
@@ -115,9 +115,7 @@ class MaintenanceMixin:
                 await asyncio.sleep(duration)
 
                 tasks = [
-                    self.hass.services.async_call(
-                        "climate", "set_temperature", payload, blocking=True,
-                    )
+                    _maintenance_set_temperature(payload, cfg)
                     for payload in _dispatch_payloads(target_after)
                 ]
                 if tasks:
@@ -129,6 +127,13 @@ class MaintenanceMixin:
                 )
             finally:
                 self._maintenance_running = False
+
+        async def _maintenance_set_temperature(payload: dict, config: dict) -> None:
+            entity_id = payload["entity_id"]
+            self._mark_trv_write(entity_id, config)
+            await self.hass.services.async_call(
+                "climate", "set_temperature", payload, blocking=True,
+            )
 
         self._maintenance_task = self.hass.async_create_task(_run_maintenance())
 

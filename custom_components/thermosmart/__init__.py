@@ -10,16 +10,16 @@ Modulstruktur:
   maintenance.py  – Wöchentliche Ventilübung
   season.py       – Sommer-Erkennung, Frostschutz
   window.py       – Fenstererkennung
-  weather_engine.py / learning_engine.py – eigenständige Engines
+  outdoor.py / learning_engine.py – eigenständige Engines
 """
 from __future__ import annotations
 
 import logging
-import os
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant, Event
+from homeassistant.helpers import config_validation as cv
 
 from .const import (
     DOMAIN,
@@ -31,150 +31,66 @@ from .const import (
     CONF_OUTDOOR_SOLAR_SENSOR,
     CONF_OUTDOOR_RAIN_SENSOR,
     CONF_LEARNING_ENABLED,
-    DOMAIN_GLOBAL_SUMMER,
-    CARD_FILENAME,
-    CARD_URL_PATH,
-    VERSION,
 )
+from .card_registration import REGISTRATION_KEY, async_register_card as _async_register_card
 from .coordinator import ThermoSmartCoordinator
-from .weather_engine import WeatherEngine
+from .availability import EntityAvailabilityMonitor
+from .system import SYSTEM_KEY, SystemController
+from .triggers import TRIGGER_SYSTEM_STATE
+from .outdoor import OutdoorConditions
 from .learning_engine import LearningEngine
 
 _LOGGER = logging.getLogger(__name__)
 
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+# Keys in hass.data[DOMAIN] that are session-wide state, not per-config-entry
+# data. async_unload_entry() must not count them as still-loaded entries.
+_NON_ENTRY_DATA_KEYS = (
+    "learning_engine", SYSTEM_KEY,
+    REGISTRATION_KEY,
+)
+
 ZONE_PLATFORMS = PLATFORMS               # ["climate", "sensor", "switch", "select"]
-SYSTEM_PLATFORMS = ["switch", "select"]  # System-Entry: globale Schalter + Sommer-Select
+SYSTEM_PLATFORMS = ["switch"]            # System-Entry: Urlaubs- und Sommer-Schalter
 
 
-def _migrate_old_summer_switch(hass: HomeAssistant) -> None:
-    """Entfernt veraltete Summer-Switch-Entity aus der HA Entity-Registry (Migration beta.23).
-
-    In beta.23 wurde der globale Summer-Schalter (switch) durch einen dreistufigen
-    Select (Automatic / On / Off) ersetzt. Die alte Switch-Entity mit unique_id
-    DOMAIN_GLOBAL_SUMMER wird einmalig pro Session automatisch aus der Registry entfernt,
-    damit keine verwaiste "unavailable"-Entity zurückbleibt.
-    """
-    from homeassistant.helpers import entity_registry as er  # lokaler Import – vermeidet Zyklen
-    entity_reg = er.async_get(hass)
-    old_entity_id = entity_reg.async_get_entity_id("switch", DOMAIN, DOMAIN_GLOBAL_SUMMER)
-    if old_entity_id:
-        entity_reg.async_remove(old_entity_id)
-        _LOGGER.info(
-            "ThermoSmart: Migration beta.23 – "
-            "Alte Summer-Switch-Entity '%s' aus der Registry entfernt",
-            old_entity_id,
-        )
-
-
-async def _async_register_card(hass: HomeAssistant) -> None:
-    """Serve the bundled Lovelace card and register it as a frontend module URL.
-
-    Runs at most once per HA session (guarded by the caller via
-    hass.data[DOMAIN]["card_registered"]). Two independent, non-fatal steps:
-
-    1. Static path: custom_components/thermosmart/www/thermosmart-card.js is
-       exposed at CARD_URL_PATH via the async, non-blocking HA 2024.x static
-       path API (StaticPathConfig) — no synchronous file I/O on the event loop.
-    2. Frontend module URL: add_extra_js_url() registers the same URL so every
-       dashboard loads it automatically, in both storage-mode and YAML-mode —
-       no .storage/lovelace_resources entry is written or managed. The helper
-       stores URLs in a set, so calling it again (e.g. a second HA session)
-       never creates a duplicate <script> tag.
-
-    A `?v=<VERSION>` query string on the frontend URL only busts the browser
-    cache after a ThermoSmart update; it does not affect static-path routing
-    (aiohttp matches on path, not query string), so it is safe to combine
-    with cache_headers=True on the static route itself.
-    """
-    www_dir = os.path.join(os.path.dirname(__file__), "www")
-    card_path = os.path.join(www_dir, CARD_FILENAME)
-
-    try:
-        from homeassistant.components.http import StaticPathConfig
-        await hass.http.async_register_static_paths([
-            StaticPathConfig(CARD_URL_PATH, card_path, True)
-        ])
-    except Exception as err:  # http component missing/unavailable is non-fatal
-        _LOGGER.warning("ThermoSmart: card static path registration skipped: %s", err)
-        return
-
-    try:
-        from homeassistant.components.frontend import add_extra_js_url
-        add_extra_js_url(hass, f"{CARD_URL_PATH}?v={VERSION}")
-    except Exception as err:  # frontend component missing/unavailable is non-fatal
-        _LOGGER.warning("ThermoSmart: card frontend registration skipped: %s", err)
-
-
-def _validate_sensors(hass: HomeAssistant, cfg: dict) -> None:
-    """Prüft ob alle konfigurierten Sensor-Entities beim Start existieren.
-
-    Loggt eine einmalige Warning für jede fehlende Entity damit Fehlkonfigurationen
-    sofort erkennbar sind – verhindert stille None-Werte im Betrieb.
-    """
-    zone_name = cfg.get("name", "?")
-
-    # Einzelne Sensor-Entities
-    sensor_keys = [
-        (CONF_OUTDOOR_TEMP_SENSOR,     "Außentemperatur-Sensor"),
-        (CONF_OUTDOOR_HUMIDITY_SENSOR, "Außenfeuchte-Sensor"),
-        (CONF_OUTDOOR_WIND_SENSOR,     "Wind-Sensor"),
-        (CONF_OUTDOOR_SOLAR_SENSOR,    "Solar-Sensor"),
-        (CONF_OUTDOOR_RAIN_SENSOR,     "Regen-Sensor"),
-    ]
-    for key, label in sensor_keys:
-        entity_id = cfg.get(key)
-        if entity_id and hass.states.get(entity_id) is None:
-            _LOGGER.warning(
-                "ThermoSmart '%s': %s '%s' nicht gefunden – Wert wird ignoriert",
-                zone_name, label, entity_id,
-            )
-
-    # Listen-Entities (Temperatur- und Feuchte-Sensoren der Zone)
-    for key, label in (
-        ("temp_sensors",     "Raumtemperatur-Sensor"),
-        ("humidity_sensors", "Raumfeuchte-Sensor"),
-        ("window_sensors",   "Fenstersensor"),
-        ("climate_entities", "Klima-Entity (TRV)"),
-    ):
-        for entity_id in cfg.get(key, []):
-            if entity_id and hass.states.get(entity_id) is None:
-                _LOGGER.warning(
-                    "ThermoSmart '%s': %s '%s' nicht gefunden",
-                    zone_name, label, entity_id,
-                )
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Register the bundled card before config entries are loaded."""
+    hass.data.setdefault(DOMAIN, {})
+    await _async_register_card(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     cfg = {**entry.data, **entry.options}
 
-    # Einmalige Migration pro HA-Session: alte Summer-Switch-Entity entfernen (beta.23)
-    if "summer_switch_migrated" not in hass.data[DOMAIN]:
-        hass.data[DOMAIN]["summer_switch_migrated"] = True
-        _migrate_old_summer_switch(hass)
+    # Idempotent; a deliberate entry reload can recover a reported UI failure.
+    await _async_register_card(hass)
 
-    # Einmalig pro HA-Session, unabhängig von Entry-Typ und -Anzahl: die
-    # gebündelte Lovelace-Card servieren und als Frontend-Modul registrieren.
-    # Kein separates HACS-Plugin mehr nötig (Frenck-Review #9081/#9082).
-    if "card_registered" not in hass.data[DOMAIN]:
-        hass.data[DOMAIN]["card_registered"] = True
-        await _async_register_card(hass)
-
-    # ── System-Entry: nur globale Schalter, kein Coordinator ────────
+    # ── System-Entry: globale Schalter, kein Coordinator ────────────
     if cfg.get("entry_type") == "system":
+        controller = SystemController(hass, entry)
+        hass.data[DOMAIN][SYSTEM_KEY] = controller
         hass.data[DOMAIN][entry.entry_id] = {"type": "system"}
+        await controller.async_start()
         await hass.config_entries.async_forward_entry_setups(entry, SYSTEM_PLATFORMS)
+        entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+        availability = EntityAvailabilityMonitor(hass, entry)
+        entry.async_on_unload(availability.stop)
+        availability.start()
 
-        _LOGGER.info("ThermoSmart System geladen (globale Schalter)")
+        _LOGGER.info("ThermoSmart System geladen (Urlaubs- und Sommer-Schalter)")
         return True
 
     # ── Zone-Entry: vollständiger Coordinator ───────────────────────
     def _sensor(key: str) -> str | None:
         return cfg.get(key) or None
 
-    weather_engine = WeatherEngine(
+    outdoor = OutdoorConditions(
         hass,
-        cfg.get(CONF_WEATHER_ENTITY) or "weather.home",
+        cfg.get(CONF_WEATHER_ENTITY) or None,
         outdoor_temp_sensor=_sensor(CONF_OUTDOOR_TEMP_SENSOR),
         outdoor_humidity_sensor=_sensor(CONF_OUTDOOR_HUMIDITY_SENSOR),
         outdoor_wind_sensor=_sensor(CONF_OUTDOOR_WIND_SENSOR),
@@ -216,38 +132,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     learning_enabled = cfg.get(CONF_LEARNING_ENABLED, True)
     learning_engine.set_zone_enabled(entry.entry_id, learning_enabled)
 
-    # Sensor-Existenz prüfen – einmalig beim Start, damit Fehlkonfigurationen
-    # sofort im Log sichtbar sind statt erst nach 5 Minuten stillem None
-    _validate_sensors(hass, cfg)
-
     coordinator = ThermoSmartCoordinator(
         hass, entry,
-        weather_engine=weather_engine,
+        outdoor=outdoor,
         learning_engine=learning_engine,
     )
     await coordinator.async_config_entry_first_refresh()
 
-    # Apply global overrides that were already restored by the system entry
-    # before this zone loaded (race condition fix: system entry may load first).
-    _SUMMER_OPT_MAP: dict[str, bool | None] = {"automatic": None, "on": True, "off": False}
-    _needs_refresh = False
-    if hass.data[DOMAIN].get("global_vacation_override"):
-        coordinator.set_vacation_override(True)
-        _needs_refresh = True
-    _summer_opt = hass.data[DOMAIN].get("global_summer_override")
-    if _summer_opt is not None:
-        coordinator.set_summer_override(_SUMMER_OPT_MAP.get(_summer_opt))
-        _needs_refresh = True
-    if _needs_refresh:
-        await coordinator.async_request_refresh()
+    # Apply the system-wide state (vacation/summer) if the System entry loaded first;
+    # otherwise the System entry pushes it when its switches are restored.
+    if controller := hass.data[DOMAIN].get(SYSTEM_KEY):
+        if controller.apply_to(coordinator):
+            coordinator.request_pass(TRIGGER_SYSTEM_STATE)
 
     await coordinator.async_detect_device_entities()
     coordinator.setup_event_listeners()
     entry.async_on_unload(coordinator.cleanup_event_listeners)
 
+    # Schedule events are stored with the zone config entry and reloaded here.
+    await coordinator.async_load_schedule()
+    coordinator.start_scheduler()
+
     entry_store: dict = {
         "coordinator": coordinator,
-        "weather_engine": weather_engine,
+        "outdoor": outdoor,
     }
     hass.data[DOMAIN][entry.entry_id] = entry_store
 
@@ -283,6 +191,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, ZONE_PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+    availability = EntityAvailabilityMonitor(hass, entry)
+    entry.async_on_unload(availability.stop)
+    availability.start()
 
     _LOGGER.info(
         "ThermoSmart Zone '%s' geladen – effektiver Adaptionsmodus wird pro Zyklus "
@@ -300,7 +211,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if cfg.get("entry_type") != "system":
         entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
         if coordinator := entry_data.get("coordinator"):
-            await coordinator._async_restore_temp_source()
             # cancel any in-flight valve-maintenance task (guarded — must never
             # block unload, and a maintenance cycle must never outlive its entry)
             try:
@@ -316,12 +226,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, platforms):
         hass.data[DOMAIN].pop(entry.entry_id, {})
-        if cfg.get("entry_type") != "system":
+        if cfg.get("entry_type") == "system":
+            if controller := hass.data[DOMAIN].pop(SYSTEM_KEY, None):
+                controller.stop()
+        else:
             remaining = [
                 k for k in hass.data[DOMAIN]
-                if k not in ("learning_engine", "global_switches_created",
-                             "global_summer_select_created", "summer_switch_migrated",
-                             "global_vacation_override", "global_summer_override")
+                if k not in _NON_ENTRY_DATA_KEYS
                 and not (isinstance(hass.data[DOMAIN].get(k), dict)
                          and hass.data[DOMAIN][k].get("type") == "system")
             ]
@@ -418,15 +329,14 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    if {**entry.data, **entry.options}.get("entry_type") != "system":
-        _LOGGER.info(
-            "ThermoSmart '%s': Options updated — reloading entry",
-            entry.data.get("name", entry.entry_id),
+    _LOGGER.info(
+        "ThermoSmart '%s': Options updated — reloading entry",
+        entry.data.get("name", entry.entry_id),
+    )
+    try:
+        await hass.config_entries.async_reload(entry.entry_id)
+    except Exception as err:
+        _LOGGER.error(
+            "ThermoSmart '%s': Reload after options update failed: %s",
+            entry.data.get("name", entry.entry_id), err,
         )
-        try:
-            await hass.config_entries.async_reload(entry.entry_id)
-        except Exception as err:
-            _LOGGER.error(
-                "ThermoSmart '%s': Reload after options update failed: %s",
-                entry.data.get("name", entry.entry_id), err,
-            )

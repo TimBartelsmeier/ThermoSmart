@@ -45,7 +45,7 @@ _CFG = {
     "temp_tolerance": 0.5,
     "window_open_temp": 5.0,
 }
-_REC = {"adjusted_target": 21.0, "trv_setpoint": 23.5, "window_open": False}
+_REC = {"effective_target": 21.0, "trv_setpoint": 23.5, "window_open": False}
 
 
 def _trv_state(setpoint: float = 19.0, *, supported_features: int = 1) -> object:
@@ -245,7 +245,7 @@ class TestMaintenanceClampedDispatch:
             "vacation_temp": 12.0,
             "comfort_temp": 21.0,
         }
-        rec = {"mode": "auto", "adjusted_target": target_after}
+        rec = {"effective_target": target_after}
         await coord._async_valve_maintenance(cfg, rec)
         task = coord._maintenance_task
         assert task is not None
