@@ -378,9 +378,13 @@ class TestManualChanges:
         await s.run()
         s.coord._active_control = True
         state = lambda v: MagicMock(state="heat", attributes={"temperature": v})
-        s.coord._handle_trv_setpoint_change(
-            "climate.trv", state(12), state(25), s.coord.zone_cfg
-        )
+        callbacks = []
+        with patch("custom_components.thermosmart.coordinator.async_call_later",
+                   side_effect=lambda hass, d, cb: callbacks.append(cb) or (lambda: None)):
+            s.coord._handle_trv_setpoint_change(
+                "climate.trv", state(12), state(25), s.coord.zone_cfg
+            )
+        callbacks[0](None)
         s.coord._active_control = False
         s.coord.set_system_state(vacation=False, summer=False)
         zone = await s.run()

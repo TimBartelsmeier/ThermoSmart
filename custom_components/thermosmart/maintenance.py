@@ -15,6 +15,7 @@ from .const import (
     VALVE_MAINTENANCE_DURATION_SUMMER_SEC,
 )
 from .temperature_units import from_internal_temperature_c
+from .triggers import TRIGGER_MAINTENANCE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,23 +56,9 @@ class MaintenanceMixin:
             if (now - self._last_maintenance).days < 6:
                 return
 
-        self._last_maintenance = now
         self._maintenance_running = True
         duration = VALVE_MAINTENANCE_DURATION_SUMMER_SEC if self._is_summer else VALVE_MAINTENANCE_DURATION_SEC
-
-        # Rückkehrtemperatur nach Wartung: aktuelle Zieltemp bevorzugt,
-        # Fallback abhängig vom Modus (nicht hardcoded comfort_temp im Urlaub).
-        low_temp_mode = self._is_summer or in_vacation
-        target_after = recommendation.get("effective_target") or cfg.get(
-            "vacation_temp" if low_temp_mode else "comfort_temp",
-            12.0 if low_temp_mode else 21.0,
-        )
         climate_entities = cfg.get("climate_entities", [])
-
-        _LOGGER.info(
-            "ThermoSmart '%s': Ventil-Wartung gestartet – fahre auf %.0f°C",
-            self.zone_name, VALVE_MAINTENANCE_BOOST_TEMP,
-        )
 
         def _dispatch_payloads(setpoint_c: float) -> list[dict]:
             """Resolve one setpoint through the SAME per-device clamp/step/
@@ -103,37 +90,73 @@ class MaintenanceMixin:
                 })
             return payloads
 
-        async def _run_maintenance() -> None:
-            try:
-                tasks = [
-                    _maintenance_set_temperature(payload, cfg)
-                    for payload in _dispatch_payloads(VALVE_MAINTENANCE_BOOST_TEMP)
-                ]
-                if tasks:
-                    await asyncio.gather(*tasks, return_exceptions=True)
+        payloads = _dispatch_payloads(VALVE_MAINTENANCE_BOOST_TEMP)
+        if not payloads:
+            # Nothing eligible this week (all opted out / unavailable).
+            self._last_maintenance = now
+            self._maintenance_running = False
+            return
 
-                await asyncio.sleep(duration)
+        _LOGGER.info(
+            "ThermoSmart '%s': valve exercise started – %.0f°C for %ds",
+            self.zone_name, VALVE_MAINTENANCE_BOOST_TEMP, duration,
+        )
 
-                tasks = [
-                    _maintenance_set_temperature(payload, cfg)
-                    for payload in _dispatch_payloads(target_after)
-                ]
-                if tasks:
-                    await asyncio.gather(*tasks, return_exceptions=True)
-
-                _LOGGER.info(
-                    "ThermoSmart '%s': Ventil-Wartung abgeschlossen → zurück auf %.1f°C",
-                    self.zone_name, target_after,
-                )
-            finally:
-                self._maintenance_running = False
-
-        async def _maintenance_set_temperature(payload: dict, config: dict) -> None:
-            entity_id = payload["entity_id"]
-            self._mark_trv_write(entity_id, config)
+        async def _maintenance_set_temperature(payload: dict) -> None:
+            self._mark_trv_write(payload["entity_id"], cfg)
             await self.hass.services.async_call(
                 "climate", "set_temperature", payload, blocking=True,
             )
+
+        async def _run_maintenance() -> None:
+            try:
+                results = await asyncio.gather(
+                    *(_maintenance_set_temperature(p) for p in payloads),
+                    return_exceptions=True,
+                )
+                failed = [
+                    (p["entity_id"], r) for p, r in zip(payloads, results)
+                    if isinstance(r, BaseException)
+                ]
+                for eid, err in failed:
+                    _LOGGER.warning(
+                        "ThermoSmart '%s': valve exercise write failed for %s: %s",
+                        self.zone_name, eid, err,
+                    )
+                exercised = len(payloads) - len(failed)
+                if exercised:
+                    self._last_maintenance = now
+                    await asyncio.sleep(duration)
+
+                # Return to normal operation through a regular control pass,
+                # which recomputes the target from the current state.
+                if not self._active_control:
+                    _LOGGER.warning(
+                        "ThermoSmart '%s': Active Control was switched off during "
+                        "the valve exercise – TRVs are left as they are",
+                        self.zone_name,
+                    )
+                else:
+                    self.request_pass(TRIGGER_MAINTENANCE)
+                if exercised:
+                    _LOGGER.info(
+                        "ThermoSmart '%s': valve exercise finished (%d/%d TRVs)",
+                        self.zone_name, exercised, len(payloads),
+                    )
+                else:
+                    _LOGGER.warning(
+                        "ThermoSmart '%s': valve exercise failed for all TRVs – "
+                        "will retry", self.zone_name,
+                    )
+            except asyncio.CancelledError:
+                _LOGGER.warning(
+                    "ThermoSmart '%s': valve exercise cancelled – TRVs may keep "
+                    "the exercise setpoint until the next control pass",
+                    self.zone_name,
+                )
+                raise
+            finally:
+                self._maintenance_running = False
 
         self._maintenance_task = self.hass.async_create_task(_run_maintenance())
 

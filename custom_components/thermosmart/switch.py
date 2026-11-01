@@ -7,7 +7,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.restore_state import async_get as async_get_restore_data
 
 from .const import DOMAIN, VERSION, DOMAIN_GLOBAL_VACATION
 from .coordinator import ThermoSmartCoordinator
@@ -38,6 +40,7 @@ async def async_setup_entry(
     async_add_entities([
         ThermoSmartActiveSwitch(coordinator, entry),
         ThermoSmartLearningSwitch(coordinator, entry),
+        ThermoSmartAdaptSwitch(coordinator, entry),
         ThermoSmartSchedulingSwitch(coordinator, entry),
     ])
 
@@ -93,50 +96,83 @@ class ThermoSmartActiveSwitch(SwitchEntity, RestoreEntity):
         self._coordinator.request_pass(TRIGGER_SWITCH)
 
 
-class ThermoSmartLearningSwitch(SwitchEntity, RestoreEntity):
-    """Learning mode switch – default ON."""
+class _LearningFlagSwitch(SwitchEntity, RestoreEntity):
+    """Base for the per-zone learning switches (default ON, restored)."""
     _attr_has_entity_name = True
-    _attr_translation_key = "learning"
-    _attr_icon = "mdi:brain"
+    _attr_should_poll = False
+    _flag: str
 
-    def __init__(self, coordinator: ThermoSmartCoordinator, entry: ConfigEntry):
+    def __init__(self, coordinator: ThermoSmartCoordinator, entry: ConfigEntry, unique_suffix: str):
         self._coordinator = coordinator
         self._entry = entry
-        self._attr_unique_id = f"{entry.entry_id}_learning"
+        self._attr_unique_id = f"{entry.entry_id}_{unique_suffix}"
         self._attr_device_info = _device_info(entry)
-        self._is_on = True
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self.async_write_ha_state)
+        )
         last = await self.async_get_last_state()
-        if last is not None:
-            self._is_on = last.state == "on"
-        engine = self._get_engine()
-        if engine is not None:
-            engine.set_zone_enabled(self._entry.entry_id, self._is_on)
+        restored = (last.state == "on") if last is not None else self._initial_state()
+        self._set(restored)
+
+    def _initial_state(self) -> bool:
+        return True
+
+    def _set(self, value: bool) -> None:
+        self._coordinator.set_learning_switches(**{self._flag: value})
 
     @property
     def is_on(self) -> bool:
-        return self._is_on
+        return getattr(self._coordinator, f"{self._flag}_enabled")
 
     async def async_turn_on(self, **kwargs) -> None:
-        self._is_on = True
-        self.async_write_ha_state()
-        engine = self._get_engine()
-        if engine:
-            engine.set_zone_enabled(self._entry.entry_id, True)
+        self._set(True)
         self._coordinator.request_pass(TRIGGER_SWITCH)
 
     async def async_turn_off(self, **kwargs) -> None:
-        self._is_on = False
-        self.async_write_ha_state()
-        engine = self._get_engine()
-        if engine:
-            engine.set_zone_enabled(self._entry.entry_id, False)
+        self._set(False)
         self._coordinator.request_pass(TRIGGER_SWITCH)
 
-    def _get_engine(self):
-        return self.hass.data.get(DOMAIN, {}).get("learning_engine")
+
+class ThermoSmartLearningSwitch(_LearningFlagSwitch):
+    """"Learn room behaviour": collect observations and update the models.
+
+    Keeps the unique id of the former single Learning switch.
+    """
+    _attr_translation_key = "learning"
+    _attr_icon = "mdi:brain"
+    _flag = "learn"
+
+    def __init__(self, coordinator: ThermoSmartCoordinator, entry: ConfigEntry):
+        super().__init__(coordinator, entry, "learning")
+
+
+class ThermoSmartAdaptSwitch(_LearningFlagSwitch):
+    """"Adapt control to learned behaviour": learned parameters drive control."""
+    _attr_translation_key = "adapt_control"
+    _attr_icon = "mdi:tune-variant"
+    _flag = "adapt"
+
+    def __init__(self, coordinator: ThermoSmartCoordinator, entry: ConfigEntry):
+        super().__init__(coordinator, entry, "adapt_control")
+
+    def _initial_state(self) -> bool:
+        """First start after the switch split: inherit the former Learning switch."""
+        legacy = _restored_switch_state(self.hass, f"{self._entry.entry_id}_learning")
+        return True if legacy is None else legacy
+
+
+def _restored_switch_state(hass: HomeAssistant, unique_id: str) -> bool | None:
+    """Last stored on/off state of another ThermoSmart switch, if known."""
+    entity_id = er.async_get(hass).async_get_entity_id("switch", DOMAIN, unique_id)
+    if entity_id is None:
+        return None
+    stored = async_get_restore_data(hass).last_states.get(entity_id)
+    if stored is None:
+        return None
+    return stored.state.state == "on"
 
 
 class ThermoSmartSchedulingSwitch(SwitchEntity, RestoreEntity):

@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "Entita počasia sa nenašla. Vyberte platnú entitu alebo nechajte pole prázdne.",
       "name_required": "Zadajte názov zóny.",
-      "required": "Vyžaduje sa aspoň jeden termostat / TRV.",
-      "night_temp_too_high": "Nočná teplota musí byť nižšia ako komfortná teplota.",
-      "away_temp_too_high": "Teplota neprítomnosti nesmie byť vyššia ako nočná teplota."
+      "required": "Vyžaduje sa aspoň jeden termostat / TRV."
     },
     "abort": {
       "already_configured": "Táto zóna je už nakonfigurovaná.",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "Deaktivované",
           "observation_mode": "Pozorovací režim",
-          "controlling_no_learning": "Aktívne ovládanie (učenie vyp.)",
           "heating_failure": "Porucha vykurovania!",
           "preheating": "Predohrievanie",
           "summer": "Leto – vykurovanie vyp.",

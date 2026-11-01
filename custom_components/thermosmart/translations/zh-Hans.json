@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "未找到天气实体。请选择有效实体或将字段留空。",
       "name_required": "请输入区域名称。",
-      "required": "至少需要一个温控器 / TRV。",
-      "night_temp_too_high": "夜间温度必须低于舒适温度。",
-      "away_temp_too_high": "离家温度不得高于夜间温度。"
+      "required": "至少需要一个温控器 / TRV。"
     },
     "abort": {
       "already_configured": "此区域已配置。",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "已禁用",
           "observation_mode": "观察模式",
-          "controlling_no_learning": "主动控制（学习已关闭）",
           "heating_failure": "供暖故障！",
           "preheating": "预热中",
           "summer": "夏季 – 供暖已关闭",

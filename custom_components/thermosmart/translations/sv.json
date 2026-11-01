@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "Väderentiteten hittades inte. Välj en giltig entitet eller lämna fältet tomt.",
       "name_required": "Ange ett zonnamn.",
-      "required": "Minst en termostat / TRV krävs.",
-      "night_temp_too_high": "Natttemperaturen måste vara lägre än komforttemperaturen.",
-      "away_temp_too_high": "Borta-temperaturen får inte vara högre än natttemperaturen."
+      "required": "Minst en termostat / TRV krävs."
     },
     "abort": {
       "already_configured": "Den här zonen är redan konfigurerad.",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "Inaktiverad",
           "observation_mode": "Observationsläge",
-          "controlling_no_learning": "Aktiv styrning (inlärning av)",
           "heating_failure": "Uppvärmningsfel!",
           "preheating": "Förvärmer",
           "summer": "Sommar – uppvärmning av",

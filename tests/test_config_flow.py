@@ -187,7 +187,7 @@ class TestSystemFlow:
     ):
         """Defensive safety net: async_step_add_system still aborts if reached
         directly (e.g. a race between two concurrent flows). The normal UI path
-        no longer offers 'add_system' at all once any entry exists — see
+        no longer offers 'add_system' once a System entry exists — see
         TestGlobalSetupOnlyInitial for that behavior."""
         MockConfigEntry(domain=DOMAIN, data={"entry_type": "system"}).add_to_hass(hass)
 
@@ -213,13 +213,12 @@ class TestSystemFlow:
         assert result["data"]["summer_on_threshold"] == 20.0
 
 
-# ── Global setup only offered before any ThermoSmart entry exists ────────────
+# ── Global setup offered until a System entry exists ─────────────────────────
 
 class TestGlobalSetupOnlyInitial:
-    """Config-Flow UX Cleanup: 'Set up global controls' must not be offered
-    once any ThermoSmart entry (system or zone) already exists — the flow
-    should go straight to add_zone instead of showing a menu that would only
-    end in system_already_configured."""
+    """'Set up global controls' is offered as long as no System entry exists,
+    even when zones are already configured (review C2). Once a System entry
+    exists the flow goes straight to add_zone."""
 
     async def test_fresh_install_still_shows_menu_with_both_options(
         self, hass, enable_custom_integrations
@@ -243,7 +242,7 @@ class TestGlobalSetupOnlyInitial:
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "devices"
 
-    async def test_existing_zone_entry_skips_menu_goes_to_add_zone(
+    async def test_existing_zone_without_system_still_offers_system(
         self, hass, enable_custom_integrations
     ):
         MockConfigEntry(
@@ -253,8 +252,15 @@ class TestGlobalSetupOnlyInitial:
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )
+        assert result["type"] == FlowResultType.MENU
+        assert "add_system" in result["menu_options"]
+        assert "add_zone" in result["menu_options"]
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "add_system"}
+        )
         assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "devices"
+        assert result["step_id"] == "add_system"
 
     async def test_add_zone_still_works_with_existing_entry(
         self, hass, enable_custom_integrations
@@ -468,32 +474,18 @@ class TestZoneFlowScheduleValidation:
             result["flow_id"], {"next_step_id": "state_done"}
         )
 
-    async def test_night_above_comfort_shows_error(self, hass, enable_custom_integrations):
-        result = await self._to_schedule(hass)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], {**_SCHEDULE, "comfort_temp": 21.0, "night_temp": 22.0}
-        )
-        assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "temperatures"
-        assert result["errors"].get("night_temp") == "night_temp_too_high"
-
-    async def test_away_above_night_shows_error(self, hass, enable_custom_integrations):
-        result = await self._to_schedule(hass)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], {**_SCHEDULE, "night_temp": 18.0, "away_temp": 19.0}
-        )
-        assert result["type"] == FlowResultType.FORM
-        assert result["errors"].get("away_temp") == "away_temp_too_high"
-
-    async def test_both_errors_shown_simultaneously(self, hass, enable_custom_integrations):
-        """night>comfort AND away>night both appear at once."""
+    async def test_preset_temperatures_need_no_particular_order(
+        self, hass, enable_custom_integrations
+    ):
+        """Review C1: only the global 5–30 °C range applies."""
         result = await self._to_schedule(hass)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {**_SCHEDULE, "comfort_temp": 20.0, "night_temp": 21.0, "away_temp": 22.0},
+            {**_SCHEDULE, "comfort_temp": 20.0, "night_temp": 21.0, "away_temp": 22.0,
+             CONF_VACATION_TEMP: 25.0, CONF_ECO_TEMP: 6.0},
         )
-        assert "night_temp" in result["errors"]
-        assert "away_temp" in result["errors"]
+        assert result["type"] == FlowResultType.MENU
+        assert result["step_id"] == "schedule"
 
     async def test_valid_temperatures_advances_to_schedule_editor(
         self, hass, enable_custom_integrations

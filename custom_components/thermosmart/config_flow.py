@@ -14,6 +14,8 @@ from .const import (
     CONF_ZONE_CONTROL_MODE,
     CONF_CONTROL_INTERVAL,
     CONF_TEMP_TOLERANCE,
+    CONF_BOOST_CEILING,
+    DEFAULT_BOOST_CEILING,
     CONF_EXT_TEMP_THRESHOLD,
     CONF_TRV_SETPOINT_DEBOUNCE,
     CONF_TRV_SETPOINT_SETTLING,
@@ -71,36 +73,6 @@ class _NullableEntitySelector(selector.EntitySelector):
         return super().__call__(data)
 
 
-# ── Validierung ─────────────────────────────────────────────────────────────
-
-def _validate_temps(data: dict) -> dict[str, str]:
-    """Cross-field temperature sanity check.
-
-    Rules:
-      - night_temp  must be strictly less than comfort_temp
-        (night >= comfort would invert the day/night schedule)
-      - away_temp   must not exceed night_temp
-        (away > night makes no operational sense)
-
-    Error keys map to existing translations in strings.json / de.json:
-      night_temp_too_high  →  shown on the night_temp field
-      away_temp_too_high   →  shown on the away_temp field
-    """
-    errors: dict[str, str] = {}
-    try:
-        comfort = float(data.get("comfort_temp", 21.0))
-        night   = float(data.get("night_temp",   18.0))
-        away    = float(data.get("away_temp",    17.0))
-    except (TypeError, ValueError):
-        return errors   # Schema-Validierung ist bereits vorab passiert
-
-    if night > comfort:
-        errors["night_temp"] = "night_temp_too_high"
-    if away > night:
-        errors["away_temp"] = "away_temp_too_high"
-    return errors
-
-
 # ── Schema-Hilfsfunktionen (eine pro Schritt) ────────────────────────────────
 
 def _schema_devices(d: dict) -> vol.Schema:
@@ -151,11 +123,11 @@ def _schema_schedule(d: dict) -> vol.Schema:
             )),
         vol.Required(CONF_VACATION_TEMP, default=d.get(CONF_VACATION_TEMP, 12.0)):
             selector.NumberSelector(selector.NumberSelectorConfig(
-                min=5, max=20, step=0.5, unit_of_measurement="°C", mode=selector.NumberSelectorMode.BOX,
+                min=5, max=30, step=0.5, unit_of_measurement="°C", mode=selector.NumberSelectorMode.BOX,
             )),
         vol.Required(CONF_ECO_TEMP, default=d.get(CONF_ECO_TEMP, TEMP_ECO)):
             selector.NumberSelector(selector.NumberSelectorConfig(
-                min=15, max=22, step=0.5, unit_of_measurement="°C", mode=selector.NumberSelectorMode.BOX,
+                min=5, max=30, step=0.5, unit_of_measurement="°C", mode=selector.NumberSelectorMode.BOX,
             )),
         vol.Required(CONF_WINDOW_OPEN_TEMP, default=d.get(CONF_WINDOW_OPEN_TEMP, WINDOW_OPEN_SETPOINT)):
             selector.NumberSelector(selector.NumberSelectorConfig(
@@ -288,6 +260,12 @@ def _schema_control_options(d: dict) -> vol.Schema:
                 min=0.1, max=2.0, step=0.1, unit_of_measurement="°C",
                 mode=selector.NumberSelectorMode.BOX,
             )),
+        vol.Required(CONF_BOOST_CEILING, default=d.get(
+            CONF_BOOST_CEILING, DEFAULT_BOOST_CEILING
+        )): selector.NumberSelector(selector.NumberSelectorConfig(
+            min=20.0, max=35.0, step=0.5, unit_of_measurement="°C",
+            mode=selector.NumberSelectorMode.BOX,
+        )),
         vol.Required(CONF_EXT_TEMP_THRESHOLD, default=d.get(CONF_EXT_TEMP_THRESHOLD, 0.5)):
             selector.NumberSelector(selector.NumberSelectorConfig(
                 min=0.1, max=1.5, step=0.1, unit_of_measurement="°C",
@@ -1067,9 +1045,7 @@ class _ZoneStepsMixin(_DeviceSettingsMixin, _ScheduleEditorMixin):
         errors: dict[str, str] = {}
         current = self._zone_data()
         if user_input is not None:
-            errors = _validate_temps(user_input)
-            if not errors:
-                return await self._zone_saved("temperatures", user_input)
+            return await self._zone_saved("temperatures", user_input)
         return self.async_show_form(
             step_id="temperatures",
             data_schema=_schema_schedule({**current, **(user_input or {})}),
@@ -1105,12 +1081,15 @@ class ThermoSmartConfigFlow(_ZoneStepsMixin, config_entries.ConfigFlow, domain=D
     def __init__(self) -> None:
         self._data: dict = {}
 
-    # Startmenü: System oder Zone – die globale Einrichtung wird nur angeboten,
-    # solange noch kein ThermoSmart-Entry existiert (weder System noch Zone).
-    # Danach führt der Flow direkt zum Heizzone-hinzufügen-Schritt, statt eine
-    # Option anzuzeigen die ohnehin nur mit einem Abort enden würde.
+    # Startmenü: System oder Zone – die globale Einrichtung wird angeboten,
+    # solange noch kein System-Entry existiert (auch wenn schon Zonen da sind;
+    # diese übernehmen den Systemzustand, sobald der System-Entry lädt).
+    # Danach führt der Flow direkt zum Heizzone-hinzufügen-Schritt.
     async def async_step_user(self, user_input: dict | None = None):
-        if self.hass.config_entries.async_entries(DOMAIN):
+        if any(
+            e.data.get("entry_type") == "system"
+            for e in self.hass.config_entries.async_entries(DOMAIN)
+        ):
             return await self.async_step_add_zone()
         return self.async_show_menu(
             step_id="user",

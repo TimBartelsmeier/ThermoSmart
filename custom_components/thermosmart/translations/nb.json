@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "Værenhet ikke funnet. Velg en gyldig enhet eller la feltet stå tomt.",
       "name_required": "Skriv inn et sonenavn.",
-      "required": "Minst én termostat / TRV er påkrevd.",
-      "night_temp_too_high": "Natttemperaturen må være lavere enn komforttemperaturen.",
-      "away_temp_too_high": "Fraværstemperaturen må ikke være høyere enn natttemperaturen."
+      "required": "Minst én termostat / TRV er påkrevd."
     },
     "abort": {
       "already_configured": "Denne sonen er allerede konfigurert.",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "Deaktivert",
           "observation_mode": "Observasjonsmodus",
-          "controlling_no_learning": "Aktiv styring (læring av)",
           "heating_failure": "Varmefeil!",
           "preheating": "Forvarmer",
           "summer": "Sommer – varme av",

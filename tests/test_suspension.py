@@ -130,3 +130,36 @@ class TestFullWindowRequirement:
         _feed(detector, 25.0, hours=200, step_minutes=15)
         assert detector.span >= timedelta(hours=72)
         assert detector.summer is True
+
+
+class TestCoverage:
+    """Review H6: sparse histories never switch summer."""
+
+    def test_two_readings_72_hours_apart_do_not_decide(self):
+        detector = SummerDetector(18.0, 15.0)
+        detector.add_sample(T0, 25.0)
+        assert detector.add_sample(T0 + timedelta(hours=72), 25.0) is False
+        assert detector.covered is False
+
+    def test_gap_longer_than_three_hours_blocks_decision(self):
+        detector = SummerDetector(18.0, 15.0)
+        _feed(detector, 25.0, hours=30, step_minutes=30)
+        resume = T0 + timedelta(hours=34)  # 4 h outage
+        assert _feed(detector, 25.0, hours=40, step_minutes=30, start=resume) is False
+
+    def test_gap_of_exactly_three_hours_is_allowed(self):
+        detector = SummerDetector(18.0, 15.0)
+        _feed(detector, 25.0, hours=30, step_minutes=30)
+        resume = T0 + timedelta(hours=33)
+        assert _feed(detector, 25.0, hours=40, step_minutes=30, start=resume) is True
+
+    def test_previous_state_kept_while_coverage_is_insufficient(self):
+        detector = SummerDetector(18.0, 15.0, summer=True)
+        detector.add_sample(T0, 5.0)
+        assert detector.add_sample(T0 + timedelta(hours=72), 5.0) is True
+
+    def test_decision_resumes_once_the_gap_leaves_the_window(self):
+        detector = SummerDetector(18.0, 15.0)
+        _feed(detector, 25.0, hours=10, step_minutes=30)
+        resume = T0 + timedelta(hours=15)
+        assert _feed(detector, 25.0, hours=72, step_minutes=30, start=resume) is True

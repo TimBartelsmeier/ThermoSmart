@@ -47,8 +47,10 @@ class SummerDetector:
     """Detects summer from the average outdoor temperature over a rolling window.
 
     Hysteresis: summer starts at ``on_threshold`` or above and ends at ``off_threshold``
-    or below; in between the previous state is kept. No decision is taken before the
-    samples cover ``min_span`` (default: the full window), so a restart never flips the state on a few readings.
+    or below; in between the previous state is kept. No decision is taken unless the
+    samples cover ``min_span`` (default: the full window) without any gap between
+    consecutive samples longer than ``max_gap`` – a restart or a sensor outage never
+    flips the state on sparse readings; the previous state is kept instead.
     """
 
     def __init__(
@@ -58,6 +60,7 @@ class SummerDetector:
         *,
         window: timedelta = timedelta(hours=72),
         min_span: timedelta | None = None,
+        max_gap: timedelta = timedelta(hours=3),
         summer: bool = False,
     ) -> None:
         if off_threshold >= on_threshold:
@@ -66,6 +69,7 @@ class SummerDetector:
         self.off_threshold = off_threshold
         self.window = window
         self.min_span = window if min_span is None else min_span
+        self.max_gap = max_gap
         self.summer = summer
         self._samples: deque[tuple[datetime, float]] = deque()
 
@@ -73,8 +77,8 @@ class SummerDetector:
         """Record a reading and return the (possibly updated) summer state."""
         self._samples.append((now, temperature))
         self._prune(now)
-        average, span = self.average, self.span
-        if average is not None and span is not None and span >= self.min_span:
+        average = self.average
+        if average is not None and self.covered:
             if average >= self.on_threshold:
                 self.summer = True
             elif average <= self.off_threshold:
@@ -98,6 +102,18 @@ class SummerDetector:
         if len(self._samples) < 2:
             return None
         return self._samples[-1][0] - self._samples[0][0]
+
+    @property
+    def covered(self) -> bool:
+        """The samples span ``min_span`` without a gap longer than ``max_gap``."""
+        span = self.span
+        if span is None or span < self.min_span:
+            return False
+        samples = list(self._samples)
+        return all(
+            later[0] - earlier[0] <= self.max_gap
+            for earlier, later in zip(samples, samples[1:])
+        )
 
     @property
     def sample_count(self) -> int:

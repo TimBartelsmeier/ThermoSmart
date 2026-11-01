@@ -29,13 +29,12 @@ from .const import (
     CONF_OUTDOOR_WIND_SENSOR,
     CONF_OUTDOOR_SOLAR_SENSOR,
     CONF_OUTDOOR_RAIN_SENSOR,
-    CONF_LEARNING_ENABLED,
 )
 from .card_registration import REGISTRATION_KEY, async_register_card as _async_register_card
 from .coordinator import ThermoSmartCoordinator
 from .availability import EntityAvailabilityMonitor
-from .system import SYSTEM_KEY, SystemController
-from .triggers import TRIGGER_SYSTEM_STATE
+from .system import SYSTEM_KEY, SystemController, iter_zone_coordinators
+from .triggers import TRIGGER_STARTUP, TRIGGER_SYSTEM_STATE
 from .outdoor import OutdoorConditions
 from .learning_engine import LearningEngine
 
@@ -128,9 +127,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         learning_engine = hass.data[DOMAIN]["learning_engine"]
         _LOGGER.debug("ThermoSmart: Gemeinsame LearningEngine wiederverwendet")
 
-    learning_enabled = cfg.get(CONF_LEARNING_ENABLED, True)
-    learning_engine.set_zone_enabled(entry.entry_id, learning_enabled)
-
     coordinator = ThermoSmartCoordinator(
         hass, entry,
         outdoor=outdoor,
@@ -160,11 +156,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # ── Learning learning runtime (supports adaptive control) ─────────
     # The runtime is started with CONTROL capability, but its EFFECTIVE
-    # behavior each cycle is gated by the two user-visible switches (Learning,
-    # Active Control) via ControlAdaptationMode.derive() in coordinator.py:
-    # Active Control OFF -> shadow-only (observe/learn, no service calls);
-    # Active Control ON + Learning OFF -> deterministic TPI-only control;
-    # Active Control ON + Learning ON -> adaptive control.
+    # behavior each cycle is gated by the user-visible switches (Learn room
+    # behaviour, Adapt control, Active Control) via ControlAdaptationMode.derive()
+    # in coordinator.py: Learn OFF -> no observations/model updates;
+    # Active Control OFF -> no service calls;
+    # Active Control ON + Adapt OFF -> deterministic TPI-only control;
+    # Active Control ON + Adapt ON -> control with learned parameters.
     # Setup failure here must never fail the zone or affect heating.
     try:
         from .learning.runtime.ha_integration import LearningShadowController
@@ -190,6 +187,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, ZONE_PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+    # The first refresh above ran before the schedule, the learning runtime and
+    # the restored entities (target, switches) were in place: reconcile once.
+    coordinator.request_pass(TRIGGER_STARTUP)
     availability = EntityAvailabilityMonitor(hass, entry)
     entry.async_on_unload(availability.stop)
     availability.start()
@@ -300,6 +300,12 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     must never delete learning/support/research storage.
     """
     if entry.data.get("entry_type") == "system":
+        # Without a System entry nothing can end vacation or summer any more:
+        # release the holds it left behind (not on reload/unload).
+        for coordinator in iter_zone_coordinators(hass):
+            if coordinator.set_system_state(vacation=False, summer=False):
+                coordinator.request_pass(TRIGGER_SYSTEM_STATE)
+        _LOGGER.info("ThermoSmart: System entry removed – vacation/summer holds released")
         return
 
     active_zone_ids = {

@@ -123,9 +123,14 @@ def test_skip_without_events_reports_error():
 def test_suspension_active_check_distinguishes_dst_fold():
     from tests.helpers import make_coordinator
 
-    coordinator = make_coordinator()
+    from unittest.mock import patch
+
+    from custom_components.thermosmart.learning.clock import FakeClock
+
+    coordinator = make_coordinator(clock=FakeClock(datetime(2026, 10, 24, 12, 0, tzinfo=TZ)))
     deadline = datetime(2026, 10, 25, 2, 30, tzinfo=TZ, fold=1)
-    coordinator.set_scheduling_disabled_until(deadline)
+    with patch("custom_components.thermosmart.coordinator.async_track_point_in_utc_time"):
+        coordinator.set_scheduling_disabled_until(deadline)
     # The first 02:45 precedes the second 02:30, despite its wall-clock text.
     assert not coordinator._scheduling_active_at(datetime(2026, 10, 25, 2, 45, tzinfo=TZ, fold=0))
     assert coordinator._scheduling_active_at(deadline)

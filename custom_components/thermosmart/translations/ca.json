@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "Entitat meteorològica no trobada. Seleccioneu una entitat vàlida o deixeu el camp buit.",
       "name_required": "Introduïu un nom de zona.",
-      "required": "Es requereix almenys un termòstat / TRV.",
-      "night_temp_too_high": "La temperatura nocturna ha de ser inferior a la temperatura de confort.",
-      "away_temp_too_high": "La temperatura d'absència no ha de ser superior a la temperatura nocturna."
+      "required": "Es requereix almenys un termòstat / TRV."
     },
     "abort": {
       "already_configured": "Aquesta zona ja està configurada.",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "Desactivat",
           "observation_mode": "Mode observació",
-          "controlling_no_learning": "Control actiu (aprenentatge desactivat)",
           "heating_failure": "Error de calefacció!",
           "preheating": "Preescalfant",
           "summer": "Estiu – calefacció apagada",

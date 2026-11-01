@@ -256,6 +256,32 @@ class TestRunner:
         assert len(fired) == 1
         assert runner.next_event.at == datetime(2026, 5, 13, 15, 0, tzinfo=BERLIN)
 
+    def test_late_callback_applies_the_currently_valid_event(self, timers):
+        """Review M7: a 15:00 callback delivered at 17:30 applies the 17:00 event."""
+        clock = _Clock(datetime(2026, 5, 6, 12, 0, tzinfo=BERLIN))
+        runner, fired, _ = _runner(clock, events=_events(
+            _ev(["wed"], "15:00", 20), _ev(["wed"], "17:00", 22), _ev(["wed"], "19:00", 18),
+        ))
+        runner.start()
+        (timer,) = timers.live
+        timer["cancelled"] = True
+        clock.now = datetime(2026, 5, 6, 17, 30, tzinfo=BERLIN)
+        timer["action"](timer["when"])
+        assert [o.event.target for o in fired] == [22.0]
+        assert runner.next_event.at == datetime(2026, 5, 6, 19, 0, tzinfo=BERLIN)
+
+    def test_slightly_late_callback_applies_its_event(self, timers):
+        clock = _Clock(datetime(2026, 5, 6, 12, 0, tzinfo=BERLIN))
+        runner, fired, _ = _runner(clock, events=_events(
+            _ev(["wed"], "15:00", 20), _ev(["wed"], "17:00", 22),
+        ))
+        runner.start()
+        (timer,) = timers.live
+        timer["cancelled"] = True
+        clock.now = datetime(2026, 5, 6, 15, 0, 2, tzinfo=BERLIN)
+        timer["action"](timer["when"])
+        assert [o.event.target for o in fired] == [20.0]
+
     def test_chain_of_events_across_week(self, timers):
         clock = _Clock(datetime(2026, 5, 6, 12, 0, tzinfo=BERLIN))
         runner, fired, _ = _runner(clock, events=_events(

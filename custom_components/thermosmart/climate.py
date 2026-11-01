@@ -21,7 +21,7 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er_helper
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.restore_state import RestoreEntity, RestoredExtraData
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
@@ -30,7 +30,8 @@ from .const import (
 )
 from .coordinator import ThermoSmartCoordinator
 from .triggers import TRIGGER_SWITCH, TRIGGER_TARGET_CHANGE
-from .target import SOURCE_USER, TARGET_MAX_C, TARGET_MIN_C
+from .target import SOURCE_USER, TARGET_MAX_C, TARGET_MIN_C, preset_matches
+from .temperature_units import to_internal_temperature_c
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -95,15 +96,39 @@ class ThermoSmartClimate(CoordinatorEntity, ClimateEntity, RestoreEntity):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        last = await self.async_get_last_state()
-        if last:
-            # Restore the desired target; the preset is only kept if the value still matches.
+        extra = await self.async_get_last_extra_data()
+        stored = extra.as_dict() if extra is not None else {}
+        if stored.get("target_c") is not None:
+            value, preset = stored["target_c"], stored.get("preset")
+        else:
+            # Legacy state (before the canonical °C value was stored): the
+            # temperature attribute is published in the HA system unit.
+            last = await self.async_get_last_state()
+            if last is None:
+                return
+            value = to_internal_temperature_c(self.hass, last.attributes.get(ATTR_TEMPERATURE))
+            preset = HA_TO_PRESET.get(last.attributes.get("preset_mode"))
+        if preset is not None:
             try:
-                value = float(last.attributes.get(ATTR_TEMPERATURE))
-                preset = HA_TO_PRESET.get(last.attributes.get("preset_mode"))
-                self.coordinator.target.restore(value, preset)
+                if not preset_matches(self.coordinator.zone_cfg, preset, value):
+                    # The preset's temperature was reconfigured meanwhile.
+                    preset = None
             except (TypeError, ValueError):
-                pass
+                preset = None
+        try:
+            self.coordinator.target.restore(value, preset)
+        except (TypeError, ValueError) as err:
+            _LOGGER.warning(
+                "ThermoSmart '%s': stored target could not be restored (%s); "
+                "keeping %.1f°C", self.coordinator.zone_name, err,
+                self.coordinator.target.value,
+            )
+
+    @property
+    def extra_restore_state_data(self) -> RestoredExtraData:
+        """Canonical °C target, independent of the HA display unit."""
+        target = self.coordinator.target
+        return RestoredExtraData({"target_c": target.value, "preset": target.preset})
 
     # ── Eigenschaften ────────────────────────────────────────────────
 

@@ -246,10 +246,17 @@ class TestMaintenanceClampedDispatch:
             "comfort_temp": 21.0,
         }
         rec = {"effective_target": target_after}
-        await coord._async_valve_maintenance(cfg, rec)
-        task = coord._maintenance_task
-        assert task is not None
-        await task
+        from unittest.mock import patch
+        from custom_components.thermosmart import maintenance
+
+        async def _no_sleep(_s):
+            return None
+
+        with patch.object(maintenance.asyncio, "sleep", _no_sleep):
+            await coord._async_valve_maintenance(cfg, rec)
+            task = coord._maintenance_task
+            assert task is not None
+            await task
         return calls
 
     async def test_unusual_min_clamps_boost_temperature(self):
@@ -260,21 +267,20 @@ class TestMaintenanceClampedDispatch:
             coord, min_temp=5.0, max_temp=22.0, step=0.5,
             boost_temp=30.0, target_after=21.0,
         )
-        assert len(calls) == 2  # boost dispatch + return dispatch
+        assert len(calls) == 1  # exercise only; the return is a regular control pass
         boost_call = calls[0]
         assert boost_call["entity_id"] == "climate.trv"
         # Must be clamped to the device max (22.0), never the raw 30.0 constant.
         assert boost_call["temperature"] <= 22.0
 
-    async def test_step_snap_applied_to_return_temperature(self):
+    async def test_step_snap_applied_to_exercise_temperature(self):
         coord = make_coordinator()
         calls = await self._run_and_capture(
-            coord, min_temp=5.0, max_temp=35.0, step=1.0,
+            coord, min_temp=5.0, max_temp=35.0, step=3.0,
             boost_temp=30.0, target_after=21.3,
         )
-        return_call = calls[1]
-        # Snapped to a 1.0°C step grid — never the raw 21.3 constant.
-        assert return_call["temperature"] % 1.0 == pytest.approx(0.0, abs=1e-6)
+        assert len(calls) == 1
+        assert calls[0]["temperature"] % 3.0 == pytest.approx(0.0, abs=1e-6)
 
     async def test_no_double_unit_conversion_in_fahrenheit_system(self):
         coord = make_coordinator()

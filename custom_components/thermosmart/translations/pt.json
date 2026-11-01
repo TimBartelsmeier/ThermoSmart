@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "Entidade meteorológica não encontrada. Seleciona uma entidade válida ou deixa o campo vazio.",
       "name_required": "Introduz um nome de zona.",
-      "required": "É necessário pelo menos um termostato / TRV.",
-      "night_temp_too_high": "A temperatura noturna deve ser inferior à temperatura de conforto.",
-      "away_temp_too_high": "A temperatura de ausência não deve ser superior à temperatura noturna."
+      "required": "É necessário pelo menos um termostato / TRV."
     },
     "abort": {
       "already_configured": "Esta zona já está configurada.",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "Desativado",
           "observation_mode": "Modo observação",
-          "controlling_no_learning": "Controlo ativo (aprendizagem desativada)",
           "heating_failure": "Falha de aquecimento!",
           "preheating": "Pré-aquecendo",
           "summer": "Verão – aquecimento desligado",

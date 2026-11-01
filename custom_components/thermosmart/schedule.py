@@ -190,26 +190,44 @@ def next_occurrence(
     return ScheduleOccurrence(event, at, max(1, int((seconds + 59) // 60)))
 
 
-def previous_occurrence_time(
+def current_occurrence(
     events: list[ScheduleEvent], now: datetime
-) -> datetime | None:
-    """Time of the latest occurrence at or before ``now`` (None without events)."""
+) -> ScheduleOccurrence | None:
+    """The latest occurrence at or before ``now`` – the event that applies now.
+
+    Several events at the same instant resolve to the last-listed one.
+    """
     if now.tzinfo is None:
         raise ValueError("now must be timezone-aware")
     tz = now.tzinfo
     now_utc = now.astimezone(timezone.utc)
-    best: datetime | None = None
+    best: tuple[datetime, ScheduleEvent] | None = None
     for day_offset in range(0, -9, -1):
         date = (now + timedelta(days=day_offset)).date()
         for event in events:
             if date.weekday() not in event.days:
                 continue
             at = _local_instant(date, event.minute, tz)
-            if at.astimezone(timezone.utc) > now_utc:
+            at_utc = at.astimezone(timezone.utc)
+            if at_utc > now_utc:
                 continue
-            if best is None or at.astimezone(timezone.utc) > best.astimezone(timezone.utc):
-                best = at
-    return best
+            if best is None:
+                best = (at, event)
+                continue
+            best_utc = best[0].astimezone(timezone.utc)
+            if at_utc > best_utc or (at_utc == best_utc and event.order > best[1].order):
+                best = (at, event)
+    if best is None:
+        return None
+    return ScheduleOccurrence(best[1], best[0], 0)
+
+
+def previous_occurrence_time(
+    events: list[ScheduleEvent], now: datetime
+) -> datetime | None:
+    """Time of the latest occurrence at or before ``now`` (None without events)."""
+    occurrence = current_occurrence(events, now)
+    return occurrence.at if occurrence is not None else None
 
 
 def upcoming_occurrences(
@@ -331,10 +349,14 @@ class ScheduleRunner:
         if occurrence is None or not self._running:
             return
         now = self._now()
+        early = now.astimezone(timezone.utc) < occurrence.at.astimezone(timezone.utc)
         # Search from the occurrence itself so a slightly early callback can
         # never fire the same occurrence twice.
-        after = occurrence.at if now.astimezone(timezone.utc) < occurrence.at.astimezone(
-            timezone.utc) else now
+        after = occurrence.at if early else now
+        if not early:
+            # A late callback (stalled/suspended process) applies the event that
+            # is current now, never an obsolete one.
+            occurrence = current_occurrence(self._events, now) or occurrence
         try:
             if self._is_active(now):
                 self._on_event(occurrence)

@@ -8,7 +8,7 @@ separately so a fast-but-overshooting boost is penalised.
 
 Boost-factor semantics follow the existing ThermoSmart controller: an ADDITIVE
 °C setpoint offset above the target (``trv_setpoint - target``), bounded by
-``TPI_MAX_BOOST_CELSIUS`` (8.0 °C) and the 28 °C device cap (see
+``TPI_MAX_BOOST_CELSIUS`` (8.0 °C) and the zone boost ceiling (default 28 °C, see
 ``trv_control.py`` / ``tpi.py`` / ``const.py``). ``1.0`` is NOT a multiplier here;
 ``0.0`` means no extra boost.
 

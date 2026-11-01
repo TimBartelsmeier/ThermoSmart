@@ -9,6 +9,7 @@ import pytest
 from homeassistant.util import dt as dt_util
 
 from custom_components.thermosmart import schedule as sched
+from custom_components.thermosmart.const import TEMP_ECO
 from custom_components.thermosmart.learning.clock import FakeClock
 from custom_components.thermosmart.schedule import parse_events
 from custom_components.thermosmart.target import SOURCE_EVENT, SOURCE_USER
@@ -114,7 +115,7 @@ class TestEventsApplyThroughDesiredTarget:
 
     def test_restart_does_not_apply_missed_events(self, timers):
         coord, clock = _coord(WED_15, start=datetime(2026, 5, 6, 16, 0, tzinfo=BERLIN))
-        assert coord.target.value == 21.0
+        assert coord.target.value == TEMP_ECO
         assert coord.scheduler.next_event.at == datetime(2026, 5, 13, 15, 0, tzinfo=BERLIN)
 
 
@@ -126,9 +127,9 @@ class TestEnableAndPause:
         ])
         coord.set_scheduling_enabled(False)
         _fire_next(coord, clock, timers)
-        assert coord.target.value == 21.0
+        assert coord.target.value == TEMP_ECO
         coord.set_scheduling_enabled(True)  # nothing is applied retroactively
-        assert coord.target.value == 21.0
+        assert coord.target.value == TEMP_ECO
         _fire_next(coord, clock, timers)
         assert coord.target.value == 18.0
 
@@ -140,7 +141,7 @@ class TestEnableAndPause:
         coord.set_scheduling_disabled_until(datetime(2026, 5, 6, 16, 0, tzinfo=BERLIN))
         assert coord.scheduling_active is False
         _fire_next(coord, clock, timers)
-        assert coord.target.value == 21.0  # skipped, not caught up later
+        assert coord.target.value == TEMP_ECO  # skipped, not caught up later
         _fire_next(coord, clock, timers)
         assert coord.target.value == 18.0  # pause expired by itself
 

@@ -16,7 +16,7 @@ import pytest
 
 from custom_components.thermosmart.coordinator import ThermoSmartCoordinator
 
-from tests.helpers import make_coordinator, make_state, set_hass_states
+from tests.helpers import make_coordinator, make_state, seed_learning_switches, set_hass_states
 
 
 class _TestableCoordinator(ThermoSmartCoordinator):
@@ -66,7 +66,7 @@ def _make_testable(zone_cfg_overrides: dict | None = None) -> _TestableCoordinat
         coord = _TestableCoordinator(
             base.hass, base.entry, base.outdoor, base.learning_engine
         )
-    return coord
+    return seed_learning_switches(coord)
 
 
 # ── TestIndoorSafetyBypass ────────────────────────────────────────────────────

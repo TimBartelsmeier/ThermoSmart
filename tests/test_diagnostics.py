@@ -149,7 +149,8 @@ class TestZoneEntryDiagnostics:
 
         coord = MagicMock()
         coord._active_control = True
-        coord._learning_enabled = True
+        coord._learn_enabled = True
+        coord._adapt_enabled = False
         coord._current_mode = "auto"
         coord.data = {"learning_confidence": 0.73}
         coord._learning_shadow = None  # simplest valid state — every helper falls back safely
@@ -159,7 +160,8 @@ class TestZoneEntryDiagnostics:
 
         assert result["runtime_state"] == {
             "active_control": True,
-            "learning_enabled": True,
+            "learn_enabled": True,
+            "adapt_enabled": False,
             "current_mode": "auto",
             "confidence": 0.73,
         }

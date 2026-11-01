@@ -23,6 +23,12 @@ def _entry():
 
 def _coord():
     coord = MagicMock()
+    coord.scheduling_disabled_until = None
+
+    def _set_until(value):
+        coord.scheduling_disabled_until = value
+
+    coord.set_scheduling_disabled_until.side_effect = _set_until
     return coord
 
 
@@ -84,6 +90,16 @@ class TestDisabledUntil:
         await _added(entity, SimpleNamespace(state="not a date"))
         assert entity.native_value is None
 
+    async def test_expired_pause_is_cleared_when_coordinator_resumes(self):
+        coord = _coord()
+        entity = ThermoSmartSchedulingDisabledUntil(coord, _entry())
+        entity.async_write_ha_state = MagicMock()
+        await entity.async_set_value(datetime(2026, 5, 7, 8, 0, tzinfo=BERLIN))
+        coord.scheduling_disabled_until = None  # resume timer fired
+        entity._sync_from_coordinator()
+        assert entity.native_value is None
+        entity.async_write_ha_state.assert_called()
+
     async def test_set_value_updates_coordinator(self):
         coord = _coord()
         entity = ThermoSmartSchedulingDisabledUntil(coord, _entry())
@@ -114,7 +130,7 @@ class TestNextEventSensor:
         assert sensor.native_value == datetime(2026, 5, 6, 22, 0, tzinfo=BERLIN)
         assert sensor.extra_state_attributes == {
             "scheduling_active": True, "schedule_error": None, "preset": "night",
-            "target_temperature": 17.0, "minutes_until": 90, "preheat": True,
+            "target_temperature": 17.0, "preheat": True,
         }
 
     def test_numeric_event_has_no_preset(self):

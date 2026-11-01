@@ -1,5 +1,5 @@
 /* Bundled ThermoSmart dashboard cards. No external runtime dependencies. */
-const CARD_VERSION = '2.0.1';
+const CARD_VERSION = '2.0.2';
 const PRESETS = [
   ["comfort", "mdi:white-balance-sunny"],
   ["eco", "mdi:leaf"],
@@ -189,13 +189,15 @@ function available(state) {
 function errorText(error) {
   return error?.message || String(error);
 }
+// Same precedence as the zone status sensor.
 function statusFor(state) {
   const a = state.attributes;
+  if (a.heating_failure) return ["failure", "mdi:alert"];
   if (a.window_open) return ["window", "mdi:window-open-variant"];
   if (a.summer_mode) return ["summer", "mdi:white-balance-sunny"];
   if (a.vacation_mode) return ["vacation", "mdi:airplane"];
-  if (a.observation_mode) return ["observation", "mdi:eye"];
   if (a.preheat_active) return ["preheat", "mdi:radiator"];
+  if (a.observation_mode) return ["observation", "mdi:eye"];
   if (a.hvac_action === "heating") return ["heating", "mdi:fire"];
   return ["holding", "mdi:thermometer-check"];
 }

@@ -59,6 +59,13 @@ def preset_temperature(cfg: Mapping, preset: str) -> float:
         return default
 
 
+def preset_matches(cfg: Mapping, preset: str | None, value: float) -> bool:
+    """True if ``preset`` is a known preset whose configured value is ``value``."""
+    if preset not in _PRESET_CONFIG:
+        return False
+    return abs(preset_temperature(cfg, preset) - float(value)) < 0.05
+
+
 @dataclass(frozen=True)
 class DesiredTarget:
     value: float
@@ -138,3 +145,11 @@ class TargetState:
     def restore(self, value: float, preset: str | None) -> None:
         """Set the target after a restart without notifying listeners."""
         self._current = DesiredTarget(self._validate(value), SOURCE_RESTORE, preset)
+
+
+def initial_target(cfg: Mapping) -> TargetState:
+    """Target of a zone without stored state: the configured Eco temperature."""
+    try:
+        return TargetState(preset_temperature(cfg, PRESET_ECO), PRESET_ECO)
+    except ValueError:
+        return TargetState(TEMP_ECO, None)

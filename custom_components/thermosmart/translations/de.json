@@ -10,6 +10,7 @@
     "increase_target": "Zieltemperatur erhöhen",
     "controls_disabled": "Die Temperatursteuerung ist in diesem Modus deaktiviert",
     "status": {
+      "failure": "Heizungsausfall",
       "window": "Heizung ausgesetzt: Fenster offen",
       "summer": "Sommermodus",
       "vacation": "Urlaubsmodus",
@@ -154,6 +155,7 @@
           "zone_control_mode": "Zonen-Regelmodus",
           "control_interval": "Minimales Regelzyklus-Intervall",
           "temp_tolerance": "Temperaturtoleranz",
+          "boost_ceiling": "Boost-Obergrenze",
           "ext_temp_threshold": "Schwellenwert für externe Temperatur",
           "trv_setpoint_debounce": "Entprellzeit für physische TRV-Sollwertänderungen",
           "trv_setpoint_settling": "Einschwingzeit des TRV-Sollwerts"
@@ -163,6 +165,7 @@
           "control_interval": "Minimale Zeit zwischen regulären Regelzyklen. In jedem Zyklus wird der Heizbedarf neu berechnet und Sollwerte, Ventilpositionen und Zustandseinstellungen werden an die TRVs geschrieben. Ereignisse wie das Öffnen eines Fensters oder eine manuelle Änderung können früher einen zusätzlichen Zyklus auslösen. Kürzere Intervalle sorgen für schnellere Reaktionen, können aber Geräte überlasten oder Netzwerke (z. B. Zigbee) verstopfen. In der Praxis sind 2–3 Minuten in Kombination mit sinnvollen Schwellenwerten für Temperaturänderungen, die überschritten werden müssen, damit neue Werte an das TRV gesendet werden, ausreichend.",
           "ext_temp_threshold": "Der Wert des externen Temperatursensors wird erst an den TRV gesendet, wenn er sich seit der letzten Aktualisierung um mehr als diesen Schwellwert geändert hat. Wirkt nur, wenn ein externer Sensor konfiguriert ist und für TRVs mit aktivierter externer Temperatureingabe.",
           "temp_tolerance": "Eine neue Solltemperatur wird nur an den TRV gesendet, wenn sie sich um mindestens diesen Wert von der aktuellen Solltemperatur des TRV unterscheidet. Größere Werte verringern den Funkverkehr, kleinere Werte lassen den TRV ThermoSmart enger folgen.",
+          "boost_ceiling": "Höchste TRV-Solltemperatur, die der Boost verwenden darf. Der Boost hebt die Solltemperatur nur bis zu diesem Wert über das Ziel an; ein Ziel darüber wird ohne Boost gesendet (nur durch das TRV-Maximum begrenzt).",
           "trv_setpoint_debounce": "Warte nach der letzten Sollwertmeldung eines TRV diese Zeit, bevor der Wert als Zonen-Zieltemperatur übernommen wird. So kannst du die Einstellung beenden; nur der zuletzt gemeldete Wert wird verwendet.",
           "trv_setpoint_settling": "Nach einem Schreibvorgang von ThermoSmart werden Sollwertmeldungen dieses TRV für diese Zeit ignoriert, damit verzögerte Rückmeldungen oder Zwischenwerte nicht als manuelle Änderungen gelten."
         }
@@ -333,8 +336,6 @@
       "summer_thresholds_inverted": "Der Ausschaltwert muss niedriger als der Einschaltwert sein.",
       "name_required": "Bitte einen Zonennamen eingeben.",
       "required": "Mindestens ein Thermostat / TRV erforderlich.",
-      "night_temp_too_high": "Nachttemperatur muss niedriger als die Komforttemperatur sein.",
-      "away_temp_too_high": "Abwesenheitstemperatur darf nicht höher als die Nachttemperatur sein.",
       "schedule_conflict": "Dieses Ereignis überschneidet sich an mindestens einem Wochentag zur gleichen Uhrzeit mit einem vorhandenen Ereignis. Wähle einen anderen Tag oder eine andere Uhrzeit.",
       "schedule_invalid": "Das Zeitplanereignis ist ungültig. Wähle mindestens einen Wochentag und prüfe die Uhrzeit sowie die Zieltemperatur bzw. Voreinstellung."
     },
@@ -378,6 +379,7 @@
           "zone_control_mode": "Zonen-Regelmodus",
           "control_interval": "Minimales Regelzyklus-Intervall",
           "temp_tolerance": "Temperaturtoleranz",
+          "boost_ceiling": "Boost-Obergrenze",
           "ext_temp_threshold": "Schwellenwert für externe Temperatur",
           "trv_setpoint_debounce": "Entprellzeit für physische TRV-Sollwertänderungen",
           "trv_setpoint_settling": "Einschwingzeit des TRV-Sollwerts"
@@ -387,6 +389,7 @@
           "control_interval": "Minimale Zeit zwischen regulären Regelzyklen. In jedem Zyklus wird der Heizbedarf neu berechnet und Sollwerte, Ventilpositionen und Zustandseinstellungen werden an die TRVs geschrieben. Ereignisse wie das Öffnen eines Fensters oder eine manuelle Änderung können früher einen zusätzlichen Zyklus auslösen. Kürzere Intervalle sorgen für schnellere Reaktionen, können aber Geräte überlasten oder Netzwerke (z. B. Zigbee) verstopfen. In der Praxis sind 2–3 Minuten in Kombination mit sinnvollen Schwellenwerten für Temperaturänderungen, die überschritten werden müssen, damit neue Werte an das TRV gesendet werden, ausreichend.",
           "ext_temp_threshold": "Der Wert des externen Temperatursensors wird erst an den TRV gesendet, wenn er sich seit der letzten Aktualisierung um mehr als diesen Schwellwert geändert hat. Wirkt nur, wenn ein externer Sensor konfiguriert ist und für TRVs mit aktivierter externer Temperatureingabe.",
           "temp_tolerance": "Eine neue Solltemperatur wird nur an den TRV gesendet, wenn sie sich um mindestens diesen Wert von der aktuellen Solltemperatur des TRV unterscheidet. Größere Werte verringern den Funkverkehr, kleinere Werte lassen den TRV ThermoSmart enger folgen.",
+          "boost_ceiling": "Höchste TRV-Solltemperatur, die der Boost verwenden darf. Der Boost hebt die Solltemperatur nur bis zu diesem Wert über das Ziel an; ein Ziel darüber wird ohne Boost gesendet (nur durch das TRV-Maximum begrenzt).",
           "trv_setpoint_debounce": "Warte nach der letzten Sollwertmeldung eines TRV diese Zeit, bevor der Wert als Zonen-Zieltemperatur übernommen wird. So kannst du die Einstellung beenden; nur der zuletzt gemeldete Wert wird verwendet.",
           "trv_setpoint_settling": "Nach einem Schreibvorgang von ThermoSmart werden Sollwertmeldungen dieses TRV für diese Zeit ignoriert, damit verzögerte Rückmeldungen oder Zwischenwerte nicht als manuelle Änderungen gelten."
         }
@@ -571,8 +574,6 @@
       "summer_thresholds_inverted": "Der Ausschaltwert muss niedriger als der Einschaltwert sein.",
       "name_required": "Bitte einen Zonennamen eingeben.",
       "required": "Mindestens ein Thermostat / TRV erforderlich.",
-      "night_temp_too_high": "Nachttemperatur muss niedriger als die Komforttemperatur sein.",
-      "away_temp_too_high": "Abwesenheitstemperatur darf nicht höher als die Nachttemperatur sein.",
       "schedule_conflict": "Dieses Ereignis überschneidet sich an mindestens einem Wochentag zur gleichen Uhrzeit mit einem vorhandenen Ereignis. Wähle einen anderen Tag oder eine andere Uhrzeit.",
       "schedule_invalid": "Das Zeitplanereignis ist ungültig. Wähle mindestens einen Wochentag und prüfe die Uhrzeit sowie die Zieltemperatur bzw. Voreinstellung."
     }
@@ -600,7 +601,10 @@
         "name": "Aktive Steuerung"
       },
       "learning": {
-        "name": "Lernmodus"
+        "name": "Raumverhalten lernen"
+      },
+      "adapt_control": {
+        "name": "Regelung an gelerntes Verhalten anpassen"
       },
       "scheduling_enabled": {
         "name": "Zeitplanung aktiviert"
@@ -663,7 +667,6 @@
         "state": {
           "disabled": "Deaktiviert",
           "observation_mode": "Beobachtungsmodus",
-          "controlling_no_learning": "Aktive Steuerung (Lernen aus)",
           "heating_failure": "Heizungsausfall!",
           "preheating": "Vorheizen",
           "summer": "Sommer – Heizung aus",

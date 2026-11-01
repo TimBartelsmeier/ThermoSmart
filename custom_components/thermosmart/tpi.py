@@ -70,7 +70,13 @@ def compute_tpi(
     return result
 
 
-def duty_to_setpoint(target: float, duty_pct: float, max_boost: float = 8.0) -> float:
+def cap_boost(setpoint: float, target: float, ceiling: float) -> float:
+    """Limit the boost above ``target`` to ``ceiling``; never go below the target."""
+    return min(setpoint, max(target, ceiling))
+
+
+def duty_to_setpoint(target: float, duty_pct: float, max_boost: float = 8.0,
+                     ceiling: float = 28.0) -> float:
     """Konvertiert TPI Duty-Cycle in einen TRV-Boost-Setpoint.
 
     Für TRVs die keinen direkten Ventilprozent-Befehl unterstützen:
@@ -79,9 +85,12 @@ def duty_to_setpoint(target: float, duty_pct: float, max_boost: float = 8.0) -> 
         trv_setpoint = target + (duty_pct / 100) × max_boost
 
     Beispiel: duty=70%, target=21°C, max_boost=8°C → setpoint=26.6°C
+
+    The boost ceiling only limits the extra boost: a target at or above the
+    ceiling is returned unboosted (the device max clamp applies at dispatch).
     """
     boost = (duty_pct / 100.0) * max_boost
-    setpoint = min(target + boost, target + max_boost, 28.0)
+    setpoint = cap_boost(min(target + boost, target + max_boost), target, ceiling)
     return round(setpoint, 1)
 
 

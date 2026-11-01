@@ -226,7 +226,7 @@ class TestPerDeviceValveMaintenance:
         assert await self._run(self._cfg(False)) == []
 
     async def test_enabled_device_is_exercised(self):
-        assert len(await self._run(self._cfg(True))) == 2
+        assert len(await self._run(self._cfg(True))) == 1  # exercise; return is a control pass
 
 
 class TestCalibrationSettings:

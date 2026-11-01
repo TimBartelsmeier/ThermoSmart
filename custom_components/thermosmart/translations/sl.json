@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "Vremenska entiteta ni bila najdena. Izberite veljavno entiteto ali pustite polje prazno.",
       "name_required": "Vnesite ime cone.",
-      "required": "Potreben je vsaj en termostat / TRV.",
-      "night_temp_too_high": "Nočna temperatura mora biti nižja od temperature udobja.",
-      "away_temp_too_high": "Temperatura odsotnosti ne sme biti višja od nočne temperature."
+      "required": "Potreben je vsaj en termostat / TRV."
     },
     "abort": {
       "already_configured": "Ta cona je že konfigurirana.",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "Deaktivirano",
           "observation_mode": "Način opazovanja",
-          "controlling_no_learning": "Aktivno krmiljenje (učenje izklop.)",
           "heating_failure": "Napaka ogrevanja!",
           "preheating": "Predgrevanje",
           "summer": "Poletje – ogrevanje izklop.",

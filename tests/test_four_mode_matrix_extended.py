@@ -293,7 +293,7 @@ class TestPreheatCleanupTransitions:
         """ADAPTIVE → INACTIVE: no dispatch occurs in INACTIVE cycle after switch."""
         coord, shadow, _ = await _coord_with_shadow(True, True)
         await _cycle(coord)
-        coord.entry.data["learning_enabled"] = False
+        coord.set_learning_switches(learn=False, adapt=False)
         coord.set_active_control(False)
         coord.control_calls.clear()
         await _cycle(coord)
@@ -314,7 +314,7 @@ class TestPreheatCleanupTransitions:
         """ADAPTIVE → DETERMINISTIC: Learning boost is blocked (Gate 1) in next cycle."""
         coord, shadow, _ = await _coord_with_shadow(True, True, eligible_boost=True)
         await _cycle(coord)
-        coord.entry.data["learning_enabled"] = False  # switch to DETERMINISTIC
+        coord.set_learning_switches(learn=False, adapt=False)  # switch to DETERMINISTIC
         zone_b = await _cycle(coord)
         applied = zone_b.get("applied_boost_offset_c") or 0.0
         assert applied == 0.0, f"DETERMINISTIC must have 0 boost: applied={applied}"
@@ -336,7 +336,7 @@ class TestPreheatCleanupTransitions:
         """Learning OFF during ADAPTIVE preheat: Learning boost blocked in next cycle."""
         coord, shadow, _ = await _coord_with_shadow(True, True, eligible_boost=True)
         await _cycle(coord)
-        coord.entry.data["learning_enabled"] = False
+        coord.set_learning_switches(learn=False, adapt=False)
         zone_b = await _cycle(coord)
         applied = zone_b.get("applied_boost_offset_c") or 0.0
         assert applied == 0.0, (
@@ -359,7 +359,7 @@ class TestPreheatCleanupTransitions:
         coord, shadow, _ = await _coord_with_shadow(True, True, eligible_boost=True)
         zone_a = await _cycle(coord)  # ADAPTIVE dispatch
         # Switch to INACTIVE
-        coord.entry.data["learning_enabled"] = False
+        coord.set_learning_switches(learn=False, adapt=False)
         coord.set_active_control(False)
         zone_b = await _cycle(coord)
         reason = zone_b.get("_boost_rejection_reason", "")
@@ -381,7 +381,7 @@ class TestPreheatCleanupTransitions:
         """SHADOW_ONLY → INACTIVE: observe_safe no longer called."""
         coord, shadow, _ = await _coord_with_shadow(True, False)
         # Switch to INACTIVE
-        coord.entry.data["learning_enabled"] = False
+        coord.set_learning_switches(learn=False, adapt=False)
         with _patch.object(shadow, "observe_safe", wraps=shadow.observe_safe) as spy:
             await _cycle(coord)
         assert not spy.called, "INACTIVE must not call observe_safe"
@@ -391,7 +391,7 @@ class TestPreheatCleanupTransitions:
         """ADAPTIVE → INACTIVE → INACTIVE: release called once, no double-release error."""
         coord, shadow, _ = await _coord_with_shadow(True, True, eligible_boost=True)
         await _cycle(coord)
-        coord.entry.data["learning_enabled"] = False
+        coord.set_learning_switches(learn=False, adapt=False)
         coord.set_active_control(False)
         zone1 = await _cycle(coord)  # first INACTIVE cycle
         zone2 = await _cycle(coord)  # second INACTIVE cycle

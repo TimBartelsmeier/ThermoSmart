@@ -33,7 +33,7 @@ class WindowMixin:
         self._window_open_temp.pop(entity_id, None)
 
     def _check_window_open(self, cfg: dict, current_temp: float | None = None) -> bool:
-        now = self._now_local()
+        now = self._now_utc()
         open_delay = timedelta(seconds=cfg.get("window_open_delay", 20))
         close_delay = timedelta(seconds=cfg.get("window_close_delay", 20))
 

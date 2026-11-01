@@ -1296,9 +1296,7 @@ def _adaptation_situation_context(
         # ── zone operational state ────────────────────────────────────────────
         active_control   = getattr(coord, "_active_control", None)
         try:
-            learning_enabled = bool(
-                getattr(coord, "zone_cfg", {}).get("learning_enabled", True)
-            )
+            learning_enabled = bool(getattr(coord, "learn_enabled", True))
         except Exception:
             learning_enabled = None
 

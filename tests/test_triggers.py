@@ -297,8 +297,12 @@ class TestPhysicalSetpoint:
         coord = _zone()
         coord._is_summer = True
         coord._last_written_setpoints = {"climate.trv": 12.0}
-        coord._handle_trv_setpoint_change(
-            "climate.trv", self._state(12), self._state(22), self._cfg())
+        callbacks = []
+        with patch("custom_components.thermosmart.coordinator.async_call_later",
+                   side_effect=lambda hass, d, cb: callbacks.append(cb) or (lambda: None)):
+            coord._handle_trv_setpoint_change(
+                "climate.trv", self._state(12), self._state(22), self._cfg())
+        callbacks[0](None)
         assert coord._pending_triggers == [trig.TRIGGER_PHYSICAL_SETPOINT]
 
     def test_trv_attribute_noise_does_not_trigger(self):

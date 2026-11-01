@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "Entitatea meteo nu a fost găsită. Selectați o entitate validă sau lăsați câmpul gol.",
       "name_required": "Introduceți un nume pentru zonă.",
-      "required": "Este necesar cel puțin un termostat / TRV.",
-      "night_temp_too_high": "Temperatura de noapte trebuie să fie mai mică decât temperatura de confort.",
-      "away_temp_too_high": "Temperatura de absență nu trebuie să fie mai mare decât temperatura de noapte."
+      "required": "Este necesar cel puțin un termostat / TRV."
     },
     "abort": {
       "already_configured": "Această zonă este deja configurată.",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "Dezactivat",
           "observation_mode": "Mod observație",
-          "controlling_no_learning": "Control activ (învățare dezactivată)",
           "heating_failure": "Defecțiune încălzire!",
           "preheating": "Preîncălzire",
           "summer": "Vară – încălzire oprită",

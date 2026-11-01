@@ -10,6 +10,7 @@
     "increase_target": "Increase target",
     "controls_disabled": "Temperature controls are disabled in this mode",
     "status": {
+      "failure": "Heating failure",
       "window": "Heating suspended: window open",
       "summer": "Summer mode",
       "vacation": "Vacation mode",
@@ -154,6 +155,7 @@
           "zone_control_mode": "Zone control mode",
           "control_interval": "Minimum control cycle interval",
           "temp_tolerance": "Temperature tolerance",
+          "boost_ceiling": "Boost ceiling",
           "ext_temp_threshold": "External temperature write threshold",
           "trv_setpoint_debounce": "Physical TRV setpoint change debounce",
           "trv_setpoint_settling": "TRV setpoint settling time"
@@ -163,6 +165,7 @@
           "control_interval": "Minimum time between regular control cycles. Each cycle recalculates the heating demand and writes setpoints, valve positions and state settings to the TRVs. Events such as opening a window or a manual override can trigger an extra cycle sooner. Shorter intervals cause faster reactions but may also overload devices or congest networks, e.g. Zigbee. In practice, 2-3 minutes combined with reasonable thresholds for temperature changes, which must be cleared for new values to be sent to the TRV, should be fine.",
           "ext_temp_threshold": "The value from the external temperature sensor is sent to the TRV only after it has changed more than this threshold compared to the last update. Only has an effect when an external sensor is configured and for TRVs for which the external temperature input is enabled.",
           "temp_tolerance": "A new setpoint is sent to the TRV only if it differs from the TRV's current setpoint by at least this value. Larger values reduce radio traffic, smaller values make the TRV follow ThermoSmart more closely.",
+          "boost_ceiling": "Highest TRV setpoint the boost may use. Boost only raises the setpoint above the target up to this value; a target above it is sent unboosted (limited only by the TRV's maximum).",
           "trv_setpoint_debounce": "Wait this long after the last setpoint update from a TRV before applying it as the zone target. This lets you finish adjusting the dial; only the last reported value is used.",
           "trv_setpoint_settling": "After ThermoSmart writes to a TRV, ignore setpoint reports from that TRV for this long to avoid treating delayed echoes or intermediate device updates as manual changes."
         }
@@ -333,8 +336,6 @@
       "summer_thresholds_inverted": "The end value must be lower than the start value.",
       "name_required": "Please enter a zone name.",
       "required": "At least one thermostat / TRV is required.",
-      "night_temp_too_high": "Night temperature must be lower than comfort temperature.",
-      "away_temp_too_high": "Away temperature must not be higher than night temperature.",
       "schedule_conflict": "This event overlaps an existing event on at least one weekday at the same time. Choose a different day or time.",
       "schedule_invalid": "The schedule event is invalid. Select at least one weekday and review its time and target."
     },
@@ -378,6 +379,7 @@
           "zone_control_mode": "Zone control mode",
           "control_interval": "Minimum control cycle interval",
           "temp_tolerance": "Temperature tolerance",
+          "boost_ceiling": "Boost ceiling",
           "ext_temp_threshold": "External temperature write threshold",
           "trv_setpoint_debounce": "Physical TRV setpoint change debounce",
           "trv_setpoint_settling": "TRV setpoint settling time"
@@ -387,6 +389,7 @@
           "control_interval": "Minimum time between regular control cycles. Each cycle recalculates the heating demand and writes setpoints, valve positions and state settings to the TRVs. Events such as opening a window or a manual override can trigger an extra cycle sooner. Shorter intervals cause faster reactions but may also overload devices or congest networks, e.g. Zigbee. In practice, 2-3 minutes combined with reasonable thresholds for temperature changes, which must be cleared for new values to be sent to the TRV, should be fine.",
           "ext_temp_threshold": "The value from the external temperature sensor is sent to the TRV only after it has changed more than this threshold compared to the last update. Only has an effect when an external sensor is configured and for TRVs for which the external temperature input is enabled.",
           "temp_tolerance": "A new setpoint is sent to the TRV only if it differs from the TRV's current setpoint by at least this value. Larger values reduce radio traffic, smaller values make the TRV follow ThermoSmart more closely.",
+          "boost_ceiling": "Highest TRV setpoint the boost may use. Boost only raises the setpoint above the target up to this value; a target above it is sent unboosted (limited only by the TRV's maximum).",
           "trv_setpoint_debounce": "Wait this long after the last setpoint update from a TRV before applying it as the zone target. This lets you finish adjusting the dial; only the last reported value is used.",
           "trv_setpoint_settling": "After ThermoSmart writes to a TRV, ignore setpoint reports from that TRV for this long to avoid treating delayed echoes or intermediate device updates as manual changes."
         }
@@ -571,8 +574,6 @@
       "summer_thresholds_inverted": "The end value must be lower than the start value.",
       "name_required": "Please enter a zone name.",
       "required": "At least one thermostat / TRV is required.",
-      "night_temp_too_high": "Night temperature must be lower than comfort temperature.",
-      "away_temp_too_high": "Away temperature must not be higher than night temperature.",
       "schedule_conflict": "This event overlaps an existing event on at least one weekday at the same time. Choose a different day or time.",
       "schedule_invalid": "The schedule event is invalid. Select at least one weekday and review its time and target."
     }
@@ -600,7 +601,10 @@
         "name": "Active Control"
       },
       "learning": {
-        "name": "Learning mode"
+        "name": "Learn room behaviour"
+      },
+      "adapt_control": {
+        "name": "Adapt control to learned behaviour"
       },
       "scheduling_enabled": {
         "name": "Scheduling enabled"
@@ -663,7 +667,6 @@
         "state": {
           "disabled": "Disabled",
           "observation_mode": "Observation mode",
-          "controlling_no_learning": "Controlling (learning off)",
           "heating_failure": "Heating failure!",
           "preheating": "Preheating",
           "summer": "Summer – heating off",

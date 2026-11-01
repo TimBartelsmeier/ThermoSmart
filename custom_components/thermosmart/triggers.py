@@ -23,6 +23,7 @@ TRIGGER_SWITCH = "switch"
 TRIGGER_SCHEDULING = "scheduling"
 TRIGGER_SYSTEM_STATE = "system_state"
 TRIGGER_STARTUP = "startup"
+TRIGGER_MAINTENANCE = "maintenance"
 
 TRIGGERS: dict[str, str] = {
     TRIGGER_PERIODIC: "the regular control interval elapsed",
@@ -33,8 +34,9 @@ TRIGGERS: dict[str, str] = {
     TRIGGER_ROOM_TEMPERATURE: "the room temperature moved by at least the refresh threshold",
     TRIGGER_PHYSICAL_SETPOINT: "a physical TRV setpoint change was adopted or must be corrected",
     TRIGGER_HVAC_MODE: "a controlled TRV entered an unwanted HVAC mode",
-    TRIGGER_SWITCH: "Active Control or Learning was switched",
+    TRIGGER_SWITCH: "Active Control, Learn or Adapt was switched",
     TRIGGER_SCHEDULING: "scheduling was switched or paused/resumed",
     TRIGGER_SYSTEM_STATE: "the System entry changed summer or vacation",
     TRIGGER_STARTUP: "the zone was (re)loaded, including after an options change",
+    TRIGGER_MAINTENANCE: "a valve exercise finished",
 }

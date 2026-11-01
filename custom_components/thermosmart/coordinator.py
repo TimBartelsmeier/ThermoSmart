@@ -19,7 +19,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from .temperature_units import to_internal_temperature_c, is_plausible_temperature_c
-from .tpi import compute_tpi, duty_to_setpoint
+from .tpi import cap_boost, compute_tpi, duty_to_setpoint
 from .const import (
     DOMAIN,
     CONF_CONTROL_INTERVAL,
@@ -37,6 +37,9 @@ from .const import (
     CONF_SCHEDULE_EVENTS,
     NOISE_FILTER_SPIKE_THRESHOLD,
     NOISE_FILTER_EMA_ALPHA,
+    NOISE_FILTER_REBASELINE_MINUTES,
+    NOISE_FILTER_REBASELINE_READINGS,
+    NOISE_FILTER_REBASELINE_SPREAD,
     CONF_EXT_TEMP_THRESHOLD,
     TEMP_FROST_PROTECTION,
     EMA_1H_ALPHA,
@@ -45,6 +48,8 @@ from .const import (
     HEATING_FAILURE_CMD_DELTA,
     DISPATCH_FAILURE_SUPPORT_EVENT_THRESHOLD,
     TPI_MAX_BOOST_CELSIUS,
+    CONF_BOOST_CEILING,
+    DEFAULT_BOOST_CEILING,
     TPI_COEF_INT_DEFAULT,
     TPI_COEF_EXT_DEFAULT,
 )
@@ -55,7 +60,7 @@ from .target import (
     SOURCE_DIAL,
     SOURCE_EVENT,
     SOURCE_PRESET,
-    TargetState,
+    initial_target,
     preset_temperature,
 )
 from .schedule import (
@@ -81,6 +86,7 @@ from .triggers import (
     TRIGGER_PREHEAT_START,
     TRIGGER_ROOM_TEMPERATURE,
     TRIGGER_SCHEDULE_EVENT,
+    TRIGGER_SCHEDULING,
     TRIGGER_STARTUP,
     TRIGGER_WINDOW,
     TRIGGERS,
@@ -103,13 +109,16 @@ _TPI_COEF_INT_CLAMP_MAX: float = 1.2    # mirrors estimate_coefficients upper bo
 
 
 class ControlAdaptationMode:
-    """Derived control mode based on the two user-visible switches.
+    """Derived control mode based on the user-visible switches.
+
+    "Learn" collects observations and updates the models; "Adapt" lets learned
+    parameters drive control. Both are independent of each other.
 
     Invariants (computed each cycle, never stored as state):
-      INACTIVE           — Learning OFF + Active Control OFF: no ThermoSmart influence
-      SHADOW_ONLY        — Learning ON  + Active Control OFF: observe and learn, no service calls
-      DETERMINISTIC      — Learning OFF + Active Control ON:  TPI control, static defaults only
-      ADAPTIVE           — Learning ON  + Active Control ON:  full adaptive Learning control
+      INACTIVE           — Active Control OFF + Learn OFF: no ThermoSmart influence
+      SHADOW_ONLY        — Active Control OFF + Learn ON:  observe and learn, no service calls
+      DETERMINISTIC      — Active Control ON  + Adapt OFF: TPI control, static defaults only
+      ADAPTIVE           — Active Control ON  + Adapt ON:  control with learned parameters
     """
     INACTIVE      = "inactive"
     SHADOW_ONLY   = "shadow_only"
@@ -117,13 +126,18 @@ class ControlAdaptationMode:
     ADAPTIVE      = "adaptive"
 
     @staticmethod
-    def derive(learning_mode_on: bool, active_control_on: bool) -> str:
-        if learning_mode_on and active_control_on:
-            return ControlAdaptationMode.ADAPTIVE
+    def derive(
+        learning_mode_on: bool, active_control_on: bool, adapt_on: bool | None = None,
+    ) -> str:
+        """``learning_mode_on`` is the Learn switch; ``adapt_on`` defaults to it."""
+        adapt = learning_mode_on if adapt_on is None else adapt_on
+        if active_control_on:
+            return (
+                ControlAdaptationMode.ADAPTIVE if adapt
+                else ControlAdaptationMode.DETERMINISTIC
+            )
         if learning_mode_on:
             return ControlAdaptationMode.SHADOW_ONLY
-        if active_control_on:
-            return ControlAdaptationMode.DETERMINISTIC
         return ControlAdaptationMode.INACTIVE
 
 
@@ -163,8 +177,11 @@ class ThermoSmartCoordinator(
 
         # Steuerungszustand
         self._active_control: bool = False
+        # Learning switches (restored by switch.py): collect observations / use them.
+        self._learn_enabled: bool = True
+        self._adapt_enabled: bool = True
         # The single desired target of the zone (see target.py).
-        self.target = TargetState()
+        self.target = initial_target({**entry.data, **entry.options})
         self.target.add_listener(self._on_target_changed)
         self._manual_change_pending: bool = False
         self._pending_triggers: list[str] = [TRIGGER_STARTUP]
@@ -172,6 +189,7 @@ class ThermoSmartCoordinator(
         # Scheduling (events fire at exact times via the runner, see schedule.py).
         self._scheduling_enabled: bool = True
         self._scheduling_disabled_until: datetime | None = None
+        self._scheduling_resume_cancel: Callable[[], None] | None = None
         self.schedule_error: str | None = None
         self.scheduler = ScheduleRunner(
             hass,
@@ -205,6 +223,9 @@ class ThermoSmartCoordinator(
         self._manual_setpoint_cancel: Callable[[], None] | None = None
         self._pending_manual_setpoint: tuple[str, float] | None = None
         self._manual_setpoint_generation = 0
+        # Incremented on every desired-target write (even a no-op one); a debounced
+        # dial change is only adopted if no write happened after it was observed.
+        self._target_write_seq = 0
         # TRVs switched to HVAC off because of an open window (restored on close).
         self._window_off_entities: set[str] = set()
         # Boost tracking per zone (keyed by zone_id; used by TRVControlMixin._apply_temperature).
@@ -265,6 +286,9 @@ class ThermoSmartCoordinator(
 
         # Sensor-Filterung
         self._sensor_ema: dict[str, float] = {}
+        # Spike re-baselining: rejected readings (reported_at, value) and since when.
+        self._spike_candidates: dict[str, list[tuple[object, float]]] = {}
+        self._spike_since: dict[str, datetime] = {}
         self._sensor_noise_count: dict[str, int] = {}
 
         # Live-Cache für sofortige Card-Aktualisierung (unabhängig vom 5-min-Zyklus)
@@ -291,7 +315,6 @@ class ThermoSmartCoordinator(
 
         # Restore initialization barrier: set True the first time Active Control
         # RestoreEntity calls its setter after restore.  Until then, boost is blocked.
-        # Learning mode is read from config (not a RestoreEntity) → not in barrier.
         self._active_control_initialized: bool = False
 
         # Learning runtime is attached with adaptive-control capability. The
@@ -338,6 +361,10 @@ class ThermoSmartCoordinator(
         """
         return dt_util.as_local(self._clock.now_utc())
 
+    def _now_utc(self):
+        """Current instant in UTC – use for elapsed-time arithmetic (DST-safe)."""
+        return dt_util.as_utc(self._clock.now_utc())
+
     @property
     def zone_id(self) -> str:
         return self.entry.entry_id
@@ -377,9 +404,32 @@ class ThermoSmartCoordinator(
                      self.zone_name, "enabled" if enabled else "disabled")
 
     def set_scheduling_disabled_until(self, until: datetime | None) -> None:
+        """Pause events until ``until``; a timer resumes scheduling at that instant."""
+        self._disarm_scheduling_resume()
+        if until is not None and dt_util.as_utc(until) <= self._now_utc():
+            until = None  # already expired (e.g. restored after the deadline)
         self._scheduling_disabled_until = until
         _LOGGER.info("ThermoSmart '%s': scheduling disabled until %s",
                      self.zone_name, until.isoformat() if until else "– (not paused)")
+        if until is None:
+            return
+
+        @callback
+        def _resume(_now) -> None:
+            self._scheduling_resume_cancel = None
+            self._scheduling_disabled_until = None
+            _LOGGER.info("ThermoSmart '%s': scheduling pause ended", self.zone_name)
+            self.async_update_listeners()
+            self.request_pass(TRIGGER_SCHEDULING)
+
+        self._scheduling_resume_cancel = async_track_point_in_utc_time(
+            self.hass, _resume, dt_util.as_utc(until)
+        )
+
+    def _disarm_scheduling_resume(self) -> None:
+        if self._scheduling_resume_cancel is not None:
+            self._scheduling_resume_cancel()
+            self._scheduling_resume_cancel = None
 
     async def async_load_schedule(self) -> None:
         """Load and validate this zone's saved events."""
@@ -421,6 +471,30 @@ class ThermoSmartCoordinator(
         )
         self.async_update_listeners()
 
+    @property
+    def learn_enabled(self) -> bool:
+        """"Learn room behaviour": observations are collected and models updated."""
+        return self._learn_enabled
+
+    @property
+    def adapt_enabled(self) -> bool:
+        """"Adapt control to learned behaviour": learned parameters drive control."""
+        return self._adapt_enabled
+
+    def set_learning_switches(
+        self, *, learn: bool | None = None, adapt: bool | None = None,
+    ) -> None:
+        if learn is not None:
+            self._learn_enabled = bool(learn)
+        if adapt is not None:
+            self._adapt_enabled = bool(adapt)
+        _LOGGER.info(
+            "ThermoSmart '%s': learn room behaviour %s, adapt control %s",
+            self.zone_name, "ON" if self._learn_enabled else "OFF",
+            "ON" if self._adapt_enabled else "OFF",
+        )
+        self.async_update_listeners()
+
     def set_target(
         self, value: float, source: str, *, preset: str | None = None
     ) -> bool:
@@ -428,6 +502,7 @@ class ThermoSmartCoordinator(
 
         Raises ValueError for values outside the supported range.
         """
+        self._target_write_seq += 1
         return self.target.set(value, source, preset=preset, now=self._now_local())
 
     def set_preset(self, preset: str) -> bool:
@@ -595,7 +670,7 @@ class ThermoSmartCoordinator(
                 old = event.data.get("old_state")
                 new = event.data.get("new_state")
                 entity_id = event.data["entity_id"]
-                now = self._now_local()
+                now = self._now_utc()
                 old_value = old.state if old is not None else None
                 new_value = new.state if new is not None else None
 
@@ -738,6 +813,7 @@ class ThermoSmartCoordinator(
     def cleanup_event_listeners(self) -> None:
         self.scheduler.stop()
         self._disarm_preheat_timer()
+        self._disarm_scheduling_resume()
         for cancel in self._event_unsub:
             cancel()
         self._event_unsub.clear()
@@ -801,10 +877,12 @@ class ThermoSmartCoordinator(
     def _handle_trv_setpoint_change(
         self, entity_id: str, old_state, new_state, cfg: dict
     ) -> None:
-        """Adopt physical TRV setpoint changes after debounce, or correct them."""
-        if not self._active_control:
-            return
-            return
+        """Adopt physical TRV setpoint changes after debounce, or correct them.
+
+        Adopted changes become the desired target in every mode: with Active
+        Control off nothing is written back, and during summer/vacation the
+        following pass drives the TRV back to the held value.
+        """
         if old_state is None or old_state.state in ("unknown", "unavailable"):
             return
         old_raw = old_state.attributes.get("temperature")
@@ -832,24 +910,9 @@ class ThermoSmartCoordinator(
         if old_setpoint is None or new_setpoint is None or abs(new_setpoint - old_setpoint) < 0.05:
             return
 
-        if self.suspended:
-            # The TRVs are held (summer/vacation): the dial change is registered as a
-            # manual change but not adopted; the TRV is driven back to the held value.
-            self._manual_change_pending = True
-            self._cancel_running_preheat()
-            _LOGGER.info(
-                "ThermoSmart '%s': physical setpoint change on %s (%.1f → %.1f°C) during "
-                "%s mode – registered as manual change, not adopted; correcting back",
-                self.zone_name, entity_id, old_setpoint, new_setpoint,
-                "summer" if self._is_summer else "vacation",
-            )
-            self.request_pass(TRIGGER_PHYSICAL_SETPOINT)
-            return
-
         settings = cfg.get(CONF_DEVICE_SETTINGS, {}).get(entity_id, {})
         if not settings.get(CONF_DEV_ACCEPT_SETPOINT_CHANGES, True):
-            last_written = self._last_written_setpoints.get(entity_id)
-            if last_written is not None and abs(new_setpoint - last_written) > 0.4:
+            if self._active_control:
                 _LOGGER.info(
                     "ThermoSmart '%s': correcting manual TRV setpoint change on %s",
                     self.zone_name, entity_id,
@@ -860,6 +923,7 @@ class ThermoSmartCoordinator(
         self._pending_manual_setpoint = (entity_id, new_setpoint)
         self._manual_setpoint_generation += 1
         generation = self._manual_setpoint_generation
+        observed_seq = self._target_write_seq
         if self._manual_setpoint_cancel is not None:
             self._manual_setpoint_cancel()
         try:
@@ -876,9 +940,15 @@ class ThermoSmartCoordinator(
             self._pending_manual_setpoint = None
             if pending is None:
                 return
-            if not self._active_control or self.suspended:
-                return
             changed_entity, temperature = pending
+            if self._target_write_seq != observed_seq:
+                _LOGGER.info(
+                    "ThermoSmart '%s': discarding physical setpoint %.1f°C from %s – "
+                    "the target was changed after it",
+                    self.zone_name, temperature, changed_entity,
+                )
+                self.request_pass(TRIGGER_PHYSICAL_SETPOINT)
+                return
             _LOGGER.info(
                 "ThermoSmart '%s': adopting physical setpoint %.1f°C from %s",
                 self.zone_name, temperature, changed_entity,
@@ -1010,13 +1080,17 @@ class ThermoSmartCoordinator(
             recommendation["is_summer"] = effective_summer
             recommendation["vacation_mode"] = self._vacation_mode
 
-            # Derive adaptation mode once per cycle from the two user-visible switches.
-            # All Learning adaptive reads below are gated on _learning_mode_on so that
-            # Learning OFF → only deterministic defaults influence real control.
-            _learning_mode_on = bool(cfg.get("learning_enabled", True))
+            # Derive adaptation mode once per cycle from the user-visible switches.
+            # Adaptive reads below are gated on _adapt_on (Adapt OFF → deterministic
+            # defaults only); observation/model updates are gated on _learn_on.
+            _learn_on = self._learn_enabled
+            _adapt_on = self._adapt_enabled
             _active_control_on = self._active_control
-            _adaptation_mode = ControlAdaptationMode.derive(_learning_mode_on, _active_control_on)
+            _adaptation_mode = ControlAdaptationMode.derive(
+                _learn_on, _active_control_on, _adapt_on)
             recommendation["adaptation_mode"] = _adaptation_mode
+            recommendation["learn_enabled"] = _learn_on
+            recommendation["adapt_enabled"] = _adapt_on
 
             # B2b-bootstrap: pass zone-configured device prior to the boost model so
             # it can run initial controlled trials before any adaptive evidence exists.
@@ -1034,7 +1108,7 @@ class ThermoSmartCoordinator(
                 # TPI-Koeffizienten: Learning authoritative (Phase 19D).
                 # LE v1 path (learning_engine.get_tpi_coefficients) is kept only as
                 # emergency fallback when the Learning shadow is not yet attached.
-                if _learning_mode_on and self._learning_shadow is not None:
+                if _adapt_on and self._learning_shadow is not None:
                     # Learning is authoritative for TPI coefficients (Phase 19D).
                     # read_tpi_coefficients_safe() returns the blended *candidate* coef_int.
                     # The coordinator applies step-limiting to produce the *used* value so
@@ -1099,8 +1173,9 @@ class ThermoSmartCoordinator(
                     duty_cycle = 0.0
 
                 zone_mode = cfg.get(CONF_ZONE_CONTROL_MODE, CONTROL_MODE_TPI_BOOST)
+                boost_ceiling = float(cfg.get(CONF_BOOST_CEILING, DEFAULT_BOOST_CEILING))
                 boosted_setpoint = duty_to_setpoint(
-                    target, duty_cycle, TPI_MAX_BOOST_CELSIUS
+                    target, duty_cycle, TPI_MAX_BOOST_CELSIUS, boost_ceiling
                 )
                 trv_setpoint = (
                     target if zone_mode == CONTROL_MODE_SETPOINT else boosted_setpoint
@@ -1218,7 +1293,7 @@ class ThermoSmartCoordinator(
 
             # ── Learning Adaptive Boost Control ────────────────────────────
             # resolve_adaptive_boost_control() is the single authority for real boost.
-            # Gate order: learning_mode_on → active_control_on
+            # Gate order: adapt_on → active_control_on
             #   → mixed_zone_check → device_unavailable_check → readiness → inner gates.
             # Runs BEFORE dispatch so the approved offset flows through device guards and
             # the single setpoint dispatch path.  Never raises into heating.
@@ -1243,7 +1318,7 @@ class ThermoSmartCoordinator(
                 try:
                     _boost_result = self._learning_shadow.resolve_adaptive_boost_control(
                         recommendation,
-                        learning_mode_on=_learning_mode_on,
+                        learning_mode_on=_adapt_on,
                         active_control_on=self._active_control,
                         restore_pending=_restore_pending,
                         boost_runtime_limit=TPI_MAX_BOOST_CELSIUS,
@@ -1259,6 +1334,12 @@ class ThermoSmartCoordinator(
                 # boost_offset_c: raw Learning prediction (historical semantics, pre-guard).
                 # boost_factor: backward-compat multiplier derived from the same prediction.
                 # Neither is updated post-dispatch; applied_boost_offset_c carries dispatch truth.
+                if recommendation.get("learning_boost_adjusted") and target is not None:
+                    _ceiling = float(cfg.get(CONF_BOOST_CEILING, DEFAULT_BOOST_CEILING))
+                    _sp = recommendation.get("trv_setpoint")
+                    if _sp is not None:
+                        recommendation["trv_setpoint"] = round(
+                            cap_boost(float(_sp), float(target), _ceiling), 4)
                 _candidate_c = float(recommendation.get("_boost_candidate_c") or 0.0)
                 recommendation["boost_offset_c"] = round(_candidate_c, 3)
                 try:
@@ -1511,7 +1592,7 @@ class ThermoSmartCoordinator(
             # Needed by both shadow and standalone ha_integration paths so that
             # the Learning regime classifier can confirm ACTIVE_HEATING without relying
             # solely on temperature slope.  "heating" wins if ANY TRV reports it.
-            if _learning_mode_on:
+            if _learn_on:
                 _zone_hvac_action = None
                 for _eid in cfg.get("climate_entities", []):
                     if not _eid:
@@ -1527,10 +1608,10 @@ class ThermoSmartCoordinator(
 
             # ── Learning passive shadow observation ───────────────────────
             # Runs AFTER the control decision is fully determined and applied.
-            # Only when Learning Mode is ON — Learning OFF → no shadow observation.
+            # Only when Learn is ON — Learn OFF → no shadow observation (frozen model).
             # Purely passive (diagnostics only); doubly guarded so a learning
             # failure can never become a heating failure or an UpdateFailed.
-            if _learning_mode_on and self._learning_shadow is not None:
+            if _learn_on and self._learning_shadow is not None:
                 try:
                     # No schedule-derived comfort time yet (scheduling arrives with WP2).
                     _sched_time = _sched_temp = None
@@ -1997,7 +2078,7 @@ class ThermoSmartCoordinator(
     # ── Berechnung ───────────────────────────────────────────────────
 
     async def _compute_recommendation(self, cfg: dict, weather_data: dict) -> dict:
-        _learning_mode_on = bool(cfg.get("learning_enabled", True))
+        _adapt_on = self._adapt_enabled
         _primary_room_temp = self._read_avg_sensor(cfg.get("temp_sensors", []), is_temperature=True)
         current_temp = _primary_room_temp
         if current_temp is None:
@@ -2009,20 +2090,21 @@ class ThermoSmartCoordinator(
         self._maybe_record_room_sensor_events(cfg, _primary_room_temp, current_temp)
 
         now = self._now_local()
+        now_utc = self._now_utc()
         self._slope_sample_fresh = False
         if current_temp is not None:
             # The slope is sampled over >= 1 min only, so extra (event-triggered)
             # cycles in between neither shorten the baseline nor re-count a stale slope.
             if self._indoor_temp_prev is None:
-                self._indoor_temp_prev = (now, current_temp)
+                self._indoor_temp_prev = (now_utc, current_temp)
             else:
                 prev_time, prev_temp = self._indoor_temp_prev
-                elapsed_min = (now - prev_time).total_seconds() / 60
+                elapsed_min = (now_utc - dt_util.as_utc(prev_time)).total_seconds() / 60
                 if elapsed_min >= 1.0:
                     if elapsed_min <= 30.0:
                         self._indoor_temp_slope = round((current_temp - prev_temp) / elapsed_min, 4)
                         self._slope_sample_fresh = True
-                    self._indoor_temp_prev = (now, current_temp)
+                    self._indoor_temp_prev = (now_utc, current_temp)
             if self._ema_1h is None:
                 self._ema_1h = current_temp
             else:
@@ -2038,11 +2120,11 @@ class ThermoSmartCoordinator(
 
         # ── Preheat duration estimate: Learning is the sole adaptive source ────
         # LE v1 is NEVER read for preheat; the frozen LE v1 store is historical.
-        # When Learning has no evidence, or Learning Mode is OFF, the deterministic
-        # baseline is used. Learning OFF → no adaptive preheat, no onset delay.
+        # When Learning has no evidence, or Adapt is OFF, the deterministic
+        # baseline is used. Adapt OFF → no adaptive preheat, no onset delay.
         # Onset delay is separate from HeatRate learning (never folded in).
         from .learning.runtime.ha_integration import LearningShadowController
-        if _learning_mode_on and self._learning_shadow is not None:
+        if _adapt_on and self._learning_shadow is not None:
             _onset_delay_min, _onset_delay_status = self._learning_shadow.read_onset_delay_safe()
         else:
             _onset_delay_min = LearningShadowController._ONSET_DELAY_PRIOR_MIN
@@ -2053,7 +2135,7 @@ class ThermoSmartCoordinator(
         preheat_plan, preheat_status = self._plan_preheat(
             cfg, now=now, current_temp=current_temp, desired_target=desired_target,
             outdoor_temp=weather_data.get("temperature") if weather_data else None,
-            learning_on=_learning_mode_on,
+            learning_on=_adapt_on,
         )
         preheat_minutes = preheat_plan.duration_min
 
@@ -2199,7 +2281,10 @@ class ThermoSmartCoordinator(
                             continue
                     else:
                         raw = float(state.state)
-                    filtered = self._filter_sensor_value(sid, raw, is_temperature=is_temperature)
+                    filtered = self._filter_sensor_value(
+                        sid, raw, is_temperature=is_temperature,
+                        reported_at=getattr(state, "last_updated", None),
+                    )
                     if filtered is not None:
                         values.append(filtered)
                 except ValueError:
@@ -2208,6 +2293,7 @@ class ThermoSmartCoordinator(
 
     def _filter_sensor_value(
         self, sensor_id: str, raw: float, *, is_temperature: bool = True,
+        reported_at: object = None,
     ) -> float | None:
         """EMA-Glättung mit Spike-Erkennung – Ausreißer werden ignoriert.
 
@@ -2223,6 +2309,11 @@ class ThermoSmartCoordinator(
         only caller) passes ``is_temperature`` through explicitly for both
         its temperature and humidity sensor paths; the default here only
         matters for direct/test callers.
+
+        A sustained step is not rejected forever: after
+        NOISE_FILTER_REBASELINE_READINGS consistent rejected readings (distinct
+        ``reported_at``; None counts every call) or after rejecting readings for
+        NOISE_FILTER_REBASELINE_MINUTES, the reading becomes the new baseline.
         """
         if is_temperature and not is_plausible_temperature_c(raw, context=sensor_id):
             count = self._sensor_noise_count.get(sensor_id, 0) + 1
@@ -2240,6 +2331,15 @@ class ThermoSmartCoordinator(
 
         ema = self._sensor_ema[sensor_id]
         if abs(raw - ema) > NOISE_FILTER_SPIKE_THRESHOLD:
+            if self._spike_rebaseline_due(sensor_id, raw, reported_at):
+                _LOGGER.info(
+                    "ThermoSmart '%s': sensor %s settled at %.1f°C (was %.1f°C) – "
+                    "accepted as the new level",
+                    self.zone_name, sensor_id, raw, ema,
+                )
+                self._reset_spike_tracking(sensor_id)
+                self._sensor_ema[sensor_id] = raw
+                return round(raw, 1)
             count = self._sensor_noise_count.get(sensor_id, 0) + 1
             self._sensor_noise_count[sensor_id] = count
             if count == 1:
@@ -2249,9 +2349,30 @@ class ThermoSmartCoordinator(
                 )
             return None
 
-        self._sensor_noise_count[sensor_id] = 0
+        self._reset_spike_tracking(sensor_id)
         self._sensor_ema[sensor_id] = NOISE_FILTER_EMA_ALPHA * raw + (1 - NOISE_FILTER_EMA_ALPHA) * ema
         return round(self._sensor_ema[sensor_id], 1)
+
+    def _reset_spike_tracking(self, sensor_id: str) -> None:
+        self._sensor_noise_count[sensor_id] = 0
+        self._spike_candidates.pop(sensor_id, None)
+        self._spike_since.pop(sensor_id, None)
+
+    def _spike_rebaseline_due(self, sensor_id: str, raw: float, reported_at: object) -> bool:
+        now = self._now_utc()
+        since = self._spike_since.setdefault(sensor_id, now)
+        if now - since >= timedelta(minutes=NOISE_FILTER_REBASELINE_MINUTES):
+            return True
+        candidates = self._spike_candidates.setdefault(sensor_id, [])
+        if reported_at is not None and candidates and candidates[-1][0] == reported_at:
+            return False  # the same reading read again
+        candidates.append((reported_at, raw))
+        del candidates[:-NOISE_FILTER_REBASELINE_READINGS]
+        values = [value for _, value in candidates]
+        return (
+            len(values) >= NOISE_FILTER_REBASELINE_READINGS
+            and max(values) - min(values) <= NOISE_FILTER_REBASELINE_SPREAD
+        )
 
     # ── Heizungsausfall-Erkennung ─────────────────────────────────────
 

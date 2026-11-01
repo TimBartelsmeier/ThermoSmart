@@ -19,7 +19,7 @@ from custom_components.thermosmart.learning.runtime.ha_integration import (
     LearningShadowController,
 )
 from custom_components.thermosmart.trv_control import _DispatchStats
-from tests.helpers import make_coordinator, make_state, set_hass_states
+from tests.helpers import make_coordinator, make_state, seed_learning_switches, set_hass_states
 
 
 class RecordingCoordinator(ThermoSmartCoordinator):
@@ -66,6 +66,7 @@ def make_recording_coordinator(zone_cfg_overrides=None, *, indoor="19.0"):
     with _patch("homeassistant.helpers.frame.report_usage"):
         coord = RecordingCoordinator(base.hass, base.entry, base.outdoor,
                                      base.learning_engine)
+    seed_learning_switches(coord)
     set_hass_states(coord, {"sensor.test_temp": make_state(indoor)})
     return coord
 
@@ -177,6 +178,7 @@ def make_dispatching_coordinator(zone_cfg_overrides=None, *, indoor="18.0",
     with _patch("homeassistant.helpers.frame.report_usage"):
         coord = DispatchingCoordinator(base.hass, base.entry,
                                        base.outdoor, base.learning_engine)
+    seed_learning_switches(coord)
     coord._last_written_setpoints = {}
 
     # Build per-entity climate state dicts.

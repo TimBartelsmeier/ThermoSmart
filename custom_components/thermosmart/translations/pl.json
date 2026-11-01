@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "Nie znaleziono jednostki pogodowej. Wybierz prawidłową jednostkę lub pozostaw pole puste.",
       "name_required": "Wprowadź nazwę strefy.",
-      "required": "Wymagany jest co najmniej jeden termostat / zawór TRV.",
-      "night_temp_too_high": "Temperatura nocna musi być niższa niż temperatura komfortu.",
-      "away_temp_too_high": "Temperatura nieobecności nie może być wyższa niż temperatura nocna."
+      "required": "Wymagany jest co najmniej jeden termostat / zawór TRV."
     },
     "abort": {
       "already_configured": "Ta strefa jest już skonfigurowana.",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "Wyłączony",
           "observation_mode": "Tryb obserwacji",
-          "controlling_no_learning": "Aktywne sterowanie (uczenie wyłączone)",
           "heating_failure": "Awaria ogrzewania!",
           "preheating": "Podgrzewanie wstępne",
           "summer": "Lato – ogrzewanie wyłączone",

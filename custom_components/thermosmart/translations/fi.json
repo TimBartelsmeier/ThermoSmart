@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "Sääentiteettiä ei löydy. Valitse kelvollinen entiteetti tai jätä kenttä tyhjäksi.",
       "name_required": "Anna vyöhykkeen nimi.",
-      "required": "Vaaditaan vähintään yksi termostaatti / TRV.",
-      "night_temp_too_high": "Yölämpötilan on oltava alhaisempi kuin mukavuuslämpötilan.",
-      "away_temp_too_high": "Poissaololämpötila ei saa olla korkeampi kuin yölämpötila."
+      "required": "Vaaditaan vähintään yksi termostaatti / TRV."
     },
     "abort": {
       "already_configured": "Tämä vyöhyke on jo määritetty.",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "Poistettu käytöstä",
           "observation_mode": "Havainnointitila",
-          "controlling_no_learning": "Aktiivinen ohjaus (oppiminen pois)",
           "heating_failure": "Lämmitysvika!",
           "preheating": "Esilämmitetään",
           "summer": "Kesä – lämmitys pois",

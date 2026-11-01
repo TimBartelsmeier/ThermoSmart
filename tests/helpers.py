@@ -53,8 +53,18 @@ def make_coordinator(zone_cfg_overrides: dict | None = None, *, clock=None):
     learning_engine.record_forecast_decision = MagicMock()
 
     with _patch("homeassistant.helpers.frame.report_usage"):
-        return ThermoSmartCoordinator(hass, entry, outdoor, learning_engine,
-                                      clock=clock)
+        coord = ThermoSmartCoordinator(hass, entry, outdoor, learning_engine,
+                                       clock=clock)
+    return seed_learning_switches(coord)
+
+
+def seed_learning_switches(coord):
+    """Test convenience: a ``learning_enabled`` key in the zone config sets both
+    learning switches (Learn + Adapt), which production restores from switch.py."""
+    value = coord.entry.data.get("learning_enabled")
+    if value is not None:
+        coord._learn_enabled = coord._adapt_enabled = bool(value)
+    return coord
 
 
 def make_zone_config(**overrides) -> dict:
@@ -78,7 +88,6 @@ def make_zone_config(**overrides) -> dict:
         "sched_wd_night": "22:00",
         "sched_we_morning": "08:00",
         "sched_we_night": "23:00",
-        "learning_enabled": True,
         "window_open_delay": 20,
         "window_close_delay": 20,
         "valve_maintenance": True,

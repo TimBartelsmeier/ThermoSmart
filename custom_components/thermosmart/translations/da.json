@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "Vejrenhed ikke fundet. Vælg venligst en gyldig enhed eller lad feltet stå tomt.",
       "name_required": "Indtast et zonenavn.",
-      "required": "Mindst én termostat / TRV er påkrævet.",
-      "night_temp_too_high": "Nattemperaturen skal være lavere end komforttemperaturen.",
-      "away_temp_too_high": "Fraværstemperaturen må ikke være højere end nattemperaturen."
+      "required": "Mindst én termostat / TRV er påkrævet."
     },
     "abort": {
       "already_configured": "Denne zone er allerede konfigureret.",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "Deaktiveret",
           "observation_mode": "Observationstilstand",
-          "controlling_no_learning": "Aktiv styring (læring slukket)",
           "heating_failure": "Varmefejl!",
           "preheating": "Forvarmer",
           "summer": "Sommer – varme slukket",

@@ -240,7 +240,6 @@ class ThermoSmartNextEventSensor(_Base):
             attrs.update({
                 "preset": event_preset(target),
                 "target_temperature": resolve_target(target, coordinator.zone_cfg),
-                "minutes_until": occurrence.minutes_until,
                 "preheat": event.preheat,
             })
         return attrs
@@ -292,7 +291,6 @@ class ThermoSmartStatusSensor(_Base):
         self._attr_options = [
             "disabled",
             "observation_mode",
-            "controlling_no_learning",
             "heating_failure",
             "preheating",
             "summer",
@@ -306,27 +304,23 @@ class ThermoSmartStatusSensor(_Base):
 
     @property
     def native_value(self) -> str:
+        """First applicable of: failure > hold (window > summer > vacation) >
+        pre-heat > observation/disabled > controlling. Learn/Adapt are attributes."""
         z = self._zone
         active = self.coordinator._active_control
-        le = self.coordinator.learning_engine
-        learning = le.is_zone_enabled(self.coordinator.zone_id) if le else True
 
-        if not active and not learning:
-            return "disabled"
-        if not active:
-            return "observation_mode"
-        if not learning:
-            return "controlling_no_learning"
         if z.get("heating_failure"):
             return "heating_failure"
-        if z.get("preheat_active"):
-            return "preheating"
+        if z.get("window_open"):
+            return "window_open"
         if z.get("is_summer"):
             return "summer"
         if z.get("vacation_mode"):
             return "vacation"
-        if z.get("window_open"):
-            return "window_open"
+        if z.get("preheat_active"):
+            return "preheating"
+        if not active:
+            return "observation_mode" if self.coordinator.learn_enabled else "disabled"
         curr = z.get("current_temp")
         target = z.get("effective_target")
         if curr is not None and target is not None:
@@ -338,8 +332,6 @@ class ThermoSmartStatusSensor(_Base):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         z = self._zone
-        le = self.coordinator.learning_engine
-        learning_enabled = le.is_zone_enabled(self.coordinator.zone_id) if le else True
 
         # Device compatibility — the first configured TRV's matched profile
         # (device_profiles.get_profile(), already computed at device-detection
@@ -366,11 +358,12 @@ class ThermoSmartStatusSensor(_Base):
             "slope_window_active": getattr(self.coordinator, "_slope_window_active", False),
             # Effective control mode this cycle — inactive/shadow_only/deterministic/
             # adaptive — derived once per cycle in coordinator.py from the Learning
-            # and Active Control switches (ControlAdaptationMode.derive()). "unknown"
+            # Learn/Adapt and Active Control switches (ControlAdaptationMode.derive()). "unknown"
             # only if coordinator.data hasn't produced a cycle yet (e.g. right after
             # setup, before the first successful refresh).
             "adaptation_mode": z.get("adaptation_mode", "unknown"),
-            "learning_enabled": learning_enabled,
+            "learn_enabled": self.coordinator.learn_enabled,
+            "adapt_enabled": self.coordinator.adapt_enabled,
             "active_control_enabled": self.coordinator._active_control,
             "device_profile_name": profile_status["name"] if profile_status else None,
             "device_profile_active": profile_status["active"] if profile_status else None,

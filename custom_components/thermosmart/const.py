@@ -2,7 +2,7 @@
 
 DOMAIN = "thermosmart"
 VERSION = "1.3.2"
-CARD_ASSET_VERSION = "2.0.1" # Keep CARD_VERSION in the card's .js synchronized with this value
+CARD_ASSET_VERSION = "2.0.2" # Keep CARD_VERSION in the card's .js synchronized with this value
 
 # Bundled Lovelace card (custom_components/thermosmart/www/thermosmart-card.js).
 # Registered once per HA session through card_registration.py.
@@ -21,6 +21,7 @@ CONF_LEARNING_ENABLED = "learning_enabled"
 CONF_ZONE_CONTROL_MODE = "zone_control_mode"
 CONF_CONTROL_INTERVAL = "control_interval"
 CONF_TEMP_TOLERANCE = "temp_tolerance"
+CONF_BOOST_CEILING = "boost_ceiling"
 CONF_EXT_TEMP_THRESHOLD = "ext_temp_threshold"
 CONF_TRV_SETPOINT_DEBOUNCE = "trv_setpoint_debounce"
 CONF_TRV_SETPOINT_SETTLING = "trv_setpoint_settling"
@@ -85,6 +86,7 @@ TPI_COEF_EXT_DEFAULT  = 0.01   # Duty-Cycle-Anteil pro °C Außentemperatur-Delt
 # Central unit string for all Learning rate predictions (°C/h).
 # Gate 4 in read_tpi_coefficients_safe() and all unit assertions use this constant.
 UNIT_C_PER_H = "C/h"
+DEFAULT_BOOST_CEILING = 28.0  # °C; boost never raises a TRV setpoint above this
 TPI_MAX_BOOST_CELSIUS = 8.0    # max. °C über Zieltemp für Setpoint-Konvertierung
 TPI_VALVE_BUMP_PCT    = 10     # % extra beim Schließen (TRVZB motor-workaround)
 TPI_VALVE_BUMP_DELAY  = 5.0    # Sekunden zwischen Bump-Open und Zielwert
@@ -144,6 +146,12 @@ CONF_SUMMER_OFF_THRESHOLD = "summer_off_threshold"  # System-Entry: 72 h-Ø bis 
 # Sensor-Noise-Filter
 NOISE_FILTER_SPIKE_THRESHOLD = 4.0  # °C – Abweichung > Wert vom EMA → Messung ignorieren
 NOISE_FILTER_EMA_ALPHA = 0.2        # EMA-Glättungsfaktor (kleiner = träger/stabiler)
+# A sustained step is accepted as the new level (re-baselined) after this many
+# consecutive rejected readings that agree within the spread, or after rejecting
+# readings continuously for this long.
+NOISE_FILTER_REBASELINE_READINGS = 3
+NOISE_FILTER_REBASELINE_SPREAD = 0.5   # °C (max − min of the consistent readings)
+NOISE_FILTER_REBASELINE_MINUTES = 15
 
 # Presets: plain named temperatures (configured per zone)
 PRESET_COMFORT  = "comfort"

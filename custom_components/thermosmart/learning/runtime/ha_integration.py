@@ -2254,7 +2254,7 @@ class LearningShadowController:
 
         Gate order (strict):
           0. Restore barrier  (active_control RestoreEntity initialized)
-          1. Learning mode ON  (cfg learning_enabled + Learning enabled)
+          1. Learning mode ON  (the zone's "Adapt control" switch)
           2. Active Control ON (coordinator _active_control)
           3. Mixed-control zone check
           3.5. Pre-dispatch device availability

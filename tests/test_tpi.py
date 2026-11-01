@@ -118,6 +118,15 @@ class TestDutyToSetpoint:
     def test_returns_float(self):
         assert isinstance(duty_to_setpoint(21.0, 50.0), float)
 
+    def test_target_above_ceiling_is_not_lowered(self):
+        """Review M8: the ceiling limits boost only; it never lowers the target."""
+        assert duty_to_setpoint(29.0, 0.0) == 29.0
+        assert duty_to_setpoint(30.0, 100.0) == 30.0
+
+    def test_custom_ceiling(self):
+        assert duty_to_setpoint(21.0, 100.0, max_boost=8.0, ceiling=24.0) == 24.0
+        assert duty_to_setpoint(21.0, 100.0, max_boost=8.0, ceiling=32.0) == 29.0
+
 
 # ── estimate_coefficients ────────────────────────────────────────────────────
 

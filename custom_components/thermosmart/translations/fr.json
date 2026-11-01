@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "Entité météo introuvable. Veuillez sélectionner une entité valide ou laisser le champ vide.",
       "name_required": "Veuillez saisir un nom de zone.",
-      "required": "Au moins un thermostat / TRV est requis.",
-      "night_temp_too_high": "La température de nuit doit être inférieure à la température de confort.",
-      "away_temp_too_high": "La température d'absence ne doit pas être supérieure à la température de nuit."
+      "required": "Au moins un thermostat / TRV est requis."
     },
     "abort": {
       "already_configured": "Cette zone est déjà configurée.",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "Désactivé",
           "observation_mode": "Mode observation",
-          "controlling_no_learning": "Contrôle actif (apprentissage désactivé)",
           "heating_failure": "Défaillance du chauffage !",
           "preheating": "Préchauffage",
           "summer": "Été – chauffage éteint",

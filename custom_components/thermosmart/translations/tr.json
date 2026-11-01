@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "Hava durumu varlığı bulunamadı. Geçerli bir varlık seçin veya alanı boş bırakın.",
       "name_required": "Bir bölge adı girin.",
-      "required": "En az bir termostat / TRV gereklidir.",
-      "night_temp_too_high": "Gece sıcaklığı konfor sıcaklığından düşük olmalıdır.",
-      "away_temp_too_high": "Uzakta sıcaklığı gece sıcaklığından yüksek olmamalıdır."
+      "required": "En az bir termostat / TRV gereklidir."
     },
     "abort": {
       "already_configured": "Bu bölge zaten yapılandırılmış.",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "Devre dışı",
           "observation_mode": "Gözlem modu",
-          "controlling_no_learning": "Aktif kontrol (öğrenme kapalı)",
           "heating_failure": "Isıtma arızası!",
           "preheating": "Ön ısıtma",
           "summer": "Yaz – ısıtma kapalı",

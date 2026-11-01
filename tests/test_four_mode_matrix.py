@@ -213,7 +213,7 @@ class TestTPIAuthorityPerMode:
         # Artificially drive the smoothed value away from default
         coord._tpi_coef_int_smoothed = TPI_COEF_INT_DEFAULT * 2.5
         # Switch to DETERMINISTIC (learning off)
-        coord.entry.data["learning_enabled"] = False
+        coord.set_learning_switches(learn=False, adapt=False)
         await _cycle(coord)
         # Must have been reset to default by the DETERMINISTIC branch
         assert abs(coord._tpi_coef_int_smoothed - TPI_COEF_INT_DEFAULT) < 1e-6, (
@@ -428,7 +428,7 @@ class TestModeTransitions:
                                                  eligible_boost=eligible_boost)
         zone_a = await _cycle(coord)
         # Switch mode
-        coord.entry.data["learning_enabled"] = learning2
+        coord.set_learning_switches(learn=learning2, adapt=learning2)
         coord.set_active_control(active2)
         zone_b = await _cycle(coord)
         return zone_a, zone_b, coord, shadow
@@ -539,7 +539,7 @@ class TestModeTransitions:
         # Drive smoothed value above default (as if Learning learned a high coef_int)
         coord._tpi_coef_int_smoothed = TPI_COEF_INT_DEFAULT * 3.0
         # Transition to DETERMINISTIC
-        coord.entry.data["learning_enabled"] = False
+        coord.set_learning_switches(learn=False, adapt=False)
         zone_b = await _cycle(coord)
         assert zone_b.get("adaptation_mode") == ControlAdaptationMode.DETERMINISTIC
         assert zone_b.get("tpi_coef_source") == "deterministic_baseline"
@@ -551,7 +551,7 @@ class TestModeTransitions:
         coord, shadow = await _coord_with_shadow(True, True, eligible_boost=True)
         await _cycle(coord)
         # Transition to INACTIVE
-        coord.entry.data["learning_enabled"] = False
+        coord.set_learning_switches(learn=False, adapt=False)
         coord.set_active_control(False)
         coord.control_calls.clear()
         await _cycle(coord)
@@ -562,7 +562,7 @@ class TestModeTransitions:
         """ADAPTIVE → DETERMINISTIC: next cycle must NOT apply Learning boost offset."""
         coord, shadow = await _coord_with_shadow(True, True, eligible_boost=True)
         await _cycle(coord)
-        coord.entry.data["learning_enabled"] = False  # switch to DETERMINISTIC
+        coord.set_learning_switches(learn=False, adapt=False)  # switch to DETERMINISTIC
         zone_b = await _cycle(coord)
         applied = zone_b.get("applied_boost_offset_c", 0.0) or 0.0
         assert applied == 0.0, f"No Learning boost in DETERMINISTIC: applied={applied}"

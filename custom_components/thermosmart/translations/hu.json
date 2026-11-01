@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "Az időjárás entitás nem található. Válasszon érvényes entitást, vagy hagyja üresen a mezőt.",
       "name_required": "Adjon meg egy zónanevet.",
-      "required": "Legalább egy termosztát / TRV szükséges.",
-      "night_temp_too_high": "Az éjszakai hőmérsékletnek alacsonyabbnak kell lennie a kényelmi hőmérsékletnél.",
-      "away_temp_too_high": "A távolléti hőmérséklet nem lehet magasabb az éjszakai hőmérsékletnél."
+      "required": "Legalább egy termosztát / TRV szükséges."
     },
     "abort": {
       "already_configured": "Ez a zóna már konfigurálva van.",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "Letiltva",
           "observation_mode": "Megfigyelési mód",
-          "controlling_no_learning": "Aktív vezérlés (tanulás ki)",
           "heating_failure": "Fűtési hiba!",
           "preheating": "Előmelegítés",
           "summer": "Nyár – fűtés ki",

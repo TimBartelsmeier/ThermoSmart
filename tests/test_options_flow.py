@@ -370,28 +370,19 @@ class TestOptionsHubValidation:
         result = await _save_section(hass, form, {**_STEP_DEVICES, "climate_entities": []})
         assert result["errors"].get("climate_entities") == "required"
 
-    async def test_schedule_night_above_comfort_shows_error(self, hass, enable_custom_integrations):
+    async def test_schedule_accepts_any_preset_order(self, hass, enable_custom_integrations):
+        """Review C1: no ordering constraints between preset temperatures."""
         entry = _zone_entry()
         entry.add_to_hass(hass)
 
         hub = await _open_hub(hass, entry)
         form = await _select_section(hass, hub, "temperatures")
         result = await _save_section(
-            hass, form, {**_STEP_SCHEDULE, "comfort_temp": 21.0, "night_temp": 22.0}
+            hass, form, {**_STEP_SCHEDULE, "comfort_temp": 21.0, "night_temp": 22.0,
+                         "away_temp": 23.0}
         )
-        assert result["type"] == FlowResultType.FORM
-        assert result["errors"].get("night_temp") == "night_temp_too_high"
-
-    async def test_schedule_away_above_night_shows_error(self, hass, enable_custom_integrations):
-        entry = _zone_entry()
-        entry.add_to_hass(hass)
-
-        hub = await _open_hub(hass, entry)
-        form = await _select_section(hass, hub, "temperatures")
-        result = await _save_section(
-            hass, form, {**_STEP_SCHEDULE, "night_temp": 18.0, "away_temp": 19.0}
-        )
-        assert result["errors"].get("away_temp") == "away_temp_too_high"
+        assert not result.get("errors")
+        assert entry.options["night_temp"] == 22.0
 
     async def test_weather_invalid_entity_shows_error(self, hass, enable_custom_integrations):
         entry = _zone_entry()

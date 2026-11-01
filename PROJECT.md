@@ -7,7 +7,7 @@ open decisions, leftovers and things that still need a live test.
 The README is the user documentation; this file is the maintainer's view.
 
 Backwards compatibility with the original project or earlier versions of this fork
-is **not** a goal (no migration of old config entries).
+is **not implemented yet**: old config entries are not migrated (see Part 2, A6).
 
 ---
 
@@ -25,7 +25,8 @@ observation-only mode.
 
 Two kinds of config entries exist:
 
-* **ThermoSmart System** (one per installation, required for summer/vacation).
+* **ThermoSmart System** (one per installation, required for summer/vacation; can be
+  added before or after the zones).
 * **Heating zone** (one per room/zone).
 
 ## 2. Target model
@@ -38,6 +39,9 @@ Two kinds of config entries exist:
 * **Presets** are plain named temperatures: Comfort, Eco, Night, Away, Vacation
   (per zone). Selecting one sets the target once. After a manual temperature
   change no preset is highlighted. *Away* is a plain preset (no presence detection).
+  Presets are independent (no ordering constraints, each 5–30 °C). A new zone
+  starts at its Eco temperature with Eco selected; on restore a preset label whose
+  configured value no longer matches the target is dropped.
 * The desired target is restored after a Home Assistant restart; a restart does not
   replay schedule events.
 * The climate entity advertises 5–30 °C, matching the target model.
@@ -51,15 +55,17 @@ with the then-current desired target – one mechanism, no per-case restore logi
 
 | Suspension | TRVs held at |
 |---|---|
-| Summer | Frost protection (12 °C), valves exercised periodically |
-| Vacation | The zone's Vacation temperature |
+| Summer | Frost protection (12 °C) via the normal dispatch path (device profiles respected), valves exercised periodically |
+| Vacation | Room regulated toward the zone's Vacation temperature (normal control; TPI may boost the TRV setpoint) |
 | Window open | Per TRV: window-open temperature (default 5 °C) or HVAC `off` |
 
-Priority: **summer > vacation > window**; the others are registered state only.
+Priority: **window > summer > vacation** – an open window always closes the valves,
+even during summer or vacation. The others are registered state only.
 
 * A **dial change** during a suspension is registered as the desired target and the
   TRV is corrected back to the held temperature immediately (logged). During an
-  open window the TRV stays in its window state.
+  open window the TRV stays in its window state. In observation mode a dial change
+  is adopted as the desired target, but nothing is written.
 * The climate entity keeps showing the desired target; the status sensor shows
   `window_open` / `vacation` / `summer` and attributes `suspension` and `held_at`.
 * **Windows:** sensors with separate open/close delays; without sensors a
@@ -69,8 +75,10 @@ Priority: **summer > vacation > window**; the others are registered state only.
   *Vacation Mode*, *Force Summer Mode*, *Auto-enable Summer Mode* (switches).
   Automatic summer uses a rolling 72 h average of the System entry's outdoor
   temperature (sensor, else weather entity) with hysteresis and takes **no
-  decision before a full 72 h of samples exist** (history is not persisted).
-  Without any outdoor source it never enables summer.
+  decision unless the samples cover the full 72 h without a gap longer than
+  3 h** (otherwise the previous state is kept; history is not persisted).
+  Without any outdoor source it never enables summer. Removing the System entry
+  (not reloading it) releases summer and vacation in all zones.
 
 ## 4. Scheduling
 
@@ -86,8 +94,12 @@ Priority: **summer > vacation > window**; the others are registered state only.
   config entry. Overlapping weekday/time events are rejected. Existing
   `/config/thermosmart_schedules.yaml` files are not read or migrated.
 * Per event flag `preheat`.
+* A timer callback that runs late applies the event that is current at that moment,
+  not the obsolete one it was armed for.
 * Controls per zone: *Scheduling enabled* switch, *Scheduling disabled until*
-  date/time; sensors *Next scheduled event* and *Pre-heat start*.
+  date/time (a timer resumes scheduling at the deadline, clears the value and runs
+  a pass; a deadline in the past ends the pause immediately); sensors *Next
+  scheduled event* and *Pre-heat start*.
 * During vacation/summer events still fire but only update the desired target that
   applies after the suspension.
 
@@ -95,7 +107,7 @@ Priority: **summer > vacation > window**; the others are registered state only.
 
 * An event with `preheat: true` and a target higher than the current target makes
   the zone start heating early so the target is reached **at** the event time.
-* Lead time: learned heat-up behaviour if learning is on and has data, otherwise a
+* Lead time: learned heat-up behaviour if *Adapt* is on and learning has data, otherwise a
   deterministic default (≈1.5 °C/h + 5 min onset), capped at 180 min.
 * Only the **next** event is considered; never earlier than the previous event.
 * Once started, pre-heat stays active until the event fires (a shrinking estimate
@@ -113,7 +125,7 @@ Priority: **summer > vacation > window**; the others are registered state only.
 
 * **Zone control mode** (default for all TRVs): *Setpoint only*, *TPI setpoint
   modulation* (boost up to +8 °C), *Direct valve control*. Further zone options:
-  minimum control interval (5 min), temperature tolerance, external-temperature
+  minimum control interval (5 min), temperature tolerance, boost ceiling (28 °C), external-temperature
   write threshold, physical-setpoint debounce and settling time (5 s each).
 * **Per TRV:** control-mode override, valve entity, feed room temperature to the
   TRV (+ entity), calibration (entity, on/off, invert), valve exercise, *turn off
@@ -123,14 +135,21 @@ Priority: **summer > vacation > window**; the others are registered state only.
   the flow, at runtime exactly the configured values apply.
 * **Physical changes on a TRV:** if enabled, the reported setpoint (after debounce)
   becomes the zone target; echoes of own writes are ignored during the settling
-  time; if disabled the change is corrected back.
-* **Active Control / Learning:** on+off = deterministic TPI; on+on = control with
-  learned parameters; off+on = **observation mode** (no writes to TRVs of any
-  kind – including the external-temperature feed; target, events and pre-heat plan
-  are still tracked); off+off = inactive. HVAC `heat`/`off` on the climate entity
-  maps to Active Control.
+  time; if disabled the change is corrected back. Dial changes are adopted in every
+  mode (suspensions and observation included); a debounced dial change older than
+  the latest target write from any source is discarded (last writer wins).
+* **Active Control / Learn / Adapt** (three independent, restored switches):
+  *Active Control* off = **observation mode** (no writes to TRVs of any kind –
+  including the external-temperature feed; target, events and pre-heat plan are
+  still tracked). *Learn room behaviour* collects observations and updates the
+  models. *Adapt control to learned behaviour* uses the learned TPI, pre-heat and
+  boost parameters; off = deterministic defaults. All combinations are allowed
+  (Adapt without Learn uses a frozen model). Both learning switches default to on;
+  on the first start after the split Adapt inherits the former Learning switch.
+  HVAC `heat`/`off` on the climate entity maps to Active Control.
 * **Safety:** missing room sensors fall back to the TRV's own sensor; spike
-  filtering; offline sensors averaged out; heating-failure detection (35+ min);
+  filtering (a sustained step – 3 readings within 0.5 °C, or 15 min – becomes the
+  new level); offline sensors averaged out; heating-failure detection (35+ min);
   valve maintenance in summer/vacation; device profiles with generic fallback.
 * **Availability:** configured sensor/weather/TRV entities and enabled device
   inputs are monitored via state-change listeners after HA startup completes.
@@ -148,11 +167,12 @@ pass's reasons are exposed as `pass_triggers`. Bursts coalesce through the
 coordinator's refresh debouncer.
 
 `periodic` · `target_change` · `schedule_event` · `preheat_start` · `window`
-(open/close delay expired – a raw sensor change does not trigger) ·
+(a window sensor changed state or an open/close delay expired) ·
 `room_temperature` (moved ≥ threshold) · `physical_setpoint` · `switch` (Active
-Control/Learning) · `hvac_mode` (a controlled TRV enters an unwanted HVAC mode;
+Control/Learn/Adapt) · `hvac_mode` (a controlled TRV enters an unwanted HVAC mode;
 the existing watchdog's profile and suspension checks still apply) · `scheduling` ·
-`system_state` · `startup` (incl. options reload).
+`system_state` · `startup` (incl. options reload) · `maintenance` (valve exercise
+finished; skipped if Active Control was switched off meanwhile).
 Nothing else (attribute noise, humidity, small drift) causes a pass.
 
 ## 7. Outdoor data and learning
@@ -177,11 +197,13 @@ the System entry's weather entity.
 
 ## 9. Entities
 
-**Per zone:** climate · Preset select · Active Control switch · Learning switch ·
+**Per zone:** climate · Preset select · Active Control switch · *Learn room behaviour* switch ·
+*Adapt control to learned behaviour* switch ·
 Scheduling enabled switch · Scheduling disabled until · Status sensor
-(`observation_mode`, `controlling_no_learning`, `heating`, `idle`, `preheating`,
-`window_open`, `vacation`, `summer`, `heating_failure`, `disabled`, `active`;
-attributes incl. `suspension`, `held_at`, `pass_triggers`, `outdoor_sources`) ·
+(first applicable of `heating_failure` › `window_open` › `summer` › `vacation` ›
+`preheating` › `observation_mode`/`disabled` › `heating`/`idle`/`active`;
+attributes incl. `learn_enabled`, `adapt_enabled`, `suspension`, `held_at`,
+`pass_triggers`, `outdoor_sources`) ·
 Learning progress · Next scheduled event · Pre-heat start · Actual temperature ·
 Desired target temperature (numeric history sensors, enabled by default) · diagnostic sensors
 (disabled by default): Pre-heat minutes, *TPI boosted TRV setpoint*, TPI duty cycle,
@@ -212,7 +234,9 @@ safety bypass, global debug switch, *Adjusted target* and *Weather offset* senso
 | `learning/`, `learning_engine.py` | learning package (+ legacy LE v1, now only what shadow/export still need) |
 
 Tests: `uv run python -m pytest -q -p no:cacheprovider --asyncio-mode=auto`
-(≈1290 passed, 23 skipped – the skipped ones are non-English translations; ≈95 s).
+(≈1500 passed, 22 skipped – the skipped ones are translations other than en/de; ≈25 s).
+Card browser fixture: serve the repo root over HTTP and open
+`tests/thermosmart-cards.test.html` (results in `#results` / `window.testResults`).
 Guard tests: `test_no_legacy_concepts.py` (removed concepts must not return),
 `test_triggers.py` (single refresh entry point), `test_zone_flow_parity.py`,
 `test_zone_setup_entities.py` (full HA setup of a zone).
@@ -223,9 +247,9 @@ Guard tests: `test_no_legacy_concepts.py` (removed concepts must not return),
 
 ## A. Deferred features (planned, but not implemented yes)
 
-1. **Translations other than English.** New/changed strings exist in English only
-   (`strings.json` == `translations/en.json`, enforced). Other language files were
-   left untouched and fall back to English; the completeness test skips them
+1. **Translations other than English and German.** `strings.json` ==
+   `translations/en.json` (enforced); German is maintained and checked as well.
+   Other language files only had obsolete keys removed and fall back to English; the completeness test skips them
    (marker in `tests/test_translations_complete.py` – remove it when translating).
    Note the renamed/removed steps (`devices`, `temperatures`, `outdoor`) and new
    entities when updating.
@@ -242,7 +266,8 @@ Guard tests: `test_no_legacy_concepts.py` (removed concepts must not return),
    numeric history for optional native graphs; the bundled graph reads climate
    attribute history. Validate real HA rendering and interactions on a live instance.
    The dialog's "Remove suspension (set to past)" button ends suspension by setting
-   the datetime entity to one minute in the past; clearing the entity remains deferred.
+   the datetime entity to one minute in the past; the integration then clears the
+   stored deadline (the entity shows no value).
    **Deferred debug card:** a separate card collecting entities relevant to
    debugging and understanding ThermoSmart's decisions (targets, device outputs,
    suspensions, pre-heat, learning and control-pass diagnostics). Keep it separate
@@ -260,7 +285,6 @@ Guard tests: `test_no_legacy_concepts.py` (removed concepts must not return),
    only. Re-add it as an explicit option, or remove the leftovers below for good.
 6. **Migration path for configs created under the "old" version**
 7. **Cleanup documentation** Ensure README is comprehensive
-8. **Check** logic, edge cases, presets, etc.
 
 ## B. Leftovers to resolve
 
@@ -280,17 +304,15 @@ Guard tests: `test_no_legacy_concepts.py` (removed concepts must not return),
 
 ## C. Open decisions / assumptions to confirm
 
-* **Observation mode** keeps tracking target, events and the pre-heat plan (only TRV
-  writes are skipped). Assumed, not explicitly confirmed.
 * The **summer frost temperature** stays the constant 12 °C (not configurable).
-* A **window-sensor state change no longer forces an immediate pass**; only the
-  open/close delay timers do.
 * A manual change **before** the planned pre-heat start does not cancel it (so
   "set 21 °C in the evening" does not kill tomorrow's 06:00 pre-heat).
 * **Auto-summer** needs a full 72 h of samples after every HA restart (history is
   not persisted). Option: persist the samples, or make the span configurable.
-* **Schedule file reload:** only on options reload. A `thermosmart.reload_schedules`
-  service or a file watcher was discussed and judged unnecessary for now.
+* **Schedule design vs. the original plan:** the plan specified a managed YAML file,
+  last-wins for duplicate times and numeric targets 4–35 °C. The implementation uses
+  the config-flow editor (events stored in the config entry), rejects overlapping
+  events and allows 5–30 °C. To be discussed; unchanged for now.
 
 ## D. Needs a live test (not testable in the test harness)
 

@@ -5,7 +5,7 @@ from datetime import datetime
 
 from homeassistant.components.datetime import DateTimeEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -54,13 +54,22 @@ class ThermoSmartSchedulingDisabledUntil(DateTimeEntity, RestoreEntity):
             parsed = dt_util.parse_datetime(last.state)
             self._value = dt_util.as_local(parsed) if parsed else None
         self._coordinator.set_scheduling_disabled_until(self._value)
+        self._value = self._coordinator.scheduling_disabled_until
+        # The coordinator clears the pause when it expires.
+        self.async_on_remove(self._coordinator.async_add_listener(self._sync_from_coordinator))
+
+    @callback
+    def _sync_from_coordinator(self) -> None:
+        if self._value is not None and self._coordinator.scheduling_disabled_until is None:
+            self._value = None
+            self.async_write_ha_state()
 
     @property
     def native_value(self) -> datetime | None:
         return self._value
 
     async def async_set_value(self, value: datetime) -> None:
-        self._value = dt_util.as_local(value)
-        self._coordinator.set_scheduling_disabled_until(self._value)
+        self._coordinator.set_scheduling_disabled_until(dt_util.as_local(value))
+        self._value = self._coordinator.scheduling_disabled_until
         self.async_write_ha_state()
         self._coordinator.request_pass(TRIGGER_SCHEDULING)

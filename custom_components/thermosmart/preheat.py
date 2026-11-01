@@ -8,7 +8,7 @@ logic in the coordinator.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Plan states
 NONE = "none"          # nothing to pre-heat (see ``reason``)
@@ -57,6 +57,13 @@ def plan(
     def none(reason: str) -> PreheatPlan:
         return PreheatPlan(NONE, reason, event_at=event_at, event_target=event_target)
 
+    # Aware datetimes sharing a tzinfo subtract/compare by wall clock, which is
+    # wrong across DST changes – do all instant arithmetic in UTC.
+    def utc(value: datetime | None) -> datetime | None:
+        return value.astimezone(timezone.utc) if value is not None else None
+
+    now_utc, event_utc = utc(now), utc(event_at)
+
     if event_at is None or event_target is None:
         return none(NO_EVENT)
     if not scheduling_active:
@@ -74,12 +81,13 @@ def plan(
             return none(TARGET_REACHED)
 
     if started_at is not None:
-        start = started_at
+        start = utc(started_at)
     else:
-        start = event_at - timedelta(minutes=duration_min)
-        if previous_event_at is not None and start < previous_event_at:
-            start = previous_event_at  # never earlier than the previous event
-    state = ACTIVE if (started_at is not None or now >= start) else PLANNED
+        start = event_utc - timedelta(minutes=duration_min)
+        previous_utc = utc(previous_event_at)
+        if previous_utc is not None and start < previous_utc:
+            start = previous_utc  # never earlier than the previous event
+    state = ACTIVE if (started_at is not None or now_utc >= start) else PLANNED
     return PreheatPlan(
         state, None, start, float(duration_min), event_at, event_target
     )

@@ -172,6 +172,30 @@
     }
     zone.attributes.window_open = false;
   });
+  await test("status banner follows the sensor precedence", async () => {
+    const status = async () => {
+      const c = await card("zone-control");
+      const text = c.shadowRoot.querySelector(".status").textContent;
+      c.remove();
+      return text;
+    };
+    try {
+      zone.attributes.observation_mode = true;
+      zone.attributes.preheat_active = true;
+      assert(await status() === "Pre-heating", "pre-heat before observation");
+      zone.attributes.heating_failure = true;
+      zone.attributes.window_open = true;
+      assert(await status() === "Heating failure", "failure first");
+      zone.attributes.heating_failure = false;
+      zone.attributes.window_open = false;
+      zone.attributes.preheat_active = false;
+      assert(await status() === "Observation mode", "observation");
+    } finally {
+      Object.assign(zone.attributes, {
+        observation_mode: false, preheat_active: false, heating_failure: false, window_open: false,
+      });
+    }
+  });
   await test("native climate dial receives temperatures and previews without service calls", async () => {
     zone.attributes.preset_mode = null;
     const c = await card("zone-control", { layout: "full" });

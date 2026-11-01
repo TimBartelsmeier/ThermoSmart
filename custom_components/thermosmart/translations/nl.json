@@ -179,9 +179,7 @@
     "error": {
       "entity_not_found": "Weer-entiteit niet gevonden. Selecteer een geldige entiteit of laat het veld leeg.",
       "name_required": "Voer een zonenaam in.",
-      "required": "Minimaal één thermostaat / TRV is vereist.",
-      "night_temp_too_high": "Nachttemperatuur moet lager zijn dan de comforttemperatuur.",
-      "away_temp_too_high": "Afwezigheidstemperatuur mag niet hoger zijn dan de nachttemperatuur."
+      "required": "Minimaal één thermostaat / TRV is vereist."
     },
     "abort": {
       "already_configured": "Deze zone is al geconfigureerd.",
@@ -449,7 +447,6 @@
         "state": {
           "disabled": "Uitgeschakeld",
           "observation_mode": "Observatiemodus",
-          "controlling_no_learning": "Actieve sturing (leren uit)",
           "heating_failure": "Verwarmingsstoring!",
           "preheating": "Voorverwarming",
           "summer": "Zomer – verwarming uit",
