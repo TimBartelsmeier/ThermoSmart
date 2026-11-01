@@ -39,9 +39,6 @@ class _TestableCoordinator(ThermoSmartCoordinator):
     async def _async_set_valve_percent(self, cfg: dict, duty: float) -> None:
         pass
 
-    async def _apply_frost_protection(self, cfg: dict) -> None:
-        pass
-
     async def _async_valve_maintenance(self, cfg: dict, recommendation: dict) -> None:
         pass
 

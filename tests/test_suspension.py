@@ -26,11 +26,11 @@ class TestResolve:
             (False, False, False, None),
             (False, False, True, WINDOW_OPEN),
             (False, True, False, VACATION),
-            (False, True, True, VACATION),
+            (False, True, True, WINDOW_OPEN),
             (True, False, False, SUMMER),
-            (True, False, True, SUMMER),
+            (True, False, True, WINDOW_OPEN),
             (True, True, False, SUMMER),
-            (True, True, True, SUMMER),
+            (True, True, True, WINDOW_OPEN),
         ],
     )
     def test_truth_table(self, summer, vacation, window, expected):
@@ -40,9 +40,9 @@ class TestResolve:
         assert len(list(product([False, True], repeat=3))) == 8
 
     def test_releasing_in_precedence_order(self):
-        assert resolve(summer=True, vacation=True, window_open=True) == SUMMER
-        assert resolve(summer=False, vacation=True, window_open=True) == VACATION
-        assert resolve(summer=False, vacation=False, window_open=True) == WINDOW_OPEN
+        assert resolve(summer=True, vacation=True, window_open=True) == WINDOW_OPEN
+        assert resolve(summer=True, vacation=True, window_open=False) == SUMMER
+        assert resolve(summer=False, vacation=True, window_open=False) == VACATION
         assert resolve(summer=False, vacation=False, window_open=False) is None
 
 

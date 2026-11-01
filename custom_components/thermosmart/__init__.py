@@ -8,7 +8,6 @@ Modulstruktur:
   coordinator.py  – Hauptkoordinator (Update-Zyklus, Berechnung, Präsenz)
   trv_control.py  – TRV-Steuerung, Kalibrierung, Quirk-Management
   maintenance.py  – Wöchentliche Ventilübung
-  season.py       – Sommer-Erkennung, Frostschutz
   window.py       – Fenstererkennung
   outdoor.py / learning_engine.py – eigenständige Engines
 """

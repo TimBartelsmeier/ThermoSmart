@@ -74,7 +74,7 @@ from .preheat import plan as plan_preheat
 from .outdoor import OutdoorConditions
 from .learning_engine import LearningEngine
 from .window import WindowMixin
-from .suspension import held_at, resolve
+from .suspension import SUMMER, held_at, resolve
 from .triggers import (
     TRIGGER_HVAC_MODE,
     TRIGGER_PHYSICAL_SETPOINT,
@@ -85,7 +85,6 @@ from .triggers import (
     TRIGGER_WINDOW,
     TRIGGERS,
 )
-from .season import SeasonMixin
 from .trv_control import TRVControlMixin, _DispatchStats
 from .maintenance import MaintenanceMixin
 
@@ -132,7 +131,6 @@ class ThermoSmartCoordinator(
     DataUpdateCoordinator,
     TRVControlMixin,
     MaintenanceMixin,
-    SeasonMixin,
     WindowMixin,
 ):
     """Koordinator für eine einzelne Heizzone.
@@ -140,7 +138,6 @@ class ThermoSmartCoordinator(
     Erbt von:
       TRVControlMixin    – Geräteerkennung, Kalibrierung, Quirks, Setpoint-Schreiben
       MaintenanceMixin   – wöchentliche Ventilübung
-      SeasonMixin        – Sommer-Erkennung und Frostschutz
       WindowMixin        – Fenstererkennung mit Verzögerungslogik
     """
 
@@ -1179,7 +1176,7 @@ class ThermoSmartCoordinator(
             # the sensor does not show Unknown after restart. Does not affect control logic,
             # TPI, learning, or boost tracking.
             if "trv_setpoint" not in recommendation:
-                if recommendation.get("is_summer"):
+                if recommendation.get("suspension") == SUMMER:
                     # In summer mode the frost-protection value is always sent to the TRV.
                     # Use it directly so the sensor reflects the actually applied setpoint
                     # rather than a stale heating value from _last_written_setpoints.
@@ -1303,11 +1300,14 @@ class ThermoSmartCoordinator(
             duty = 0.0
             _sp_stats = _DispatchStats()   # setpoint/frost dispatch stats
             _vv_stats = _DispatchStats()   # direct valve dispatch stats
-            if self._active_control and not effective_summer:
+            # Summer and vacation hold a room target and use the same dispatch path
+            # (device profiles, window-off restore, direct valves) as normal control.
+            if self._active_control:
                 self._state_settings_enforced = set()
                 for _eid in cfg.get("climate_entities", []):
                     await self._async_enforce_device_state_settings(_eid, cfg)
-                await self._watchdog_hvac(cfg, recommendation)
+                if recommendation.get("suspension") != SUMMER:
+                    await self._watchdog_hvac(cfg, recommendation)
                 await self._async_calibrate_trvs(cfg, recommendation)
                 _sp_stats = await self._apply_temperature(cfg, recommendation)
                 _dispatch_failure_crossed = self._update_dispatch_failure_counters(_sp_stats)
@@ -1317,17 +1317,11 @@ class ThermoSmartCoordinator(
                 if recommendation.get("window_open"):
                     duty = 0.0
                 _vv_stats = await self._async_set_valve_percent(cfg, duty)
-            elif self._active_control and effective_summer:
-                self._state_settings_enforced = set()
-                for _eid in cfg.get("climate_entities", []):
-                    await self._async_enforce_device_state_settings(_eid, cfg)
-                await self._apply_frost_protection(cfg)
-                recommendation["trv_setpoint"] = TEMP_FROST_PROTECTION
 
             # ── Post-dispatch dispatch truth (before LiveDecisionRecord) ─────────────
             # Compute dispatch status now so both the per-device applied truth and the
             # LiveDecisionRecord completion can use the same authoritative values.
-            _disp_attempted = self._active_control and not effective_summer
+            _disp_attempted = self._active_control
             _combined = _sp_stats.merge(_vv_stats) if _disp_attempted else _DispatchStats()
             _disp_status = _combined.status if _disp_attempted else "not_attempted"
             _eff_sps = _sp_stats.effective_setpoints
@@ -2065,9 +2059,9 @@ class ThermoSmartCoordinator(
 
         # ── Driven target ──────────────────────────────────────────────────────
         # The desired target is never altered here. What the TRVs are driven to
-        # is derived from it by the suspension that applies (summer > vacation >
-        # window): summer/vacation hold a fixed temperature, an open window
-        # releases the setpoint (None), otherwise it is the desired target.
+        # is derived from it by the suspension that applies (window > summer >
+        # vacation): an open window releases the setpoint (None), summer/vacation
+        # hold a fixed room target, otherwise it is the desired target.
         suspension = resolve(
             summer=self._is_summer, vacation=self._vacation_mode, window_open=window_open,
         )

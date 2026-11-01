@@ -7,7 +7,6 @@ Covers:
     _read_trv_avg_temp) normalize Fahrenheit sensors correctly,
   - outdoor.py's outdoor temperature reads (see test_outdoor.py),
   - trv_control.py's min/max clamp + climate.set_temperature dispatch conversion,
-  - season.py's frost-protection setpoint read/dispatch,
   - Learning/TPI: a Fahrenheit-reported room temperature yields the identical
     internal Celsius value (and therefore identical downstream behaviour) as
     the equivalent Celsius sensor.
@@ -194,27 +193,6 @@ class TestOutdoorUnits:
         # humidity/wind must never be unit-converted
         assert data["humidity"] == pytest.approx(40)
         assert data["wind_speed"] == pytest.approx(5)
-
-
-class TestSeasonFrostProtectionUnits:
-    async def test_frost_protection_dispatch_converts_for_fahrenheit_system(self):
-        from custom_components.thermosmart.const import TEMP_FROST_PROTECTION
-
-        coord = make_coordinator()
-        coord.hass.config.units.temperature_unit = UnitOfTemperature.FAHRENHEIT
-        coord.hass.services.async_call = AsyncMock(return_value=None)
-        set_hass_states(coord, {
-            "climate.trv": make_state("heat", {"temperature": 68.0}),  # 20°C, far from frost temp
-        })
-        await coord._apply_frost_protection({"climate_entities": ["climate.trv"]})
-
-        assert coord.hass.services.async_call.called
-        call_data = coord.hass.services.async_call.call_args[0][2]
-        expected_f = from_internal_temperature_c(coord.hass, TEMP_FROST_PROTECTION)
-        # dispatched value must be TEMP_FROST_PROTECTION converted to °F, not
-        # the raw internal °C number passed straight through.
-        assert call_data["temperature"] == pytest.approx(expected_f, abs=0.1)
-        assert call_data["temperature"] != pytest.approx(TEMP_FROST_PROTECTION, abs=0.1)
 
 
 # ── TRV/Climate dispatch conversion ──────────────────────────────────────────

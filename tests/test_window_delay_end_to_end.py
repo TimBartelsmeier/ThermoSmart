@@ -32,7 +32,6 @@ class _E2ECoordinator(ThermoSmartCoordinator):
     async def _watchdog_hvac(self, cfg, recommendation): pass
     async def _async_calibrate_trvs(self, cfg, recommendation): pass
     async def _async_set_valve_percent(self, cfg, duty): return _DispatchStats()
-    async def _apply_frost_protection(self, cfg): pass
     async def _async_valve_maintenance(self, cfg, recommendation): pass
     async def _async_write_external_temp(self, cfg, recommendation): pass
     async def _async_observe_trv_setpoints(self, cfg, recommendation, weather): pass

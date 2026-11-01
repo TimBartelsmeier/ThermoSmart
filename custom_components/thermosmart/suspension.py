@@ -17,18 +17,25 @@ WINDOW_OPEN = "window_open"
 
 
 def resolve(*, summer: bool, vacation: bool, window_open: bool) -> str | None:
-    """The suspension that decides what the TRVs do. Precedence: summer > vacation > window."""
+    """The suspension that decides what the TRVs do. Precedence: window > summer > vacation.
+
+    An open window always closes the valves, even while summer or vacation holds the zone.
+    """
+    if window_open:
+        return WINDOW_OPEN
     if summer:
         return SUMMER
     if vacation:
         return VACATION
-    if window_open:
-        return WINDOW_OPEN
     return None
 
 
 def held_at(suspension: str | None, vacation_temp: float) -> float | None:
-    """Temperature the TRVs are held at; None releases the setpoint (window) or no hold."""
+    """Room target held by a suspension; None for an open window or no suspension.
+
+    Summer and vacation hold a room target (frost protection / vacation temperature)
+    that is regulated like any other target, so the TRV setpoint may differ from it.
+    """
     if suspension == SUMMER:
         return TEMP_FROST_PROTECTION
     if suspension == VACATION:

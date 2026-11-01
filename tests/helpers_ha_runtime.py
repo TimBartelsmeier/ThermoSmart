@@ -45,9 +45,6 @@ class RecordingCoordinator(ThermoSmartCoordinator):
         self.control_calls.append(("set_valve_percent", duty))
         return _DispatchStats()
 
-    async def _apply_frost_protection(self, cfg):
-        self.control_calls.append(("frost_protection",))
-
     async def _async_valve_maintenance(self, cfg, recommendation):
         pass
 
@@ -137,9 +134,6 @@ class DispatchingCoordinator(ThermoSmartCoordinator):
     async def _async_set_valve_percent(self, cfg, duty):
         self.control_calls.append(("set_valve_percent", duty))
         return _DispatchStats()
-
-    async def _apply_frost_protection(self, cfg):
-        pass
 
     async def _async_valve_maintenance(self, cfg, recommendation):
         pass

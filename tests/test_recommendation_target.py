@@ -59,34 +59,43 @@ class TestEffectiveTarget:
 
 
 class TestOverlappingSuspensions:
-    """Summer > vacation > window; the desired target survives all of them."""
+    """Window > summer > vacation; the desired target survives all of them."""
 
     async def _zone_with(self, coord, *, window):
         coord._check_window_open = lambda cfg, current_temp=None: window
         return await _zone(coord)
 
-    async def test_release_order_summer_vacation_window_none(self):
+    async def test_release_order_window_summer_vacation_none(self):
         coord = _make_testable()
         coord.set_target(22.0, SOURCE_USER)
         coord.set_system_state(vacation=True, summer=True)
 
         zone = await self._zone_with(coord, window=True)
-        assert (zone["suspension"], zone["held_at"]) == ("summer", 12.0)
-
-        coord.set_system_state(vacation=True, summer=False)
-        zone = await self._zone_with(coord, window=True)
-        assert zone["suspension"] == "vacation"
-        assert zone["effective_target"] == coord.zone_cfg.get("vacation_temp", 12.0)
-
-        coord.set_system_state(vacation=False, summer=False)
-        zone = await self._zone_with(coord, window=True)
         assert zone["suspension"] == "window_open"
         assert zone["effective_target"] is None
 
         zone = await self._zone_with(coord, window=False)
+        assert (zone["suspension"], zone["held_at"]) == ("summer", 12.0)
+        assert zone["effective_target"] == 12.0
+
+        coord.set_system_state(vacation=True, summer=False)
+        zone = await self._zone_with(coord, window=False)
+        assert zone["suspension"] == "vacation"
+        assert zone["effective_target"] == coord.zone_cfg.get("vacation_temp", 12.0)
+
+        coord.set_system_state(vacation=False, summer=False)
+        zone = await self._zone_with(coord, window=False)
         assert zone["suspension"] is None
         assert zone["effective_target"] == 22.0
         assert zone["desired_target"] == 22.0
+
+    async def test_open_window_closes_valves_during_vacation_and_summer(self):
+        coord = _make_testable()
+        for summer, vacation in ((False, True), (True, False)):
+            coord.set_system_state(vacation=vacation, summer=summer)
+            zone = await self._zone_with(coord, window=True)
+            assert zone["suspension"] == "window_open"
+            assert zone["effective_target"] is None
 
     async def test_changes_during_each_suspension_apply_on_resume(self):
         coord = _make_testable()
